@@ -1,5 +1,8 @@
+import { Container } from "@chakra-ui/react";
 function Login() {
-  return <div></div>;
+  return <Container>
+    
+  </Container>;
 }
 
 export default Login;

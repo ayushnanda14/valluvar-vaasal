@@ -1,16 +1,16 @@
-import React, { useContext } from "react";
-import { ThemeContext } from "../context/ThemeContext";
+import { ClientOnly, IconButton, Skeleton } from "@chakra-ui/react";
+import { useColorMode } from "@/components/ui/color-mode";
+import { LuMoon, LuSun } from "react-icons/lu";
 
 const ThemeChanger = () => {
-  const { theme, toggleTheme } = useContext(ThemeContext);
+  const { toggleColorMode, colorMode } = useColorMode();
 
   return (
-    <button
-      onClick={toggleTheme}
-      className="px-2 py-1 border rounded bg-gray-200 dark:bg-gray-700 dark:text-white"
-    >
-      Switch to {theme === "light" ? "dark" : "light"} theme
-    </button>
+    <ClientOnly fallback={<Skeleton boxSize="8" />}>
+      <IconButton onClick={toggleColorMode} variant="outline" size="sm">
+        {colorMode === "light" ? <LuSun /> : <LuMoon />}
+      </IconButton>
+    </ClientOnly>
   );
 };
 

@@ -1,37 +1,36 @@
+import { Flex, Link, Box } from "@chakra-ui/react";
 import ThemeChanger from "./ThemeChanger";
 
 function Navbar() {
   return (
-    <nav className="flex justify-between items-center py-2 px-4 bg-white dark:bg-gray-800 text-black dark:text-white">
+    <Flex p="1rem" justify="space-between" align="center">
       {/* Logo */}
-      <div>
-        <span className="font-bold">Valluvar Vaasal</span>
-      </div>
-      {/* Nav menu */}
-      <div className="flex">
-        <ul className="flex gap-4">
-          <li>
-            <a className="hover:text-blue-500" href="/home">
-              Home
-            </a>
-          </li>
-          <li>
-            <a className="hover:text-blue-500" href="/about">
-              About
-            </a>
-          </li>
-        </ul>
-      </div>
+      <Box>
+        <Box as="span" fontWeight="bold">
+          Valluvar Vaasal
+        </Box>
+      </Box>
+      {/* Navigation Menu */}
+      <Box>
+        <Flex gap="1rem" m={0}>
+          <Link href="/home" _hover={{ color: "blue.500" }}>
+            Home
+          </Link>
+          <Link href="/about" _hover={{ color: "blue.500" }}>
+            About
+          </Link>
+        </Flex>
+      </Box>
       {/* Auxiliary Options */}
-      <div className="flex gap-4 items-center">
-        {/* <ThemeChanger /> */}
-        <div>
-          <a className="hover:text-blue-500" href="/login">
+      <Flex gap="1rem" align="center">
+        <ThemeChanger />
+        <Box>
+          <Link href="/login" _hover={{ color: "blue.500" }}>
             Login/Sign Up
-          </a>
-        </div>
-      </div>
-    </nav>
+          </Link>
+        </Box>
+      </Flex>
+    </Flex>
   );
 }
 
