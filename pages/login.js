@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  TextField, 
-  Button, 
-  Paper, 
+import {
+  Box,
+  Container,
+  Typography,
+  TextField,
+  Button,
+  Paper,
   Divider,
   Alert,
   Link as MuiLink,
@@ -33,33 +33,33 @@ export default function Login() {
   const theme = useTheme();
   const router = useRouter();
   const { loginWithEmail, loginWithGoogle, sendVerificationCode, verifyCodeAndSignUp } = useAuth();
-  
+
   const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
-  
+
   // Email login state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  
+
   // Phone login state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [phoneStep, setPhoneStep] = useState(0); // 0: enter phone, 1: enter code
-  
+
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
-  
+
   // Ref for reCAPTCHA container
   const recaptchaContainerRef = useRef(null);
-  
+
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
     setError('');
   };
-  
+
   const handleEmailLogin = async (e) => {
     e.preventDefault();
-    
+
     try {
       setError('');
       setLoading(true);
@@ -72,11 +72,11 @@ export default function Login() {
       setLoading(false);
     }
   };
-  
+
   const validateIndianPhoneNumber = (phone) => {
     // Remove any non-digit characters
     const digitsOnly = phone.replace(/\D/g, '');
-    
+
     // Check if it's a valid Indian phone number (10 digits, optionally with +91 prefix)
     if (digitsOnly.length === 10) {
       return true;
@@ -85,33 +85,33 @@ export default function Login() {
     } else if (digitsOnly.length === 13 && digitsOnly.startsWith('091')) {
       return true;
     }
-    
+
     return false;
   };
-  
+
   const formatIndianPhoneNumber = (phone) => {
     // Remove any non-digit characters
     const digitsOnly = phone.replace(/\D/g, '');
-    
+
     // If it's just 10 digits, add the +91 prefix
     if (digitsOnly.length === 10) {
       return `+91${digitsOnly}`;
     }
-    
+
     // If it already has 91 prefix but no +, add it
     if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
       return `+${digitsOnly}`;
     }
-    
+
     // If it has 091 prefix, convert to +91
     if (digitsOnly.length === 13 && digitsOnly.startsWith('091')) {
       return `+91${digitsOnly.substring(3)}`;
     }
-    
+
     // Otherwise, just add + if it's missing
     return phone.startsWith('+') ? phone : `+${phone}`;
   };
-  
+
   // Make sure the reCAPTCHA container is always in the DOM
   useEffect(() => {
     // Create the reCAPTCHA container if it doesn't exist
@@ -120,7 +120,7 @@ export default function Login() {
       recaptchaContainer.id = 'recaptcha-container-login';
       document.body.appendChild(recaptchaContainer);
     }
-    
+
     // Cleanup function
     return () => {
       // Don't remove the container on component unmount
@@ -134,37 +134,37 @@ export default function Login() {
       }
     };
   }, []);
-  
+
   const handleSendVerificationCode = async (e) => {
     e.preventDefault();
-    
+
     if (!phoneNumber) {
       setError('Please enter your phone number');
       return;
     }
-    
+
     // Validate Indian phone number
     if (!validateIndianPhoneNumber(phoneNumber)) {
       setError('Please enter a valid Indian phone number (10 digits)');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       // Format to E.164 format with Indian country code
       const formattedPhoneNumber = formatIndianPhoneNumber(phoneNumber);
-      
+
       const result = await sendVerificationCode(formattedPhoneNumber, 'recaptcha-container-login');
       setConfirmationResult(result);
       setPhoneStep(1);
     } catch (err) {
       console.error('Phone verification error:', err);
-      
+
       // Display user-friendly error message
       setError(err.message || 'Failed to send verification code. Please try again.');
-      
+
       // If it's the "not enabled" error, show additional guidance
       if (err.message && err.message.includes('not enabled')) {
         setError(`${err.message} 
@@ -178,19 +178,19 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       setLoading(false);
     }
   };
-  
+
   const handleVerifyCode = async (e) => {
     e.preventDefault();
-    
+
     if (!verificationCode) {
       setError('Please enter the verification code');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       // For login, we don't need a display name, so we'll use a placeholder
       // The user document should already exist if they've signed up before
       await verifyCodeAndSignUp(confirmationResult, verificationCode, "");
@@ -202,7 +202,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       setLoading(false);
     }
   };
-  
+
   const handleGoogleLogin = async () => {
     try {
       setError('');
@@ -216,7 +216,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       setLoading(false);
     }
   };
-  
+
   const handleRefresh = () => {
     // Clear any existing reCAPTCHA
     if (window.recaptchaVerifier) {
@@ -226,32 +226,32 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
         console.error('Error clearing reCAPTCHA:', error);
       }
     }
-    
+
     // Reset state
     setError('');
     setPhoneStep(0);
     setConfirmationResult(null);
-    
+
     // Reload the page to get fresh Firebase configuration
     window.location.reload();
   };
-  
+
   return (
     <>
       <Head>
         <title>Login | Valluvar Vaasal</title>
         <meta name="description" content="Sign in to your Valluvar Vaasal account" />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        <Navbar />
-        
-        <Box 
-          sx={{ 
+        {/* <Navbar /> */}
+
+        <Box
+          sx={{
             py: { xs: 6, md: 10 },
             backgroundColor: theme.palette.background.default,
             flexGrow: 1,
@@ -265,15 +265,15 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
               elevation={3}
-              sx={{ 
+              sx={{
                 p: { xs: 3, md: 5 },
                 borderRadius: '16px',
                 background: 'rgba(255, 255, 255, 0.95)'
               }}
             >
-              <Typography 
-                variant="h4" 
-                component="h1" 
+              <Typography
+                variant="h4"
+                component="h1"
                 align="center"
                 sx={{
                   mb: 4,
@@ -283,11 +283,11 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
               >
                 Welcome Back
               </Typography>
-              
+
               {error && (
-                <Alert 
-                  severity="error" 
-                  sx={{ 
+                <Alert
+                  severity="error"
+                  sx={{
                     mb: 3,
                     whiteSpace: 'pre-line' // This will preserve line breaks in the error message
                   }}
@@ -302,33 +302,33 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   {error}
                 </Alert>
               )}
-              
+
               <Tabs
                 value={authMethod}
                 onChange={handleAuthMethodChange}
                 variant="fullWidth"
                 sx={{ mb: 3 }}
               >
-                <Tab 
-                  icon={<EmailIcon />} 
-                  label="Email" 
+                <Tab
+                  icon={<EmailIcon />}
+                  label="Email"
                   value="email"
-                  sx={{ 
+                  sx={{
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1rem'
                   }}
                 />
-                <Tab 
-                  icon={<PhoneIcon />} 
-                  label="Phone" 
+                <Tab
+                  icon={<PhoneIcon />}
+                  label="Phone"
                   value="phone"
-                  sx={{ 
+                  sx={{
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1rem'
                   }}
                 />
               </Tabs>
-              
+
               {authMethod === 'email' ? (
                 <form onSubmit={handleEmailLogin} autoComplete="off">
                   <TextField
@@ -350,7 +350,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                       ),
                     }}
                   />
-                  
+
                   <TextField
                     label="Password"
                     type="password"
@@ -363,24 +363,19 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     autoComplete="new-password"
                     inputProps={{ autoComplete: 'new-password' }}
                   />
-                  
+
                   <Box sx={{ textAlign: 'right', mt: 1, mb: 2 }}>
-                    <Link href="/reset-password" passHref>
-                      <MuiLink 
-                        variant="body2"
-                        sx={{ 
-                          color: theme.palette.primary.main,
-                          textDecoration: 'none',
-                          '&:hover': {
-                            textDecoration: 'underline'
-                          }
-                        }}
-                      >
-                        Forgot password?
-                      </MuiLink>
+                    <Link href="/reset-password" passHref sx={{
+                      color: theme.palette.primary.main,
+                      textDecoration: 'none',
+                      '&:hover': {
+                        textDecoration: 'underline'
+                      }
+                    }}>
+                      Forgot password?
                     </Link>
                   </Box>
-                  
+
                   <Button
                     type="submit"
                     fullWidth
@@ -388,7 +383,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     color="primary"
                     size="large"
                     disabled={loading}
-                    sx={{ 
+                    sx={{
                       py: 1.5,
                       fontFamily: '"Cormorant Garamond", serif',
                       fontSize: '1.1rem'
@@ -401,7 +396,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                 <>
                   {/* Hidden div for reCAPTCHA */}
                   <div id="recaptcha-container-login" ref={recaptchaContainerRef}></div>
-                  
+
                   {phoneStep === 0 ? (
                     <form onSubmit={handleSendVerificationCode} autoComplete="off">
                       <TextField
@@ -424,7 +419,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                           ),
                         }}
                       />
-                      
+
                       <Button
                         type="submit"
                         fullWidth
@@ -432,7 +427,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         color="primary"
                         size="large"
                         disabled={loading}
-                        sx={{ 
+                        sx={{
                           mt: 3,
                           py: 1.5,
                           fontFamily: '"Cormorant Garamond", serif',
@@ -454,7 +449,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         required
                         autoComplete="off"
                       />
-                      
+
                       <Button
                         type="submit"
                         fullWidth
@@ -462,7 +457,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         color="primary"
                         size="large"
                         disabled={loading}
-                        sx={{ 
+                        sx={{
                           mt: 3,
                           py: 1.5,
                           fontFamily: '"Cormorant Garamond", serif',
@@ -471,7 +466,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                       >
                         {loading ? <CircularProgress size={24} /> : 'Verify & Sign In'}
                       </Button>
-                      
+
                       <Button
                         fullWidth
                         variant="text"
@@ -485,13 +480,13 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   )}
                 </>
               )}
-              
+
               <Divider sx={{ my: 3 }}>
                 <Typography variant="body2" color="text.secondary">
                   OR
                 </Typography>
               </Divider>
-              
+
               <Button
                 fullWidth
                 variant="outlined"
@@ -500,7 +495,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                 startIcon={<GoogleIcon />}
                 onClick={handleGoogleLogin}
                 disabled={loading}
-                sx={{ 
+                sx={{
                   py: 1.5,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1.1rem'
@@ -508,37 +503,33 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
               >
                 Sign in with Google
               </Button>
-              
+
               <Box sx={{ mt: 3, textAlign: 'center' }}>
                 <Typography variant="body2">
                   Don't have an account?{' '}
-                  <Link href="/signup" passHref>
-                    <MuiLink 
-                      sx={{ 
-                        color: theme.palette.primary.main,
-                        textDecoration: 'none',
-                        '&:hover': {
-                          textDecoration: 'underline'
-                        }
-                      }}
-                    >
-                      Sign up
-                    </MuiLink>
+                  <Link href="/signup" passHref sx={{
+                    color: theme.palette.primary.main,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}>
+                    Sign up
                   </Link>
                 </Typography>
               </Box>
             </MotionPaper>
           </Container>
         </Box>
-        
-        <Footer />
+
+        {/* <Footer /> */}
       </Box>
-      
+
       {/* Add a visible reCAPTCHA container */}
-      <Box 
-        id="recaptcha-container-login" 
-        sx={{ 
-          mt: 2, 
+      <Box
+        id="recaptcha-container-login"
+        sx={{
+          mt: 2,
           display: authMethod === 'phone' && phoneStep === 0 ? 'block' : 'none',
           '& div': { margin: '0 auto' }
         }}

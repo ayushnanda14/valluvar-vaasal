@@ -10,6 +10,8 @@ import theme from '../src/theme';
 import { AuthProvider } from '../src/context/AuthContext';
 import { useEffect } from 'react';
 import { useAppCheck } from '../src/hooks/useAppCheck';
+import Navbar from '@/components/navbar';
+import Footer from '@/components/footer';
 
 const clientSideEmotionCache = createEmotionCache();
 
@@ -35,7 +37,9 @@ export default function MyApp(props) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
+          <Navbar />
           <Component {...pageProps} />
+          <Footer />
         </AuthProvider>
       </ThemeProvider>
     </CacheProvider>

@@ -83,7 +83,7 @@ export default function AdminSignup() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -230,7 +230,7 @@ export default function AdminSignup() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

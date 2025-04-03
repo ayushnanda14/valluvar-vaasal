@@ -20,11 +20,11 @@ export default function HomePage() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         <Hero />
         <Services />
         <Testimonials />
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

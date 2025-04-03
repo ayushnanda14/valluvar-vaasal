@@ -55,13 +55,13 @@ export default function Home() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <HomePage />
         
         <Services />
         {/* <Testimonials /> */}
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

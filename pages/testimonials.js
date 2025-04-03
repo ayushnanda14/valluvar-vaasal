@@ -102,7 +102,7 @@ export default function TestimonialsPage() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -327,7 +327,7 @@ export default function TestimonialsPage() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
       
       <Snackbar

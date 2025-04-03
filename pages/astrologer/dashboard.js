@@ -18,6 +18,7 @@ import {
   TableContainer,
   TableHead,
   TableRow,
+  Alert,
   useTheme
 } from '@mui/material';
 import Head from 'next/head';
@@ -28,7 +29,8 @@ import { useAuth } from '../../src/context/AuthContext';
 import AstrologerProfileManager from '../../src/components/AstrologerProfileManager';
 import DocumentVerification from '../../src/components/DocumentVerification';
 import ProtectedRoute from '../../src/components/ProtectedRoute';
-import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import NotificationBadge from '../../src/components/NotificationBadge';
+import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 
 export default function AstrologerDashboard() {
@@ -40,12 +42,53 @@ export default function AstrologerDashboard() {
   const [revenue, setRevenue] = useState([]);
   const [loading, setLoading] = useState(true);
   
+  // New state for notifications and verification status
+  const [newReadingsCount, setNewReadingsCount] = useState(0);
+  const [isProfileComplete, setIsProfileComplete] = useState(false);
+  const [isVerified, setIsVerified] = useState(false);
+  const [verificationStatus, setVerificationStatus] = useState('pending');
+  const [verificationMessage, setVerificationMessage] = useState('');
+  
   // Get tab from query params
   useEffect(() => {
     if (router.query.tab !== undefined) {
       setTabValue(parseInt(router.query.tab));
     }
   }, [router.query.tab]);
+  
+  // Fetch astrologer profile and verification status
+  useEffect(() => {
+    const fetchProfileStatus = async () => {
+      if (!currentUser) return;
+      
+      try {
+        // Check if profile is complete
+        const profileRef = doc(db, 'astrologers', currentUser.uid);
+        const profileDoc = await getDoc(profileRef);
+        
+        if (profileDoc.exists()) {
+          const profileData = profileDoc.data();
+          
+          // Check if profile has all required fields
+          const hasServices = profileData.services && profileData.services.length > 0;
+          const hasPricing = profileData.services && profileData.services.some(s => s.price > 0);
+          
+          setIsProfileComplete(hasServices && hasPricing);
+          setIsVerified(profileData.verified === true);
+          setVerificationStatus(profileData.verificationStatus || 'pending');
+          setVerificationMessage(profileData.verificationMessage || '');
+        } else {
+          setIsProfileComplete(false);
+          setIsVerified(false);
+          setVerificationStatus('pending');
+        }
+      } catch (error) {
+        console.error('Error fetching profile status:', error);
+      }
+    };
+    
+    fetchProfileStatus();
+  }, [currentUser]);
   
   // Fetch astrologer data
   useEffect(() => {
@@ -68,6 +111,10 @@ export default function AstrologerDashboard() {
           ...doc.data()
         }));
         setReadings(readingsData);
+        
+        // Count new/unread readings
+        const newReadings = readingsData.filter(r => r.status === 'new' || r.isRead === false);
+        setNewReadingsCount(newReadings.length);
         
         // Fetch revenue data
         const revenueQuery = query(
@@ -95,6 +142,13 @@ export default function AstrologerDashboard() {
   
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+    
+    // If switching to readings tab, mark as read
+    if (newValue === 0 && newReadingsCount > 0) {
+      // This would typically update the database to mark readings as read
+      // For now, just reset the count
+      setNewReadingsCount(0);
+    }
     
     // Update URL with tab parameter without full page reload
     router.push({
@@ -261,7 +315,7 @@ export default function AstrologerDashboard() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -284,6 +338,24 @@ export default function AstrologerDashboard() {
             >
               Astrologer Dashboard
             </Typography>
+            
+            {verificationStatus === 'rejected' && (
+              <Alert severity="error" sx={{ mb: 2 }}>
+                Your profile verification was rejected: {verificationMessage}
+              </Alert>
+            )}
+            
+            {!isVerified && verificationStatus === 'pending' && (
+              <Alert severity="warning" sx={{ mb: 2 }}>
+                Your account is pending verification. Please complete your profile and upload required documents.
+              </Alert>
+            )}
+            
+            {isVerified && (
+              <Alert severity="success" sx={{ mb: 2 }}>
+                Your account is verified. You can now receive readings from clients.
+              </Alert>
+            )}
           </Container>
         </Box>
         
@@ -296,20 +368,49 @@ export default function AstrologerDashboard() {
               textColor="primary"
               variant="fullWidth"
             >
-              <Tab label="Readings" />
+              <Tab 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                    Readings
+                    {newReadingsCount > 0 && (
+                      <NotificationBadge count={newReadingsCount} />
+                    )}
+                  </Box>
+                } 
+              />
               <Tab label="Revenue" />
-              <Tab label="Services & Pricing" />
-              <Tab label="Verification" />
+              <Tab 
+                label={
+                  <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+                    Services & Pricing
+                    {!isProfileComplete && (
+                      <NotificationBadge showExclamation={true} />
+                    )}
+                  </Box>
+                } 
+              />
+              
+              {/* Only show verification tab if not verified */}
+              {!isVerified && (
+                <Tab 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
+                      Verification
+                      <NotificationBadge showExclamation={true} />
+                    </Box>
+                  } 
+                />
+              )}
             </Tabs>
           </Paper>
           
           {tabValue === 0 && renderReadingsTab()}
           {tabValue === 1 && renderRevenueTab()}
-          {tabValue === 2 && <AstrologerProfileManager />}
-          {tabValue === 3 && <DocumentVerification />}
+          {tabValue === 2 && <AstrologerProfileManager onProfileUpdate={() => setIsProfileComplete(true)} />}
+          {!isVerified && tabValue === 3 && <DocumentVerification />}
         </Container>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </ProtectedRoute>
   );

@@ -1,13 +1,13 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
-  TextField, 
-  Button, 
-  FormGroup, 
-  FormControlLabel, 
-  Checkbox, 
+import {
+  Box,
+  Typography,
+  Paper,
+  TextField,
+  Button,
+  FormGroup,
+  FormControlLabel,
+  Checkbox,
   InputAdornment,
   Grid,
   Divider,
@@ -15,51 +15,51 @@ import {
   CircularProgress,
   useTheme
 } from '@mui/material';
-import { 
-  updateAstrologerServices, 
-  getAstrologerVerificationStatus 
+import {
+  updateAstrologerServices,
+  getAstrologerVerificationStatus
 } from '../services/astrologerService';
 import { useAuth } from '../context/AuthContext';
 
 export default function AstrologerProfileManager() {
   const theme = useTheme();
   const { currentUser } = useAuth();
-  
+
   // State for services and pricing
   const [services, setServices] = useState({
     marriageMatching: false,
     jathakPrediction: false,
     jathakWriting: false
   });
-  
+
   const [pricing, setPricing] = useState({
     marriageMatching: 500,
     jathakPrediction: 500,
     jathakWriting: 500
   });
-  
+
   // State for verification status
   const [verificationStatus, setVerificationStatus] = useState('not_submitted');
-  
+
   // State for form submission
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
   const [initialLoading, setInitialLoading] = useState(true);
-  
+
   // Fetch astrologer profile data
   useEffect(() => {
     const fetchProfileData = async () => {
       if (!currentUser) return;
-      
+
       try {
         setInitialLoading(true);
-        
+
         const verificationData = await getAstrologerVerificationStatus(currentUser.uid);
-        
+
         // Set verification status
         setVerificationStatus(verificationData.verificationStatus);
-        
+
         // Set services
         const servicesData = {
           marriageMatching: verificationData.services.includes('marriageMatching'),
@@ -67,7 +67,7 @@ export default function AstrologerProfileManager() {
           jathakWriting: verificationData.services.includes('jathakWriting')
         };
         setServices(servicesData);
-        
+
         // Set pricing
         const pricingData = {
           marriageMatching: verificationData.serviceCharges.marriageMatching || 500,
@@ -82,10 +82,10 @@ export default function AstrologerProfileManager() {
         setInitialLoading(false);
       }
     };
-    
+
     fetchProfileData();
   }, [currentUser]);
-  
+
   // Handle service selection
   const handleServiceChange = (event) => {
     setServices({
@@ -93,7 +93,7 @@ export default function AstrologerProfileManager() {
       [event.target.name]: event.target.checked
     });
   };
-  
+
   // Handle pricing changes
   const handlePricingChange = (service, value) => {
     setPricing({
@@ -101,30 +101,30 @@ export default function AstrologerProfileManager() {
       [service]: value
     });
   };
-  
+
   // Handle form submission
   const handleSubmit = async (e) => {
     e.preventDefault();
-    
+
     if (!currentUser) {
       setError('You must be logged in to update your profile');
       return;
     }
-    
+
     // Validate that at least one service is selected
     if (!services.marriageMatching && !services.jathakPrediction && !services.jathakWriting) {
       setError('Please select at least one service that you provide');
       return;
     }
-    
+
     try {
       setLoading(true);
       setError('');
       setSuccess('');
-      
+
       await updateAstrologerServices(currentUser.uid, services, pricing);
-      
-      setSuccess('Your services and pricing have been updated successfully');
+
+      setSuccess('Your services and pricing have been uploaded successfully, please wait for verification.');
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
@@ -132,7 +132,7 @@ export default function AstrologerProfileManager() {
       setLoading(false);
     }
   };
-  
+
   // Render verification status message
   const renderVerificationStatus = () => {
     switch (verificationStatus) {
@@ -162,7 +162,7 @@ export default function AstrologerProfileManager() {
         );
     }
   };
-  
+
   if (initialLoading) {
     return (
       <Box sx={{ display: 'flex', justifyContent: 'center', p: 4 }}>
@@ -170,11 +170,11 @@ export default function AstrologerProfileManager() {
       </Box>
     );
   }
-  
+
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: '12px' }}>
-      <Typography 
-        variant="h5" 
+      <Typography
+        variant="h5"
         component="h2"
         sx={{
           mb: 3,
@@ -184,27 +184,27 @@ export default function AstrologerProfileManager() {
       >
         Manage Your Services
       </Typography>
-      
+
       {renderVerificationStatus()}
-      
+
       {error && (
         <Alert severity="error" sx={{ mb: 3 }}>
           {error}
         </Alert>
       )}
-      
+
       {success && (
         <Alert severity="success" sx={{ mb: 3 }}>
           {success}
         </Alert>
       )}
-      
+
       <form onSubmit={handleSubmit}>
         <FormGroup>
           <Typography variant="h6" sx={{ mb: 2 }}>
             Services You Provide
           </Typography>
-          
+
           <Grid container spacing={3}>
             <Grid item xs={12} md={6}>
               <FormControlLabel
@@ -218,7 +218,7 @@ export default function AstrologerProfileManager() {
                 }
                 label="Marriage Matching"
               />
-              
+
               <FormControlLabel
                 control={
                   <Checkbox
@@ -230,7 +230,7 @@ export default function AstrologerProfileManager() {
                 }
                 label="Jathak Prediction"
               />
-              
+
               <FormControlLabel
                 control={
                   <Checkbox
@@ -243,12 +243,12 @@ export default function AstrologerProfileManager() {
                 label="Jathak Writing"
               />
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Typography variant="subtitle2" sx={{ mb: 1 }}>
                 Set Your Pricing
               </Typography>
-              
+
               <TextField
                 label="Marriage Matching Price"
                 variant="outlined"
@@ -262,7 +262,7 @@ export default function AstrologerProfileManager() {
                 onChange={(e) => handlePricingChange('marriageMatching', e.target.value)}
                 disabled={!services.marriageMatching}
               />
-              
+
               <TextField
                 label="Jathak Prediction Price"
                 variant="outlined"
@@ -276,7 +276,7 @@ export default function AstrologerProfileManager() {
                 onChange={(e) => handlePricingChange('jathakPrediction', e.target.value)}
                 disabled={!services.jathakPrediction}
               />
-              
+
               <TextField
                 label="Jathak Writing Price"
                 variant="outlined"
@@ -293,7 +293,7 @@ export default function AstrologerProfileManager() {
             </Grid>
           </Grid>
         </FormGroup>
-        
+
         <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
           <Button
             type="submit"
@@ -301,7 +301,7 @@ export default function AstrologerProfileManager() {
             color="primary"
             size="large"
             disabled={loading}
-            sx={{ 
+            sx={{
               py: 1.5,
               px: 4,
               fontFamily: '"Cormorant Garamond", serif',

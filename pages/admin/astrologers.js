@@ -50,7 +50,7 @@ export default function AdminAstrologersPage() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -76,7 +76,7 @@ export default function AdminAstrologersPage() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

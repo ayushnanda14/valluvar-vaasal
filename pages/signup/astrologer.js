@@ -329,7 +329,7 @@ export default function AstrologerSignup() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -790,7 +790,7 @@ export default function AstrologerSignup() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

@@ -163,7 +163,7 @@ export default function RolesManagement() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -292,7 +292,7 @@ export default function RolesManagement() {
           </Grid>
         </Container>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
       
       {/* Delete Role Confirmation Dialog */}

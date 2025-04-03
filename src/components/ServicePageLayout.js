@@ -176,7 +176,7 @@ export default function ServicePageLayout({
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -518,7 +518,7 @@ export default function ServicePageLayout({
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

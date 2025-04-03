@@ -249,7 +249,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         <Box 
           sx={{
@@ -579,7 +579,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
       
       {/* Add a visible reCAPTCHA container */}

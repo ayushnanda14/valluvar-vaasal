@@ -37,7 +37,7 @@ export default function ServiceSuccess() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar  /> */}
         
         <Box 
           sx={{
@@ -117,7 +117,7 @@ export default function ServiceSuccess() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

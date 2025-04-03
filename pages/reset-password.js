@@ -58,7 +58,7 @@ export default function ResetPassword() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar />   */}
         
         <Box 
           sx={{ 
@@ -169,7 +169,7 @@ export default function ResetPassword() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer /> */}
       </Box>
     </>
   );

@@ -33,7 +33,7 @@ export default function About() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        <Navbar />
+        {/* <Navbar /> */}
         
         {/* Hero Section with Background Image */}
         <Box 
@@ -282,7 +282,7 @@ export default function About() {
           </Container>
         </Box>
         
-        <Footer />
+        {/* <Footer />  */}
       </Box>
     </>
   );

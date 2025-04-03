@@ -1,10 +1,10 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  AppBar, 
-  Toolbar, 
-  Typography, 
-  Button, 
-  IconButton, 
+import {
+  AppBar,
+  Toolbar,
+  Typography,
+  Button,
+  IconButton,
   Box,
   Container,
   useTheme,
@@ -18,20 +18,12 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
-  Badge
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
-import DashboardIcon from '@mui/icons-material/Dashboard';
 import PersonIcon from '@mui/icons-material/Person';
-import SettingsIcon from '@mui/icons-material/Settings';
 import LogoutIcon from '@mui/icons-material/Logout';
-import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
-import StarIcon from '@mui/icons-material/Star';
-import MessageIcon from '@mui/icons-material/Message';
-import PeopleIcon from '@mui/icons-material/People';
 import AssignmentIcon from '@mui/icons-material/Assignment';
-import NotificationsIcon from '@mui/icons-material/Notifications';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -42,26 +34,26 @@ const Navbar = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
   const { currentUser, logout, hasRole, userRoles } = useAuth();
-  
+
   // For profile menu (desktop)
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
-  
+
   // For profile drawer (mobile)
   const [drawerOpen, setDrawerOpen] = useState(false);
-  
+
   // For role-based navigation
   const [isAdmin, setIsAdmin] = useState(false);
   const [isAstrologer, setIsAstrologer] = useState(false);
   const [notificationCount, setNotificationCount] = useState(0);
-  
+
   // Check user roles
   useEffect(() => {
     const checkRoles = async () => {
       if (currentUser) {
         const adminCheck = await hasRole('admin');
         const astrologerCheck = await hasRole('astrologer');
-        
+
         setIsAdmin(adminCheck);
         setIsAstrologer(astrologerCheck);
       } else {
@@ -69,10 +61,10 @@ const Navbar = () => {
         setIsAstrologer(false);
       }
     };
-    
+
     checkRoles();
   }, [currentUser, hasRole, userRoles]);
-  
+
   const handleProfileClick = (event) => {
     if (isMobile) {
       // Open drawer on mobile
@@ -82,11 +74,11 @@ const Navbar = () => {
       setAnchorEl(event.currentTarget);
     }
   };
-  
+
   const handleClose = () => {
     setAnchorEl(null);
   };
-  
+
   const handleLogout = async () => {
     try {
       await logout();
@@ -97,66 +89,24 @@ const Navbar = () => {
       console.error('Logout error:', error);
     }
   };
-  
+
   const toggleDrawer = (open) => (event) => {
     if (event && event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
       return;
     }
     setDrawerOpen(open);
   };
-  
+
   // Get user initials for avatar
   const getUserInitials = () => {
     if (!currentUser || !currentUser.displayName) return '?';
-    
+
     const names = currentUser.displayName.split(' ');
     if (names.length === 1) return names[0].charAt(0).toUpperCase();
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
   };
-  
-  // Navigation items based on role
-  const regularPages = [
-    { title: 'Home', path: '/' },
-    { title: 'Services', path: '/services' },
-    { title: 'About', path: '/about' },
-    { title: 'Contact', path: '/contact' },
-  ];
-  
-  const adminPages = [
-    { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon /> },
-    { title: 'Manage Astrologers', path: '/admin/astrologers', icon: <StarIcon /> },
-    { title: 'Manage Users', path: '/admin/dashboard', tab: 0, icon: <PeopleIcon /> },
-    { title: 'Testimonials', path: '/admin/dashboard', tab: 1, icon: <MessageIcon /> },
-    { title: 'Revenue', path: '/admin/dashboard', tab: 2, icon: <AssignmentIcon /> },
-  ];
-  
-  const astrologerPages = [
-    { title: 'Dashboard', path: '/astrologer/dashboard', icon: <DashboardIcon /> },
-    { title: 'Readings', path: '/astrologer/dashboard', tab: 0, icon: <AssignmentIcon /> },
-    { title: 'Revenue', path: '/astrologer/dashboard', tab: 1, icon: <AssignmentIcon /> },
-    { title: 'Services & Pricing', path: '/astrologer/dashboard', tab: 2, icon: <SettingsIcon /> },
-    { title: 'Verification', path: '/astrologer/dashboard', tab: 3, icon: <AdminPanelSettingsIcon /> },
-  ];
-  
-  // Determine which navigation items to show based on user role
-  const navItems = isAdmin ? adminPages : isAstrologer ? astrologerPages : regularPages;
-  
-  const handleNavItemClick = (item) => {
-    if (item.tab !== undefined) {
-      // If the item has a tab property, navigate to the page and set the tab
-      router.push({
-        pathname: item.path,
-        query: { tab: item.tab }
-      });
-    } else {
-      // Otherwise, just navigate to the page
-      router.push(item.path);
-    }
-    
-    // Close mobile drawer if open
-    setDrawerOpen(false);
-  };
-  
+
+
   return (
     <>
       <Head>
@@ -164,10 +114,10 @@ const Navbar = () => {
         <link rel="preconnect" href="https://fonts.gstatic.com" crossOrigin="true" />
         <link href="https://fonts.googleapis.com/css2?family=Cinzel:wght@400;500;600&family=Cormorant+Garamond:ital,wght@0,400;0,500;0,600;1,400&family=Playfair+Display:ital,wght@0,400;0,500;0,600;1,400&display=swap" rel="stylesheet" />
       </Head>
-      <AppBar 
-        position="static" 
+      <AppBar
+        position="static"
         elevation={0}
-        sx={{ 
+        sx={{
           backgroundColor: 'rgba(255, 236, 179, 0.85)', // Translucent amber
           backdropFilter: 'blur(8px)',
           color: theme.palette.secondary.dark,
@@ -190,12 +140,12 @@ const Navbar = () => {
                 <MenuIcon />
               </IconButton>
             </Box>
-            
-            
-            
+
+
+
             {/* Logo/Brand - Centered */}
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               justifyContent: 'center',
               flexGrow: 1
             }}>
@@ -216,28 +166,6 @@ const Navbar = () => {
                 </Typography>
               </Link>
             </Box>
-
-            {/* Navigation Links for Desktop */}
-            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
-              {navItems.map((item) => (
-                <Button
-                  key={item.title}
-                  onClick={() => handleNavItemClick(item)}
-                  sx={{
-                    my: 2,
-                    mx: 1,
-                    color: 'inherit',
-                    display: 'block',
-                    fontFamily: '"Cinzel", serif',
-                    fontWeight: 500,
-                    fontSize: '0.9rem',
-                    textTransform: 'none',
-                  }}
-                >
-                  {item.title}
-                </Button>
-              ))}
-            </Box>
             
             {/* Auth Button or Profile - Right aligned */}
             <Box>
@@ -249,23 +177,23 @@ const Navbar = () => {
                     aria-controls={open ? 'profile-menu' : undefined}
                     aria-haspopup="true"
                     aria-expanded={open ? 'true' : undefined}
-                    sx={{ 
+                    sx={{
                       ml: 2,
                       border: `2px solid ${theme.palette.primary.main}`,
                       padding: '4px'
                     }}
                   >
                     {currentUser.photoURL ? (
-                      <Avatar 
-                        src={currentUser.photoURL} 
-                        alt={currentUser.displayName || 'User'} 
+                      <Avatar
+                        src={currentUser.photoURL}
+                        alt={currentUser.displayName || 'User'}
                         sx={{ width: 32, height: 32 }}
                       />
                     ) : (
-                      <Avatar 
-                        sx={{ 
-                          width: 32, 
-                          height: 32, 
+                      <Avatar
+                        sx={{
+                          width: 32,
+                          height: 32,
                           bgcolor: theme.palette.primary.main,
                           color: theme.palette.primary.contrastText,
                           fontFamily: '"Cinzel", serif',
@@ -277,7 +205,7 @@ const Navbar = () => {
                       </Avatar>
                     )}
                   </IconButton>
-                  
+
                   {/* Desktop Profile Menu */}
                   {!isMobile && (
                     <Menu
@@ -314,18 +242,18 @@ const Navbar = () => {
                       anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
                     >
                       <Box sx={{ px: 2, py: 1 }}>
-                        <Typography 
-                          variant="subtitle1" 
-                          sx={{ 
+                        <Typography
+                          variant="subtitle1"
+                          sx={{
                             fontFamily: '"Cinzel", serif',
                             fontWeight: 500
                           }}
                         >
                           {currentUser.displayName || 'User'}
                         </Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             color: 'text.secondary',
                             fontSize: '0.8rem',
                             mb: 1
@@ -335,12 +263,12 @@ const Navbar = () => {
                         </Typography>
                       </Box>
                       <Divider />
-                      <MenuItem 
+                      <MenuItem
                         onClick={() => {
                           handleClose();
                           router.push(isAdmin ? '/admin/dashboard' : isAstrologer ? '/dashboard/astrologer' : '/dashboard');
                         }}
-                        sx={{ 
+                        sx={{
                           fontFamily: '"Cormorant Garamond", serif',
                           fontSize: '1rem',
                           py: 1.5
@@ -348,12 +276,12 @@ const Navbar = () => {
                       >
                         Dashboard
                       </MenuItem>
-                      <MenuItem 
+                      <MenuItem
                         onClick={() => {
                           handleClose();
                           router.push('/profile');
                         }}
-                        sx={{ 
+                        sx={{
                           fontFamily: '"Cormorant Garamond", serif',
                           fontSize: '1rem',
                           py: 1.5
@@ -361,12 +289,12 @@ const Navbar = () => {
                       >
                         My Profile
                       </MenuItem>
-                      <MenuItem 
+                      <MenuItem
                         onClick={() => {
                           handleClose();
                           router.push('/bookings');
                         }}
-                        sx={{ 
+                        sx={{
                           fontFamily: '"Cormorant Garamond", serif',
                           fontSize: '1rem',
                           py: 1.5
@@ -375,9 +303,9 @@ const Navbar = () => {
                         My Bookings
                       </MenuItem>
                       <Divider />
-                      <MenuItem 
+                      <MenuItem
                         onClick={handleLogout}
-                        sx={{ 
+                        sx={{
                           fontFamily: '"Cormorant Garamond", serif',
                           fontSize: '1rem',
                           color: theme.palette.error.main,
@@ -395,7 +323,7 @@ const Navbar = () => {
                     component="a"
                     variant="contained"
                     color="primary"
-                    sx={{ 
+                    sx={{
                       py: 1,
                       px: 3,
                       fontFamily: '"Cinzel", serif',
@@ -416,7 +344,7 @@ const Navbar = () => {
           </Toolbar>
         </Container>
       </AppBar>
-      
+
       {/* Mobile Navigation Drawer */}
       <Drawer
         anchor="left"
@@ -432,9 +360,9 @@ const Navbar = () => {
         }}
       >
         <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-          <Typography 
-            variant="h6" 
-            sx={{ 
+          <Typography
+            variant="h6"
+            sx={{
               fontFamily: '"Cinzel", serif',
               fontWeight: 600,
             }}
@@ -446,40 +374,22 @@ const Navbar = () => {
           </IconButton>
         </Box>
         <Divider />
-        <List>
-          {navItems.map((item) => (
-            <ListItem 
-              button 
-              key={item.title}
-              onClick={() => handleNavItemClick(item)}
-            >
-              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
-              <ListItemText 
-                primary={item.title} 
-                primaryTypographyProps={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem'
-                }}
-              />
-            </ListItem>
-          ))}
-        </List>
-        
+
         {currentUser && (
           <>
             <Divider />
             <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
               {currentUser.photoURL ? (
-                <Avatar 
-                  src={currentUser.photoURL} 
-                  alt={currentUser.displayName || 'User'} 
+                <Avatar
+                  src={currentUser.photoURL}
+                  alt={currentUser.displayName || 'User'}
                   sx={{ width: 80, height: 80, mb: 2 }}
                 />
               ) : (
-                <Avatar 
-                  sx={{ 
-                    width: 80, 
-                    height: 80, 
+                <Avatar
+                  sx={{
+                    width: 80,
+                    height: 80,
                     mb: 2,
                     bgcolor: theme.palette.primary.main,
                     color: theme.palette.primary.contrastText,
@@ -491,9 +401,9 @@ const Navbar = () => {
                   {getUserInitials()}
                 </Avatar>
               )}
-              <Typography 
-                variant="h6" 
-                sx={{ 
+              <Typography
+                variant="h6"
+                sx={{
                   fontFamily: '"Cinzel", serif',
                   fontWeight: 500,
                   textAlign: 'center'
@@ -501,9 +411,9 @@ const Navbar = () => {
               >
                 {currentUser.displayName || 'User'}
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   color: 'text.secondary',
                   mb: 2,
                   textAlign: 'center'
@@ -518,8 +428,8 @@ const Navbar = () => {
                 setDrawerOpen(false);
               }}>
                 <ListItemIcon><PersonIcon /></ListItemIcon>
-                <ListItemText 
-                  primary="My Profile" 
+                <ListItemText
+                  primary="My Profile"
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem'
@@ -531,8 +441,8 @@ const Navbar = () => {
                 setDrawerOpen(false);
               }}>
                 <ListItemIcon><AssignmentIcon /></ListItemIcon>
-                <ListItemText 
-                  primary="My Bookings" 
+                <ListItemText
+                  primary="My Bookings"
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem'
@@ -541,8 +451,8 @@ const Navbar = () => {
               </ListItem>
               <ListItem button onClick={handleLogout}>
                 <ListItemIcon><LogoutIcon /></ListItemIcon>
-                <ListItemText 
-                  primary="Sign Out" 
+                <ListItemText
+                  primary="Sign Out"
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem',
