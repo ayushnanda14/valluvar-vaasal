@@ -1,17 +1,15 @@
 import React from 'react';
 import Head from 'next/head';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Grid, 
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
   Paper,
   useTheme,
   Button
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import Navbar from '../src/components/navbar';
-import Footer from '../src/components/footer';
 
 // Define motion components outside the component function
 const MotionBox = motion(Box);
@@ -19,7 +17,7 @@ const MotionTypography = motion(Typography);
 
 export default function About() {
   const theme = useTheme();
-  
+
   return (
     <>
       <Head>
@@ -27,16 +25,15 @@ export default function About() {
         <meta name="description" content="Learn about our mission to preserve and share the ancient Tamil astrological wisdom" />
         <link rel="icon" href="/favicon.ico" />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
+
         {/* Hero Section with Background Image */}
-        <Box 
+        <Box
           sx={{
             position: 'relative',
             height: { xs: '50vh', md: '60vh' },
@@ -58,9 +55,9 @@ export default function About() {
           }}
         >
           {/* Background Image */}
-          <Box 
+          <Box
             component="img"
-            src="/images/about-background.jpg" 
+            src="/images/about-background.jpg"
             alt="Ancient Tamil Astrology"
             sx={{
               position: 'absolute',
@@ -73,9 +70,9 @@ export default function About() {
               filter: 'brightness(0.8)'
             }}
           />
-          
+
           {/* Overlay */}
-          <Box 
+          <Box
             sx={{
               position: 'absolute',
               top: 0,
@@ -86,7 +83,7 @@ export default function About() {
               zIndex: 1
             }}
           />
-          
+
           {/* Title */}
           <MotionTypography
             variant="h1"
@@ -109,10 +106,10 @@ export default function About() {
             Our Mission
           </MotionTypography>
         </Box>
-        
+
         {/* Content Section */}
-        <Box 
-          sx={{ 
+        <Box
+          sx={{
             py: { xs: 6, md: 10 },
             backgroundColor: theme.palette.background.default,
             position: 'relative',
@@ -140,7 +137,7 @@ export default function About() {
                   >
                     Preserving Ancient Wisdom for Modern Seekers
                   </Typography>
-                  
+
                   <Paper
                     elevation={0}
                     sx={{
@@ -164,7 +161,7 @@ export default function About() {
                     >
                       At Valluvar Vaasal, our mission is to preserve and share the profound wisdom of ancient Tamil astrology—a tradition that has guided countless souls for millennia. In a world of rapid technological advancement and constant change, we believe that the timeless insights of our ancestors offer invaluable guidance for navigating life's journey.
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       paragraph
@@ -178,7 +175,7 @@ export default function About() {
                     >
                       Our name, "Valluvar Vaasal," translates to "The Gateway of Valluvar"—honoring the legendary Tamil poet and philosopher Thiruvalluvar, whose wisdom continues to illuminate paths across generations. Like a gateway, we aim to be the bridge connecting the ancient knowledge of Tamil astrology with those seeking clarity in the modern world.
                     </Typography>
-                    
+
                     <Typography
                       variant="h5"
                       component="h3"
@@ -192,7 +189,7 @@ export default function About() {
                     >
                       Our Core Values
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       paragraph
@@ -206,7 +203,7 @@ export default function About() {
                     >
                       <strong>Authenticity:</strong> We remain true to the traditional methods and principles of Tamil astrology, ensuring that our guidance is rooted in authentic practices passed down through generations.
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       paragraph
@@ -220,7 +217,7 @@ export default function About() {
                     >
                       <strong>Compassion:</strong> We approach each reading with deep empathy, understanding that every individual's journey is unique and deserving of respectful guidance.
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       paragraph
@@ -234,7 +231,7 @@ export default function About() {
                     >
                       <strong>Wisdom:</strong> We believe that true astrological guidance empowers individuals to make informed decisions, not to dictate their paths. Our readings offer insights while honoring your free will.
                     </Typography>
-                    
+
                     <Typography
                       variant="h5"
                       component="h3"
@@ -248,7 +245,7 @@ export default function About() {
                     >
                       Our Journey
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       paragraph
@@ -261,7 +258,7 @@ export default function About() {
                     >
                       Founded by a collective of astrologers, scholars, and spiritual practitioners dedicated to Tamil cultural heritage, Valluvar Vaasal began as a humble effort to digitize ancient astrological texts that were at risk of being lost to time. What started as a preservation project evolved into a mission to make this wisdom accessible to seekers worldwide.
                     </Typography>
-                    
+
                     <Typography
                       variant="body1"
                       sx={{
@@ -281,8 +278,7 @@ export default function About() {
             </Grid>
           </Container>
         </Box>
-        
-        {/* <Footer />  */}
+
       </Box>
     </>
   );

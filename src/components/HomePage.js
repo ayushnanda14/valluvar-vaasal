@@ -1,11 +1,9 @@
 import React from 'react';
 import { Box } from '@mui/material';
 import Head from 'next/head';
-import Navbar from './navbar';
 import Hero from './hero';
 import Services from './services';
 import Testimonials from './testimonials';
-import Footer from './footer';
 
 export default function HomePage() {
   return (
@@ -20,11 +18,9 @@ export default function HomePage() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar /> */}
         <Hero />
         <Services />
         <Testimonials />
-        {/* <Footer /> */}
       </Box>
     </>
   );

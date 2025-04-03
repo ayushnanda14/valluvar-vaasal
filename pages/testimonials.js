@@ -1,11 +1,11 @@
 import React, { useState } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  TextField, 
-  Button, 
-  Rating, 
+import {
+  Box,
+  Container,
+  Typography,
+  TextField,
+  Button,
+  Rating,
   Paper,
   Alert,
   Snackbar,
@@ -15,12 +15,10 @@ import {
   MenuItem,
   FormControlLabel,
   Checkbox,
-  useTheme 
+  useTheme
 } from '@mui/material';
 import Head from 'next/head';
-import Navbar from '../src/components/navbar';
 import Testimonials from '../src/components/testimonials';
-import Footer from '../src/components/footer';
 import { useAuth } from '../src/context/AuthContext';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../src/firebase/firebaseConfig';
@@ -28,7 +26,7 @@ import { db } from '../src/firebase/firebaseConfig';
 export default function TestimonialsPage() {
   const theme = useTheme();
   const { currentUser } = useAuth();
-  
+
   const [testimonialText, setTestimonialText] = useState('');
   const [service, setService] = useState('');
   const [rating, setRating] = useState(5);
@@ -36,36 +34,36 @@ export default function TestimonialsPage() {
   const [submitting, setSubmitting] = useState(false);
   const [success, setSuccess] = useState(false);
   const [error, setError] = useState('');
-  
+
   // List of available services
   const services = [
     'Marriage Matching',
     'Jathak Prediction',
     'Jathak Writing',
   ];
-  
+
   const handleSubmitTestimonial = async (e) => {
     e.preventDefault();
-    
+
     if (!currentUser) {
       setError('You must be logged in to submit a testimonial');
       return;
     }
-    
+
     if (!testimonialText.trim()) {
       setError('Please enter your testimonial');
       return;
     }
-    
+
     if (!service) {
       setError('Please select the service you received');
       return;
     }
-    
+
     try {
       setSubmitting(true);
       setError('');
-      
+
       await addDoc(collection(db, 'testimonials'), {
         userId: currentUser.uid,
         name: isAnonymous ? 'Anonymous' : (currentUser.displayName || 'Anonymous User'),
@@ -76,7 +74,7 @@ export default function TestimonialsPage() {
         approved: false, // Testimonials need approval before being displayed
         createdAt: serverTimestamp()
       });
-      
+
       setTestimonialText('');
       setService('');
       setRating(5);
@@ -89,22 +87,20 @@ export default function TestimonialsPage() {
       setSubmitting(false);
     }
   };
-  
+
   return (
     <>
       <Head>
         <title>Testimonials | Valluvar Vaasal</title>
         <meta name="description" content="Read testimonials from clients who have experienced our cosmic guidance and spiritual services. Share your own journey with us." />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
-        <Box 
+        <Box
           sx={{
             pt: { xs: 4, md: 6 },
             pb: { xs: 2, md: 3 },
@@ -112,8 +108,8 @@ export default function TestimonialsPage() {
           }}
         >
           <Container maxWidth="lg">
-            <Typography 
-              variant="h1" 
+            <Typography
+              variant="h1"
               component="h1"
               sx={{
                 fontFamily: '"Playfair Display", serif',
@@ -126,8 +122,8 @@ export default function TestimonialsPage() {
             >
               Client Testimonials
             </Typography>
-            
-            <Typography 
+
+            <Typography
               variant="body1"
               sx={{
                 fontFamily: '"Cormorant Garamond", serif',
@@ -139,25 +135,25 @@ export default function TestimonialsPage() {
                 mx: 'auto'
               }}
             >
-              The cosmic journey is unique for each soul. Discover how our guidance has 
+              The cosmic journey is unique for each soul. Discover how our guidance has
               illuminated paths for others, and share your own experience.
             </Typography>
           </Container>
         </Box>
-        
+
         {/* Testimonials Component */}
         <Testimonials />
-        
+
         {/* Submit Testimonial Section */}
-        <Box 
+        <Box
           sx={{
             py: { xs: 6, md: 8 },
             background: 'linear-gradient(180deg, rgba(255,255,255,1) 0%, rgba(255,248,225,0.3) 100%)'
           }}
         >
           <Container maxWidth="md">
-            <Typography 
-              variant="h2" 
+            <Typography
+              variant="h2"
               component="h2"
               sx={{
                 fontFamily: '"Playfair Display", serif',
@@ -170,8 +166,8 @@ export default function TestimonialsPage() {
             >
               Share Your Experience
             </Typography>
-            
-            <Paper 
+
+            <Paper
               elevation={0}
               sx={{
                 p: { xs: 3, md: 4 },
@@ -191,9 +187,9 @@ export default function TestimonialsPage() {
                       {error}
                     </Alert>
                   )}
-                  
+
                   <Box sx={{ mb: 3 }}>
-                    <Typography 
+                    <Typography
                       variant="body1"
                       sx={{
                         fontFamily: '"Cormorant Garamond", serif',
@@ -213,14 +209,14 @@ export default function TestimonialsPage() {
                       sx={{ color: theme.palette.primary.main }}
                     />
                   </Box>
-                  
-                  <FormControl 
-                    fullWidth 
-                    variant="outlined" 
+
+                  <FormControl
+                    fullWidth
+                    variant="outlined"
                     sx={{ mb: 3 }}
                     required
                   >
-                    <InputLabel 
+                    <InputLabel
                       id="service-select-label"
                       sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                     >
@@ -232,7 +228,7 @@ export default function TestimonialsPage() {
                       value={service}
                       onChange={(e) => setService(e.target.value)}
                       label="Which service did you receive?"
-                      sx={{ 
+                      sx={{
                         fontFamily: '"Cormorant Garamond", serif',
                         '& .MuiSelect-select': {
                           fontFamily: '"Cormorant Garamond", serif'
@@ -240,8 +236,8 @@ export default function TestimonialsPage() {
                       }}
                     >
                       {services.map((serviceName) => (
-                        <MenuItem 
-                          key={serviceName} 
+                        <MenuItem
+                          key={serviceName}
                           value={serviceName}
                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                         >
@@ -250,7 +246,7 @@ export default function TestimonialsPage() {
                       ))}
                     </Select>
                   </FormControl>
-                  
+
                   <TextField
                     label="Share your experience"
                     variant="outlined"
@@ -268,17 +264,17 @@ export default function TestimonialsPage() {
                     }}
                     required
                   />
-                  
+
                   <FormControlLabel
                     control={
-                      <Checkbox 
+                      <Checkbox
                         checked={isAnonymous}
                         onChange={(e) => setIsAnonymous(e.target.checked)}
                         color="secondary"
                       />
                     }
                     label={
-                      <Typography 
+                      <Typography
                         variant="body2"
                         sx={{
                           fontFamily: '"Cormorant Garamond", serif',
@@ -290,8 +286,8 @@ export default function TestimonialsPage() {
                     }
                     sx={{ mb: 3 }}
                   />
-                  
-                  <Typography 
+
+                  <Typography
                     variant="body2"
                     sx={{
                       fontFamily: '"Cormorant Garamond", serif',
@@ -302,7 +298,7 @@ export default function TestimonialsPage() {
                   >
                     Your testimonial will be reviewed before being published. We appreciate your honest feedback!
                   </Typography>
-                  
+
                   <Button
                     type="submit"
                     variant="contained"
@@ -326,18 +322,16 @@ export default function TestimonialsPage() {
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
-      
+
       <Snackbar
         open={success}
         autoHideDuration={6000}
         onClose={() => setSuccess(false)}
       >
-        <Alert 
-          onClose={() => setSuccess(false)} 
-          severity="success" 
+        <Alert
+          onClose={() => setSuccess(false)}
+          severity="success"
           sx={{ width: '100%' }}
         >
           Thank you for sharing your experience! Your testimonial has been submitted for review.

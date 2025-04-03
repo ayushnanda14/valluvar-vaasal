@@ -10,8 +10,6 @@ import {
 import CheckCircleOutlineIcon from '@mui/icons-material/CheckCircleOutline';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../src/components/navbar';
-import Footer from '../src/components/footer';
 import { useAuth } from '../src/context/AuthContext';
 
 export default function ServiceSuccess() {
@@ -37,8 +35,6 @@ export default function ServiceSuccess() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar  /> */}
-        
         <Box 
           sx={{
             py: { xs: 4, md: 6 },
@@ -116,8 +112,6 @@ export default function ServiceSuccess() {
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
     </>
   );

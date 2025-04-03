@@ -1,11 +1,11 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  TextField, 
-  Button, 
-  Paper, 
+import {
+  Box,
+  Container,
+  Typography,
+  TextField,
+  Button,
+  Paper,
   Alert,
   Link as MuiLink,
   CircularProgress,
@@ -20,8 +20,6 @@ import {
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Navbar from '../src/components/navbar';
-import Footer from '../src/components/footer';
 import { useAuth } from '../src/context/AuthContext';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
@@ -30,28 +28,28 @@ export default function Signup() {
   const theme = useTheme();
   const router = useRouter();
   const { signupWithEmail, sendVerificationCode, verifyCodeAndSignUp } = useAuth();
-  
+
   const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
-  
+
   // Email signup state
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
-  
+
   // Phone signup state
   const [phoneNumber, setPhoneNumber] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [phoneStep, setPhoneStep] = useState(0); // 0: enter phone, 1: enter code
-  
+
   // Common state
   const [displayName, setDisplayName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
-  
+
   // Ref for reCAPTCHA container
   const recaptchaContainerRef = useRef(null);
-  
+
   // Make sure the reCAPTCHA container is always in the DOM
   useEffect(() => {
     // Create the reCAPTCHA container if it doesn't exist
@@ -60,7 +58,7 @@ export default function Signup() {
       recaptchaContainer.id = 'recaptcha-container';
       document.body.appendChild(recaptchaContainer);
     }
-    
+
     // Cleanup function
     return () => {
       // Don't remove the container on component unmount
@@ -74,30 +72,30 @@ export default function Signup() {
       }
     };
   }, []);
-  
+
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
     setError('');
   };
-  
+
   const handleEmailSignup = async (e) => {
     e.preventDefault();
-    
+
     // Validation
     if (!email || !password || !confirmPassword || !displayName) {
       setError('Please fill in all required fields');
       return;
     }
-    
+
     if (password !== confirmPassword) {
       setError('Passwords do not match');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       // Client signup
       await signupWithEmail(email, password, displayName, ['client']);
       router.push('/dashboard');
@@ -108,11 +106,11 @@ export default function Signup() {
       setLoading(false);
     }
   };
-  
+
   const validateIndianPhoneNumber = (phone) => {
     // Remove any non-digit characters
     const digitsOnly = phone.replace(/\D/g, '');
-    
+
     // Check if it's a valid Indian phone number (10 digits, optionally with +91 prefix)
     if (digitsOnly.length === 10) {
       return true;
@@ -121,63 +119,63 @@ export default function Signup() {
     } else if (digitsOnly.length === 13 && digitsOnly.startsWith('091')) {
       return true;
     }
-    
+
     return false;
   };
-  
+
   const formatIndianPhoneNumber = (phone) => {
     // Remove any non-digit characters
     const digitsOnly = phone.replace(/\D/g, '');
-    
+
     // If it's just 10 digits, add the +91 prefix
     if (digitsOnly.length === 10) {
       return `+91${digitsOnly}`;
     }
-    
+
     // If it already has 91 prefix but no +, add it
     if (digitsOnly.length === 12 && digitsOnly.startsWith('91')) {
       return `+${digitsOnly}`;
     }
-    
+
     // If it has 091 prefix, convert to +91
     if (digitsOnly.length === 13 && digitsOnly.startsWith('091')) {
       return `+91${digitsOnly.substring(3)}`;
     }
-    
+
     // Otherwise, just add + if it's missing
     return phone.startsWith('+') ? phone : `+${phone}`;
   };
-  
+
   const handleSendVerificationCode = async (e) => {
     e.preventDefault();
-    
+
     if (!phoneNumber) {
       setError('Please enter your phone number');
       return;
     }
-    
+
     // Validate Indian phone number
     if (!validateIndianPhoneNumber(phoneNumber)) {
       setError('Please enter a valid Indian phone number (10 digits)');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       // Format to E.164 format with Indian country code
       const formattedPhoneNumber = formatIndianPhoneNumber(phoneNumber);
-      
+
       const result = await sendVerificationCode(formattedPhoneNumber, 'recaptcha-container');
       setConfirmationResult(result);
       setPhoneStep(1);
     } catch (err) {
       console.error('Phone verification error:', err);
-      
+
       // Display user-friendly error message
       setError(err.message || 'Failed to send verification code. Please try again.');
-      
+
       // If it's the "not enabled" error, show additional guidance
       if (err.message && err.message.includes('not enabled')) {
         setError(`${err.message} 
@@ -191,19 +189,19 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       setLoading(false);
     }
   };
-  
+
   const handleVerifyCode = async (e) => {
     e.preventDefault();
-    
+
     if (!verificationCode || !displayName) {
       setError('Please fill in all required fields');
       return;
     }
-    
+
     try {
       setError('');
       setLoading(true);
-      
+
       await verifyCodeAndSignUp(confirmationResult, verificationCode, displayName, ['client']);
       router.push('/dashboard');
     } catch (err) {
@@ -213,11 +211,11 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       setLoading(false);
     }
   };
-  
+
   const handleAstrologerRedirect = () => {
     router.push('/signup/astrologer');
   };
-  
+
   const handleRefresh = () => {
     // Clear any existing reCAPTCHA
     if (window.recaptchaVerifier) {
@@ -227,31 +225,29 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
         console.error('Error clearing reCAPTCHA:', error);
       }
     }
-    
+
     // Reset state
     setError('');
     setPhoneStep(0);
     setConfirmationResult(null);
-    
+
     // Reload the page to get fresh Firebase configuration
     window.location.reload();
   };
-  
+
   return (
     <>
       <Head>
         <title>Sign Up | Valluvar Vaasal</title>
         <meta name="description" content="Create an account to access personalized cosmic guidance" />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
-        <Box 
+        <Box
           sx={{
             flexGrow: 1,
             py: { xs: 4, md: 8 },
@@ -259,7 +255,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
           }}
         >
           <Container maxWidth="sm">
-            <Paper 
+            <Paper
               elevation={0}
               sx={{
                 p: { xs: 3, md: 4 },
@@ -268,8 +264,8 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                 backgroundColor: 'rgba(255, 255, 255, 0.9)'
               }}
             >
-              <Typography 
-                variant="h4" 
+              <Typography
+                variant="h4"
                 component="h1"
                 sx={{
                   fontFamily: '"Playfair Display", serif',
@@ -281,11 +277,11 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
               >
                 Create an Account
               </Typography>
-              
+
               {error && (
-                <Alert 
-                  severity="error" 
-                  sx={{ 
+                <Alert
+                  severity="error"
+                  sx={{
                     mb: 3,
                     whiteSpace: 'pre-line' // This will preserve line breaks in the error message
                   }}
@@ -300,39 +296,39 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   {error}
                 </Alert>
               )}
-              
+
               <Tabs
                 value={authMethod}
                 onChange={handleAuthMethodChange}
                 variant="fullWidth"
                 sx={{ mb: 3 }}
               >
-                <Tab 
-                  icon={<EmailIcon />} 
-                  label="Email" 
+                <Tab
+                  icon={<EmailIcon />}
+                  label="Email"
                   value="email"
-                  sx={{ 
+                  sx={{
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1rem'
                   }}
                 />
-                <Tab 
-                  icon={<PhoneIcon />} 
-                  label="Phone" 
+                <Tab
+                  icon={<PhoneIcon />}
+                  label="Phone"
                   value="phone"
-                  sx={{ 
+                  sx={{
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1rem'
                   }}
                 />
               </Tabs>
-              
+
               {authMethod === 'email' ? (
                 <form onSubmit={handleEmailSignup} autoComplete="off">
                   {/* Hidden fields to prevent autofill */}
                   <input type="text" style={{ display: 'none' }} />
                   <input type="password" style={{ display: 'none' }} />
-                  
+
                   <TextField
                     label="Full Name"
                     variant="outlined"
@@ -344,7 +340,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     autoComplete="new-name"
                     inputProps={{ autoComplete: 'new-name' }}
                   />
-                  
+
                   <TextField
                     label="Email Address"
                     variant="outlined"
@@ -364,7 +360,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                       ),
                     }}
                   />
-                  
+
                   <TextField
                     label="Password"
                     variant="outlined"
@@ -377,7 +373,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     autoComplete="new-password"
                     inputProps={{ autoComplete: 'new-password' }}
                   />
-                  
+
                   <TextField
                     label="Confirm Password"
                     variant="outlined"
@@ -390,7 +386,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     autoComplete="new-password"
                     inputProps={{ autoComplete: 'new-password' }}
                   />
-                  
+
                   <Button
                     type="submit"
                     fullWidth
@@ -398,8 +394,8 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                     color="primary"
                     size="large"
                     disabled={loading}
-                    sx={{ 
-                      mt: 3, 
+                    sx={{
+                      mt: 3,
                       mb: 2,
                       py: 1.5,
                       fontFamily: '"Cormorant Garamond", serif',
@@ -419,7 +415,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                       <StepLabel>Verification</StepLabel>
                     </Step>
                   </Stepper>
-                  
+
                   {phoneStep === 0 ? (
                     <form onSubmit={handleSendVerificationCode} autoComplete="off">
                       <TextField
@@ -442,10 +438,10 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                           ),
                         }}
                       />
-                      
+
                       {/* Invisible reCAPTCHA container */}
                       <div id="recaptcha-container" ref={recaptchaContainerRef}></div>
-                      
+
                       <Button
                         type="submit"
                         fullWidth
@@ -453,8 +449,8 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         color="primary"
                         size="large"
                         disabled={loading}
-                        sx={{ 
-                          mt: 3, 
+                        sx={{
+                          mt: 3,
                           mb: 2,
                           py: 1.5,
                           fontFamily: '"Cormorant Garamond", serif',
@@ -477,7 +473,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         autoComplete="new-name"
                         inputProps={{ autoComplete: 'new-name' }}
                       />
-                      
+
                       <TextField
                         label="Verification Code"
                         variant="outlined"
@@ -488,7 +484,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         required
                         autoComplete="off"
                       />
-                      
+
                       <Button
                         type="submit"
                         fullWidth
@@ -496,8 +492,8 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                         color="primary"
                         size="large"
                         disabled={loading}
-                        sx={{ 
-                          mt: 3, 
+                        sx={{
+                          mt: 3,
                           mb: 2,
                           py: 1.5,
                           fontFamily: '"Cormorant Garamond", serif',
@@ -506,7 +502,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                       >
                         {loading ? <CircularProgress size={24} /> : 'Verify & Create Account'}
                       </Button>
-                      
+
                       <Button
                         fullWidth
                         variant="text"
@@ -520,32 +516,27 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   )}
                 </>
               )}
-              
+
               <Box sx={{ textAlign: 'center', mt: 2, mb: 3 }}>
-                <Link href="/login" passHref>
-                  <MuiLink 
-                    variant="body2"
-                    sx={{ 
-                      color: theme.palette.primary.main,
-                      textDecoration: 'none',
-                      '&:hover': {
-                        textDecoration: 'underline'
-                      }
-                    }}
-                  >
-                    Already have an account? Sign in
-                  </MuiLink>
+                <Link href="/login" passHref sx={{
+                  color: theme.palette.primary.main,
+                  textDecoration: 'none',
+                  '&:hover': {
+                    textDecoration: 'underline'
+                  }
+                }}>
+                  Already have an account? Sign in
                 </Link>
               </Box>
-              
-              <Box sx={{ 
-                p: 2, 
-                bgcolor: 'rgba(255, 236, 179, 0.2)', 
+
+              <Box sx={{
+                p: 2,
+                bgcolor: 'rgba(255, 236, 179, 0.2)',
                 borderRadius: 1,
                 border: '1px solid rgba(255, 236, 179, 0.5)'
               }}>
-                <Typography 
-                  variant="h6" 
+                <Typography
+                  variant="h6"
                   component="h2"
                   sx={{
                     fontFamily: '"Cormorant Garamond", serif',
@@ -556,8 +547,8 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                 >
                   Are you an Astrologer?
                 </Typography>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   sx={{ mb: 2, textAlign: 'center' }}
                 >
                   Join our platform to offer your services and connect with clients.
@@ -567,7 +558,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   variant="outlined"
                   color="secondary"
                   onClick={handleAstrologerRedirect}
-                  sx={{ 
+                  sx={{
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1rem'
                   }}
@@ -578,15 +569,13 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
-      
+
       {/* Add a visible reCAPTCHA container */}
-      <Box 
-        id="recaptcha-container" 
-        sx={{ 
-          mt: 2, 
+      <Box
+        id="recaptcha-container"
+        sx={{
+          mt: 2,
           display: authMethod === 'phone' && phoneStep === 0 ? 'block' : 'none',
           '& div': { margin: '0 auto' }
         }}

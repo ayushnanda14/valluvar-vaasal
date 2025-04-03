@@ -14,8 +14,6 @@ import {
 import Head from 'next/head';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 
 export default function AdminSignup() {
@@ -83,8 +81,6 @@ export default function AdminSignup() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar /> */}
-        
         <Box 
           sx={{
             flexGrow: 1,
@@ -229,8 +225,6 @@ export default function AdminSignup() {
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
     </>
   );

@@ -31,20 +31,13 @@ import {
   Grid,
   Alert,
   Avatar,
-  Card,
-  CardContent,
-  Divider
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 import EditIcon from '@mui/icons-material/Edit';
 import DeleteIcon from '@mui/icons-material/Delete';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
-import CancelIcon from '@mui/icons-material/Cancel';
-import AstrologerVerificationManager from '../../src/components/admin/AstrologerVerificationManager';
 import {
   collection,
   getDocs,
@@ -55,13 +48,10 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
-  setDoc,
   serverTimestamp
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
-import PersonIcon from '@mui/icons-material/Person';
-import MonetizationOnIcon from '@mui/icons-material/MonetizationOn';
-import DescriptionIcon from '@mui/icons-material/Description';
+import ChatMonitor from '../../src/components/admin/ChatMonitor';
 
 // Protected route component
 import ProtectedRoute from '../../src/components/ProtectedRoute';
@@ -670,8 +660,6 @@ export default function AdminDashboard() {
         flexDirection: 'column',
         minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-
         <Box
           sx={{
             pt: { xs: 4, md: 6 },
@@ -709,6 +697,7 @@ export default function AdminDashboard() {
               <Tab label="Testimonials" />
               <Tab label="Revenue" />
               <Tab label="Astrologers" />
+              <Tab label="Chat Monitor" />
             </Tabs>
           </Paper>
 
@@ -722,11 +711,10 @@ export default function AdminDashboard() {
               {tabValue === 1 && renderTestimonialsTab()}
               {tabValue === 2 && renderRevenueTab()}
               {tabValue === 3 && renderAstrologersTab()}
+              {tabValue === 4 && <ChatMonitor />}
             </>
           )}
         </Container>
-
-        {/* <Footer /> */}
       </Box>
 
       {/* Edit Roles Dialog */}

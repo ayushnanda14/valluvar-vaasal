@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Paper, 
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
   Button,
   TextField,
   List,
@@ -20,17 +20,15 @@ import {
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 import DeleteIcon from '@mui/icons-material/Delete';
 import AddIcon from '@mui/icons-material/Add';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  orderBy, 
-  doc, 
+import {
+  collection,
+  getDocs,
+  query,
+  orderBy,
+  doc,
   setDoc,
   deleteDoc,
   serverTimestamp
@@ -44,29 +42,29 @@ export default function RolesManagement() {
   const theme = useTheme();
   const router = useRouter();
   const { currentUser, isAdmin } = useAuth();
-  
+
   const [roles, setRoles] = useState([]);
   const [newRoleName, setNewRoleName] = useState('');
   const [newRoleDescription, setNewRoleDescription] = useState('');
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   // Dialog state
   const [openDeleteDialog, setOpenDeleteDialog] = useState(false);
   const [roleToDelete, setRoleToDelete] = useState(null);
-  
+
   // Fetch roles
   useEffect(() => {
     const fetchRoles = async () => {
       if (!currentUser) return;
-      
+
       try {
         setLoading(true);
-        
+
         const rolesRef = collection(db, 'roles');
         const q = query(rolesRef, orderBy('name'));
         const querySnapshot = await getDocs(q);
-        
+
         const rolesList = [];
         querySnapshot.forEach((doc) => {
           rolesList.push({
@@ -74,7 +72,7 @@ export default function RolesManagement() {
             ...doc.data()
           });
         });
-        
+
         setRoles(rolesList);
       } catch (error) {
         console.error('Error fetching roles:', error);
@@ -83,36 +81,36 @@ export default function RolesManagement() {
         setLoading(false);
       }
     };
-    
+
     fetchRoles();
   }, [currentUser]);
-  
+
   const handleAddRole = async (e) => {
     e.preventDefault();
-    
+
     if (!newRoleName.trim()) {
       setError('Role name is required');
       return;
     }
-    
+
     try {
       const roleId = newRoleName.toLowerCase().replace(/\s+/g, '_');
       const roleRef = doc(db, 'roles', roleId);
-      
+
       await setDoc(roleRef, {
         name: newRoleName.trim(),
         description: newRoleDescription.trim(),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp()
       });
-      
+
       // Add to local state
       setRoles([...roles, {
         id: roleId,
         name: newRoleName.trim(),
         description: newRoleDescription.trim()
       }]);
-      
+
       // Reset form
       setNewRoleName('');
       setNewRoleDescription('');
@@ -122,27 +120,27 @@ export default function RolesManagement() {
       setError('Failed to add role. Please try again.');
     }
   };
-  
+
   const handleOpenDeleteDialog = (role) => {
     setRoleToDelete(role);
     setOpenDeleteDialog(true);
   };
-  
+
   const handleCloseDeleteDialog = () => {
     setOpenDeleteDialog(false);
     setRoleToDelete(null);
   };
-  
+
   const handleDeleteRole = async () => {
     if (!roleToDelete) return;
-    
+
     try {
       const roleRef = doc(db, 'roles', roleToDelete.id);
       await deleteDoc(roleRef);
-      
+
       // Remove from local state
       setRoles(roles.filter(role => role.id !== roleToDelete.id));
-      
+
       handleCloseDeleteDialog();
     } catch (error) {
       console.error('Error deleting role:', error);
@@ -150,22 +148,20 @@ export default function RolesManagement() {
       handleCloseDeleteDialog();
     }
   };
-  
+
   return (
     <ProtectedRoute requiredRoles={['admin']}>
       <Head>
         <title>Role Management | Valluvar Vaasal</title>
         <meta name="description" content="Manage user roles for Valluvar Vaasal" />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
-        <Box 
+        <Box
           sx={{
             pt: { xs: 4, md: 6 },
             pb: { xs: 2, md: 3 },
@@ -173,8 +169,8 @@ export default function RolesManagement() {
           }}
         >
           <Container maxWidth="lg">
-            <Typography 
-              variant="h1" 
+            <Typography
+              variant="h1"
               component="h1"
               sx={{
                 fontFamily: '"Playfair Display", serif',
@@ -188,7 +184,7 @@ export default function RolesManagement() {
             </Typography>
           </Container>
         </Box>
-        
+
         <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
           <Grid container spacing={4}>
             <Grid item xs={12} md={6}>
@@ -196,13 +192,13 @@ export default function RolesManagement() {
                 <Typography variant="h5" sx={{ mb: 3, fontFamily: '"Playfair Display", serif' }}>
                   Available Roles
                 </Typography>
-                
+
                 {error && (
                   <Typography color="error" sx={{ mb: 2 }}>
                     {error}
                   </Typography>
                 )}
-                
+
                 {loading ? (
                   <Typography>Loading roles...</Typography>
                 ) : (
@@ -211,8 +207,8 @@ export default function RolesManagement() {
                       <React.Fragment key={role.id}>
                         <ListItem
                           secondaryAction={
-                            <IconButton 
-                              edge="end" 
+                            <IconButton
+                              edge="end"
                               aria-label="delete"
                               onClick={() => handleOpenDeleteDialog(role)}
                             >
@@ -235,7 +231,7 @@ export default function RolesManagement() {
                         <Divider component="li" />
                       </React.Fragment>
                     ))}
-                    
+
                     {roles.length === 0 && (
                       <Typography sx={{ py: 2, textAlign: 'center' }}>
                         No roles defined yet. Add your first role.
@@ -245,13 +241,13 @@ export default function RolesManagement() {
                 )}
               </Paper>
             </Grid>
-            
+
             <Grid item xs={12} md={6}>
               <Paper elevation={0} sx={{ p: 3 }}>
                 <Typography variant="h5" sx={{ mb: 3, fontFamily: '"Playfair Display", serif' }}>
                   Add New Role
                 </Typography>
-                
+
                 <form onSubmit={handleAddRole}>
                   <TextField
                     label="Role Name"
@@ -262,7 +258,7 @@ export default function RolesManagement() {
                     sx={{ mb: 3 }}
                     required
                   />
-                  
+
                   <TextField
                     label="Role Description"
                     variant="outlined"
@@ -273,7 +269,7 @@ export default function RolesManagement() {
                     onChange={(e) => setNewRoleDescription(e.target.value)}
                     sx={{ mb: 3 }}
                   />
-                  
+
                   <Button
                     type="submit"
                     variant="contained"
@@ -291,10 +287,8 @@ export default function RolesManagement() {
             </Grid>
           </Grid>
         </Container>
-        
-        {/* <Footer /> */}
       </Box>
-      
+
       {/* Delete Role Confirmation Dialog */}
       <Dialog
         open={openDeleteDialog}

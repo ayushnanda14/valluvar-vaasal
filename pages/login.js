@@ -19,8 +19,6 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../src/context/AuthContext';
-import Navbar from '../src/components/navbar';
-import Footer from '../src/components/footer';
 import GoogleIcon from '@mui/icons-material/Google';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
@@ -248,7 +246,6 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
         flexDirection: 'column',
         minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
 
         <Box
           sx={{
@@ -522,7 +519,6 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
           </Container>
         </Box>
 
-        {/* <Footer /> */}
       </Box>
 
       {/* Add a visible reCAPTCHA container */}

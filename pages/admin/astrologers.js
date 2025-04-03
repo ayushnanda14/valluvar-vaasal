@@ -7,8 +7,6 @@ import {
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 import AstrologerVerificationManager from '../../src/components/admin/AstrologerVerificationManager';
 
@@ -50,8 +48,6 @@ export default function AdminAstrologersPage() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar /> */}
-        
         <Box 
           sx={{
             py: { xs: 4, md: 6 },
@@ -75,8 +71,6 @@ export default function AdminAstrologersPage() {
             <AstrologerVerificationManager />
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
     </>
   );

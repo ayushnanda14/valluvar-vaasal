@@ -2,12 +2,7 @@
 import React, { useEffect } from 'react';
 import Head from 'next/head';
 import { Box } from '@mui/material';
-import Navbar from '../src/components/navbar';
-import Hero from '../src/components/hero';
-import PersonalizedHero from '../src/components/personalizedHero';
 import Services from '../src/components/services';
-import Testimonials from '../src/components/testimonials';
-import Footer from '../src/components/footer';
 import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import HomePage from '../src/components/HomePage';
@@ -55,13 +50,8 @@ export default function Home() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar /> */}
-        
         <HomePage />
-        
         <Services />
-        {/* <Testimonials /> */}
-        {/* <Footer /> */}
       </Box>
     </>
   );

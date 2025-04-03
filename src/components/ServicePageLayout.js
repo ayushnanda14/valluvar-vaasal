@@ -1,21 +1,21 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Paper, 
-  Button, 
-  Grid, 
-  Card, 
-  CardContent, 
-  CardMedia, 
-  CardActionArea, 
-  Checkbox, 
-  Divider, 
-  List, 
-  ListItem, 
-  ListItemText, 
-  ListItemAvatar, 
+import {
+  Box,
+  Container,
+  Typography,
+  Paper,
+  Button,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
+  CardActionArea,
+  Checkbox,
+  Divider,
+  List,
+  ListItem,
+  ListItemText,
+  ListItemAvatar,
   Avatar,
   Alert,
   CircularProgress,
@@ -23,17 +23,15 @@ import {
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from './navbar';
-import Footer from './footer';
 import { useAuth } from '../context/AuthContext';
 import { collection, getDocs, query, where } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import FileUploadSection from './FileUploadSection';
 import PaymentSummary from './PaymentSummary';
 
-export default function ServicePageLayout({ 
-  title, 
-  description, 
+export default function ServicePageLayout({
+  title,
+  description,
   serviceType,
   multipleUploads = false,
   dualUpload = false,
@@ -42,7 +40,7 @@ export default function ServicePageLayout({
   const theme = useTheme();
   const router = useRouter();
   const { currentUser, hasRole } = useAuth();
-  
+
   const [astrologers, setAstrologers] = useState([]);
   const [selectedAstrologers, setSelectedAstrologers] = useState([]);
   const [files, setFiles] = useState([]);
@@ -50,7 +48,7 @@ export default function ServicePageLayout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1); // 1: Upload, 2: Select Astrologers, 3: Payment
-  
+
   // Fetch astrologers on component mount
   useEffect(() => {
     const fetchAstrologers = async () => {
@@ -60,13 +58,13 @@ export default function ServicePageLayout({
           collection(db, 'users'),
           where('roles', 'array-contains', 'astrologer')
         );
-        
+
         const querySnapshot = await getDocs(astrologersQuery);
         const astrologersList = querySnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
-        
+
         setAstrologers(astrologersList);
       } catch (err) {
         console.error('Error fetching astrologers:', err);
@@ -75,21 +73,21 @@ export default function ServicePageLayout({
         setLoading(false);
       }
     };
-    
+
     fetchAstrologers();
   }, []);
-  
+
   // Check if user is logged in
   useEffect(() => {
     if (!currentUser) {
       router.push(`/login?redirect=${router.pathname}`);
     }
   }, [currentUser, router]);
-  
+
   const handleAstrologerSelect = (astrologer) => {
     setSelectedAstrologers(prev => {
       const isSelected = prev.some(a => a.id === astrologer.id);
-      
+
       if (isSelected) {
         return prev.filter(a => a.id !== astrologer.id);
       } else {
@@ -97,15 +95,15 @@ export default function ServicePageLayout({
       }
     });
   };
-  
+
   const handleFilesChange = (newFiles) => {
     setFiles(newFiles);
   };
-  
+
   const handleSecondFilesChange = (newFiles) => {
     setSecondFiles(newFiles);
   };
-  
+
   const handleNextStep = () => {
     if (step === 1) {
       // Validate files are uploaded
@@ -113,12 +111,12 @@ export default function ServicePageLayout({
         setError('Please upload at least one file');
         return;
       }
-      
+
       if (dualUpload && secondFiles.length === 0) {
         setError(`Please upload at least one file for ${dualUploadLabels[1]}`);
         return;
       }
-      
+
       setError('');
       setStep(2);
     } else if (step === 2) {
@@ -127,23 +125,23 @@ export default function ServicePageLayout({
         setError('Please select at least one astrologer');
         return;
       }
-      
+
       setError('');
       setStep(3);
     }
   };
-  
+
   const handlePreviousStep = () => {
     setStep(prev => Math.max(1, prev - 1));
     setError('');
   };
-  
+
   const calculateTotal = () => {
     return selectedAstrologers.reduce((total, astrologer) => {
       return total + (astrologer.serviceCharges?.[serviceType] || 0);
     }, 0);
   };
-  
+
   const handlePayment = async () => {
     // This will be implemented with the payment gateway
     try {
@@ -151,7 +149,7 @@ export default function ServicePageLayout({
       // Upload files to Firebase Storage
       // Create conversation threads with selected astrologers
       // Redirect to payment gateway
-      
+
       // For now, just redirect to a success page
       router.push('/service-success');
     } catch (err) {
@@ -159,26 +157,24 @@ export default function ServicePageLayout({
       setError('Payment failed. Please try again.');
     }
   };
-  
+
   if (!currentUser) {
     return <CircularProgress />;
   }
-  
+
   return (
     <>
       <Head>
         <title>{title} | Valluvar Vaasal</title>
         <meta name="description" content={description} />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
-        <Box 
+        <Box
           sx={{
             py: { xs: 4, md: 6 },
             backgroundColor: theme.palette.background.default,
@@ -186,9 +182,9 @@ export default function ServicePageLayout({
           }}
         >
           <Container maxWidth="lg">
-            <Typography 
-              variant="h3" 
-              component="h1" 
+            <Typography
+              variant="h3"
+              component="h1"
               align="center"
               sx={{
                 mb: 4,
@@ -198,10 +194,10 @@ export default function ServicePageLayout({
             >
               {title}
             </Typography>
-            
-            <Paper 
+
+            <Paper
               elevation={3}
-              sx={{ 
+              sx={{
                 p: { xs: 2, md: 4 },
                 borderRadius: '16px',
                 background: 'rgba(255, 255, 255, 0.95)'
@@ -212,13 +208,13 @@ export default function ServicePageLayout({
                   {error}
                 </Alert>
               )}
-              
+
               {/* Step indicator */}
               <Box sx={{ mb: 4 }}>
                 <Grid container spacing={2} justifyContent="center">
                   <Grid item xs={4}>
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         textAlign: 'center',
                         color: step >= 1 ? theme.palette.primary.main : 'text.secondary',
                         fontWeight: step === 1 ? 'bold' : 'normal'
@@ -229,8 +225,8 @@ export default function ServicePageLayout({
                     </Box>
                   </Grid>
                   <Grid item xs={4}>
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         textAlign: 'center',
                         color: step >= 2 ? theme.palette.primary.main : 'text.secondary',
                         fontWeight: step === 2 ? 'bold' : 'normal'
@@ -241,8 +237,8 @@ export default function ServicePageLayout({
                     </Box>
                   </Grid>
                   <Grid item xs={4}>
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         textAlign: 'center',
                         color: step >= 3 ? theme.palette.primary.main : 'text.secondary',
                         fontWeight: step === 3 ? 'bold' : 'normal'
@@ -254,12 +250,12 @@ export default function ServicePageLayout({
                   </Grid>
                 </Grid>
               </Box>
-              
+
               {/* Step 1: File Upload */}
               {step === 1 && (
                 <Box>
-                  <Typography 
-                    variant="h5" 
+                  <Typography
+                    variant="h5"
                     component="h2"
                     sx={{
                       mb: 3,
@@ -269,14 +265,14 @@ export default function ServicePageLayout({
                   >
                     Upload Your Jathak
                   </Typography>
-                  
+
                   {dualUpload ? (
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
                         <Typography variant="h6" sx={{ mb: 2 }}>
                           {dualUploadLabels[0]} Jathak
                         </Typography>
-                        <FileUploadSection 
+                        <FileUploadSection
                           files={files}
                           onFilesChange={handleFilesChange}
                           multiple={multipleUploads}
@@ -286,7 +282,7 @@ export default function ServicePageLayout({
                         <Typography variant="h6" sx={{ mb: 2 }}>
                           {dualUploadLabels[1]} Jathak
                         </Typography>
-                        <FileUploadSection 
+                        <FileUploadSection
                           files={secondFiles}
                           onFilesChange={handleSecondFilesChange}
                           multiple={multipleUploads}
@@ -294,20 +290,20 @@ export default function ServicePageLayout({
                       </Grid>
                     </Grid>
                   ) : (
-                    <FileUploadSection 
+                    <FileUploadSection
                       files={files}
                       onFilesChange={handleFilesChange}
                       multiple={multipleUploads}
                     />
                   )}
-                  
+
                   <Box sx={{ mt: 4, textAlign: 'right' }}>
                     <Button
                       variant="contained"
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
-                      sx={{ 
+                      sx={{
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
@@ -319,12 +315,12 @@ export default function ServicePageLayout({
                   </Box>
                 </Box>
               )}
-              
+
               {/* Step 2: Select Astrologers */}
               {step === 2 && (
                 <Box>
-                  <Typography 
-                    variant="h5" 
+                  <Typography
+                    variant="h5"
                     component="h2"
                     sx={{
                       mb: 3,
@@ -334,7 +330,7 @@ export default function ServicePageLayout({
                   >
                     Select Astrologers
                   </Typography>
-                  
+
                   {loading ? (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
                       <CircularProgress />
@@ -345,15 +341,15 @@ export default function ServicePageLayout({
                         <Grid container spacing={2}>
                           {astrologers.map(astrologer => (
                             <Grid item xs={12} sm={6} md={4} key={astrologer.id}>
-                              <Card 
-                                sx={{ 
+                              <Card
+                                sx={{
                                   height: '100%',
-                                  border: selectedAstrologers.some(a => a.id === astrologer.id) 
-                                    ? `2px solid ${theme.palette.primary.main}` 
+                                  border: selectedAstrologers.some(a => a.id === astrologer.id)
+                                    ? `2px solid ${theme.palette.primary.main}`
                                     : 'none'
                                 }}
                               >
-                                <CardActionArea 
+                                <CardActionArea
                                   onClick={() => handleAstrologerSelect(astrologer)}
                                   sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
                                 >
@@ -368,7 +364,7 @@ export default function ServicePageLayout({
                                       <Typography gutterBottom variant="h6" component="div">
                                         {astrologer.displayName}
                                       </Typography>
-                                      <Checkbox 
+                                      <Checkbox
                                         checked={selectedAstrologers.some(a => a.id === astrologer.id)}
                                         color="primary"
                                       />
@@ -386,11 +382,11 @@ export default function ServicePageLayout({
                           ))}
                         </Grid>
                       </Grid>
-                      
+
                       <Grid item xs={12} md={4}>
-                        <Paper 
+                        <Paper
                           elevation={2}
-                          sx={{ 
+                          sx={{
                             p: 3,
                             borderRadius: '8px',
                             position: 'sticky',
@@ -400,7 +396,7 @@ export default function ServicePageLayout({
                           <Typography variant="h6" sx={{ mb: 2 }}>
                             Selected Astrologers
                           </Typography>
-                          
+
                           {selectedAstrologers.length === 0 ? (
                             <Typography variant="body2" color="text.secondary">
                               No astrologers selected yet
@@ -411,21 +407,21 @@ export default function ServicePageLayout({
                                 {selectedAstrologers.map(astrologer => (
                                   <ListItem key={astrologer.id} disablePadding sx={{ mb: 1 }}>
                                     <ListItemAvatar>
-                                      <Avatar 
+                                      <Avatar
                                         src={astrologer.photoURL || '/images/default-avatar.png'}
                                         alt={astrologer.displayName}
                                       />
                                     </ListItemAvatar>
-                                    <ListItemText 
+                                    <ListItemText
                                       primary={astrologer.displayName}
                                       secondary={`₹${astrologer.serviceCharges?.[serviceType] || 500}`}
                                     />
                                   </ListItem>
                                 ))}
                               </List>
-                              
+
                               <Divider sx={{ my: 2 }} />
-                              
+
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
                                 <Typography variant="body1">Total:</Typography>
                                 <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
@@ -438,14 +434,14 @@ export default function ServicePageLayout({
                       </Grid>
                     </Grid>
                   )}
-                  
+
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                     <Button
                       variant="outlined"
                       color="primary"
                       size="large"
                       onClick={handlePreviousStep}
-                      sx={{ 
+                      sx={{
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
@@ -454,14 +450,14 @@ export default function ServicePageLayout({
                     >
                       Back
                     </Button>
-                    
+
                     <Button
                       variant="contained"
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
                       disabled={selectedAstrologers.length === 0}
-                      sx={{ 
+                      sx={{
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
@@ -473,12 +469,12 @@ export default function ServicePageLayout({
                   </Box>
                 </Box>
               )}
-              
+
               {/* Step 3: Payment */}
               {step === 3 && (
                 <Box>
-                  <Typography 
-                    variant="h5" 
+                  <Typography
+                    variant="h5"
                     component="h2"
                     sx={{
                       mb: 3,
@@ -488,21 +484,21 @@ export default function ServicePageLayout({
                   >
                     Payment
                   </Typography>
-                  
-                  <PaymentSummary 
+
+                  <PaymentSummary
                     selectedAstrologers={selectedAstrologers}
                     serviceType={serviceType}
                     total={calculateTotal()}
                     onPaymentComplete={handlePayment}
                   />
-                  
+
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                     <Button
                       variant="outlined"
                       color="primary"
                       size="large"
                       onClick={handlePreviousStep}
-                      sx={{ 
+                      sx={{
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
@@ -517,8 +513,6 @@ export default function ServicePageLayout({
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
     </>
   );

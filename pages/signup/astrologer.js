@@ -20,8 +20,6 @@ import {
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 import FileUploadSection from '../../src/components/FileUploadSection';
 import PhoneIcon from '@mui/icons-material/Phone';
@@ -329,8 +327,6 @@ export default function AstrologerSignup() {
         flexDirection: 'column', 
         minHeight: '100vh' 
       }}>
-        {/* <Navbar /> */}
-        
         <Box 
           sx={{
             py: { xs: 4, md: 6 },
@@ -789,8 +785,6 @@ export default function AstrologerSignup() {
             </Paper>
           </Container>
         </Box>
-        
-        {/* <Footer /> */}
       </Box>
     </>
   );

@@ -1,11 +1,11 @@
 import React, { useState, useEffect } from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Grid, 
-  Paper, 
-  Tabs, 
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
+  Paper,
+  Tabs,
   Tab,
   Card,
   CardContent,
@@ -23,8 +23,6 @@ import {
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
-import Navbar from '../../src/components/navbar';
-import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
 import AstrologerProfileManager from '../../src/components/AstrologerProfileManager';
 import DocumentVerification from '../../src/components/DocumentVerification';
@@ -41,38 +39,38 @@ export default function AstrologerDashboard() {
   const [readings, setReadings] = useState([]);
   const [revenue, setRevenue] = useState([]);
   const [loading, setLoading] = useState(true);
-  
+
   // New state for notifications and verification status
   const [newReadingsCount, setNewReadingsCount] = useState(0);
   const [isProfileComplete, setIsProfileComplete] = useState(false);
   const [isVerified, setIsVerified] = useState(false);
   const [verificationStatus, setVerificationStatus] = useState('pending');
   const [verificationMessage, setVerificationMessage] = useState('');
-  
+
   // Get tab from query params
   useEffect(() => {
     if (router.query.tab !== undefined) {
       setTabValue(parseInt(router.query.tab));
     }
   }, [router.query.tab]);
-  
+
   // Fetch astrologer profile and verification status
   useEffect(() => {
     const fetchProfileStatus = async () => {
       if (!currentUser) return;
-      
+
       try {
         // Check if profile is complete
         const profileRef = doc(db, 'astrologers', currentUser.uid);
         const profileDoc = await getDoc(profileRef);
-        
+
         if (profileDoc.exists()) {
           const profileData = profileDoc.data();
-          
+
           // Check if profile has all required fields
           const hasServices = profileData.services && profileData.services.length > 0;
           const hasPricing = profileData.services && profileData.services.some(s => s.price > 0);
-          
+
           setIsProfileComplete(hasServices && hasPricing);
           setIsVerified(profileData.verified === true);
           setVerificationStatus(profileData.verificationStatus || 'pending');
@@ -86,77 +84,77 @@ export default function AstrologerDashboard() {
         console.error('Error fetching profile status:', error);
       }
     };
-    
+
     fetchProfileStatus();
   }, [currentUser]);
-  
+
   // Fetch astrologer data
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Fetch readings
         const readingsQuery = query(
           collection(db, 'readings'),
           where('astrologerId', '==', currentUser.uid),
           orderBy('createdAt', 'desc')
         );
-        
+
         const readingsSnapshot = await getDocs(readingsQuery);
         const readingsData = readingsSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         setReadings(readingsData);
-        
+
         // Count new/unread readings
         const newReadings = readingsData.filter(r => r.status === 'new' || r.isRead === false);
         setNewReadingsCount(newReadings.length);
-        
+
         // Fetch revenue data
         const revenueQuery = query(
           collection(db, 'payments'),
           where('astrologerId', '==', currentUser.uid),
           orderBy('timestamp', 'desc')
         );
-        
+
         const revenueSnapshot = await getDocs(revenueQuery);
         const revenueData = revenueSnapshot.docs.map(doc => ({
           id: doc.id,
           ...doc.data()
         }));
         setRevenue(revenueData);
-        
+
       } catch (error) {
         console.error('Error fetching astrologer data:', error);
       } finally {
         setLoading(false);
       }
     };
-    
+
     fetchData();
   }, [currentUser]);
-  
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
-    
+
     // If switching to readings tab, mark as read
     if (newValue === 0 && newReadingsCount > 0) {
       // This would typically update the database to mark readings as read
       // For now, just reset the count
       setNewReadingsCount(0);
     }
-    
+
     // Update URL with tab parameter without full page reload
     router.push({
       pathname: router.pathname,
       query: { tab: newValue }
     }, undefined, { shallow: true });
   };
-  
+
   const renderReadingsTab = () => {
     if (loading) {
       return (
@@ -165,7 +163,7 @@ export default function AstrologerDashboard() {
         </Box>
       );
     }
-    
+
     if (readings.length === 0) {
       return (
         <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -173,7 +171,7 @@ export default function AstrologerDashboard() {
         </Box>
       );
     }
-    
+
     return (
       <TableContainer component={Paper} elevation={1}>
         <Table>
@@ -195,19 +193,19 @@ export default function AstrologerDashboard() {
                   {reading.createdAt?.toDate().toLocaleDateString() || 'Unknown date'}
                 </TableCell>
                 <TableCell>
-                  <Chip 
-                    label={reading.status || 'Pending'} 
+                  <Chip
+                    label={reading.status || 'Pending'}
                     color={
                       reading.status === 'completed' ? 'success' :
-                      reading.status === 'in-progress' ? 'primary' :
-                      'default'
+                        reading.status === 'in-progress' ? 'primary' :
+                          'default'
                     }
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  <Button 
-                    size="small" 
+                  <Button
+                    size="small"
                     variant="outlined"
                     onClick={() => router.push(`/readings/${reading.id}`)}
                   >
@@ -221,7 +219,7 @@ export default function AstrologerDashboard() {
       </TableContainer>
     );
   };
-  
+
   const renderRevenueTab = () => {
     if (loading) {
       return (
@@ -230,10 +228,10 @@ export default function AstrologerDashboard() {
         </Box>
       );
     }
-    
+
     // Calculate total revenue
     const totalRevenue = revenue.reduce((sum, payment) => sum + (payment.amount || 0), 0);
-    
+
     return (
       <Box>
         <Grid container spacing={3} sx={{ mb: 4 }}>
@@ -266,9 +264,9 @@ export default function AstrologerDashboard() {
             </Card>
           </Grid>
         </Grid>
-        
+
         <Typography variant="h6" sx={{ mb: 2 }}>Recent Transactions</Typography>
-        
+
         {revenue.length === 0 ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <Typography>No transactions yet.</Typography>
@@ -302,22 +300,20 @@ export default function AstrologerDashboard() {
       </Box>
     );
   };
-  
+
   return (
     <ProtectedRoute requiredRoles={['astrologer']}>
       <Head>
         <title>Astrologer Dashboard | Valluvar Vaasal</title>
         <meta name="description" content="Astrologer dashboard for Valluvar Vaasal" />
       </Head>
-      
-      <Box sx={{ 
-        display: 'flex', 
-        flexDirection: 'column', 
-        minHeight: '100vh' 
+
+      <Box sx={{
+        display: 'flex',
+        flexDirection: 'column',
+        minHeight: '100vh'
       }}>
-        {/* <Navbar /> */}
-        
-        <Box 
+        <Box
           sx={{
             pt: { xs: 4, md: 6 },
             pb: { xs: 2, md: 3 },
@@ -325,8 +321,8 @@ export default function AstrologerDashboard() {
           }}
         >
           <Container maxWidth="lg">
-            <Typography 
-              variant="h1" 
+            <Typography
+              variant="h1"
               component="h1"
               sx={{
                 fontFamily: '"Playfair Display", serif',
@@ -338,19 +334,19 @@ export default function AstrologerDashboard() {
             >
               Astrologer Dashboard
             </Typography>
-            
+
             {verificationStatus === 'rejected' && (
               <Alert severity="error" sx={{ mb: 2 }}>
                 Your profile verification was rejected: {verificationMessage}
               </Alert>
             )}
-            
+
             {!isVerified && verificationStatus === 'pending' && (
               <Alert severity="warning" sx={{ mb: 2 }}>
                 Your account is pending verification. Please complete your profile and upload required documents.
               </Alert>
             )}
-            
+
             {isVerified && (
               <Alert severity="success" sx={{ mb: 2 }}>
                 Your account is verified. You can now receive readings from clients.
@@ -358,17 +354,17 @@ export default function AstrologerDashboard() {
             )}
           </Container>
         </Box>
-        
+
         <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
           <Paper elevation={0} sx={{ mb: 3 }}>
-            <Tabs 
-              value={tabValue} 
+            <Tabs
+              value={tabValue}
               onChange={handleTabChange}
               indicatorColor="primary"
               textColor="primary"
               variant="fullWidth"
             >
-              <Tab 
+              <Tab
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
                     Readings
@@ -376,10 +372,10 @@ export default function AstrologerDashboard() {
                       <NotificationBadge count={newReadingsCount} />
                     )}
                   </Box>
-                } 
+                }
               />
               <Tab label="Revenue" />
-              <Tab 
+              <Tab
                 label={
                   <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
                     Services & Pricing
@@ -387,30 +383,28 @@ export default function AstrologerDashboard() {
                       <NotificationBadge showExclamation={true} />
                     )}
                   </Box>
-                } 
+                }
               />
-              
+
               {/* Only show verification tab if not verified */}
               {!isVerified && (
-                <Tab 
+                <Tab
                   label={
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: '0.5em' }}>
                       Verification
                       <NotificationBadge showExclamation={true} />
                     </Box>
-                  } 
+                  }
                 />
               )}
             </Tabs>
           </Paper>
-          
+
           {tabValue === 0 && renderReadingsTab()}
           {tabValue === 1 && renderRevenueTab()}
           {tabValue === 2 && <AstrologerProfileManager onProfileUpdate={() => setIsProfileComplete(true)} />}
           {!isVerified && tabValue === 3 && <DocumentVerification />}
         </Container>
-        
-        {/* <Footer /> */}
       </Box>
     </ProtectedRoute>
   );
