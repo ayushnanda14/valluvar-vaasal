@@ -79,7 +79,7 @@ const availableRoles = [
 export default function AdminDashboard() {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser, isAdmin, getAllUsers, updateUserRoles } = useAuth();
+  const { currentUser, isAdmin, getAllUsers, updateUserRoles, hasRole } = useAuth();
   
   const [tabValue, setTabValue] = useState(0);
   const [users, setUsers] = useState([]);
@@ -94,6 +94,13 @@ export default function AdminDashboard() {
   const [openRoleDialog, setOpenRoleDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState(null);
   const [selectedRoles, setSelectedRoles] = useState([]);
+  
+  // Get tab from query params
+  useEffect(() => {
+    if (router.query.tab !== undefined) {
+      setTabValue(parseInt(router.query.tab));
+    }
+  }, [router.query.tab]);
   
   // Fetch data based on active tab
   useEffect(() => {
@@ -165,6 +172,12 @@ export default function AdminDashboard() {
   
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+    
+    // Update URL with tab parameter without full page reload
+    router.push({
+      pathname: router.pathname,
+      query: { tab: newValue }
+    }, undefined, { shallow: true });
   };
   
   const handleOpenRoleDialog = (user) => {

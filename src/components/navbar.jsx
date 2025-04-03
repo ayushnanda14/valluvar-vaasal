@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { 
   AppBar, 
   Toolbar, 
@@ -16,10 +16,22 @@ import {
   List,
   ListItem,
   ListItemText,
-  Divider
+  ListItemIcon,
+  Divider,
+  Badge
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
+import DashboardIcon from '@mui/icons-material/Dashboard';
+import PersonIcon from '@mui/icons-material/Person';
+import SettingsIcon from '@mui/icons-material/Settings';
+import LogoutIcon from '@mui/icons-material/Logout';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import StarIcon from '@mui/icons-material/Star';
+import MessageIcon from '@mui/icons-material/Message';
+import PeopleIcon from '@mui/icons-material/People';
+import AssignmentIcon from '@mui/icons-material/Assignment';
+import NotificationsIcon from '@mui/icons-material/Notifications';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -29,7 +41,7 @@ const Navbar = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
-  const { currentUser, logout } = useAuth();
+  const { currentUser, logout, hasRole, userRoles } = useAuth();
   
   // For profile menu (desktop)
   const [anchorEl, setAnchorEl] = useState(null);
@@ -37,6 +49,29 @@ const Navbar = () => {
   
   // For profile drawer (mobile)
   const [drawerOpen, setDrawerOpen] = useState(false);
+  
+  // For role-based navigation
+  const [isAdmin, setIsAdmin] = useState(false);
+  const [isAstrologer, setIsAstrologer] = useState(false);
+  const [notificationCount, setNotificationCount] = useState(0);
+  
+  // Check user roles
+  useEffect(() => {
+    const checkRoles = async () => {
+      if (currentUser) {
+        const adminCheck = await hasRole('admin');
+        const astrologerCheck = await hasRole('astrologer');
+        
+        setIsAdmin(adminCheck);
+        setIsAstrologer(astrologerCheck);
+      } else {
+        setIsAdmin(false);
+        setIsAstrologer(false);
+      }
+    };
+    
+    checkRoles();
+  }, [currentUser, hasRole, userRoles]);
   
   const handleProfileClick = (event) => {
     if (isMobile) {
@@ -64,7 +99,7 @@ const Navbar = () => {
   };
   
   const toggleDrawer = (open) => (event) => {
-    if (event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
+    if (event && event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
       return;
     }
     setDrawerOpen(open);
@@ -77,6 +112,49 @@ const Navbar = () => {
     const names = currentUser.displayName.split(' ');
     if (names.length === 1) return names[0].charAt(0).toUpperCase();
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
+  };
+  
+  // Navigation items based on role
+  const regularPages = [
+    { title: 'Home', path: '/' },
+    { title: 'Services', path: '/services' },
+    { title: 'About', path: '/about' },
+    { title: 'Contact', path: '/contact' },
+  ];
+  
+  const adminPages = [
+    { title: 'Dashboard', path: '/admin/dashboard', icon: <DashboardIcon /> },
+    { title: 'Manage Astrologers', path: '/admin/astrologers', icon: <StarIcon /> },
+    { title: 'Manage Users', path: '/admin/dashboard', tab: 0, icon: <PeopleIcon /> },
+    { title: 'Testimonials', path: '/admin/dashboard', tab: 1, icon: <MessageIcon /> },
+    { title: 'Revenue', path: '/admin/dashboard', tab: 2, icon: <AssignmentIcon /> },
+  ];
+  
+  const astrologerPages = [
+    { title: 'Dashboard', path: '/astrologer/dashboard', icon: <DashboardIcon /> },
+    { title: 'Readings', path: '/astrologer/dashboard', tab: 0, icon: <AssignmentIcon /> },
+    { title: 'Revenue', path: '/astrologer/dashboard', tab: 1, icon: <AssignmentIcon /> },
+    { title: 'Services & Pricing', path: '/astrologer/dashboard', tab: 2, icon: <SettingsIcon /> },
+    { title: 'Verification', path: '/astrologer/dashboard', tab: 3, icon: <AdminPanelSettingsIcon /> },
+  ];
+  
+  // Determine which navigation items to show based on user role
+  const navItems = isAdmin ? adminPages : isAstrologer ? astrologerPages : regularPages;
+  
+  const handleNavItemClick = (item) => {
+    if (item.tab !== undefined) {
+      // If the item has a tab property, navigate to the page and set the tab
+      router.push({
+        pathname: item.path,
+        query: { tab: item.tab }
+      });
+    } else {
+      // Otherwise, just navigate to the page
+      router.push(item.path);
+    }
+    
+    // Close mobile drawer if open
+    setDrawerOpen(false);
   };
   
   return (
@@ -99,8 +177,21 @@ const Navbar = () => {
       >
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-            {/* Empty Box to maintain spacing on the left */}
-            <Box sx={{ width: 48 }} />
+            {/* Menu Icon for Mobile */}
+            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+              <IconButton
+                size="large"
+                aria-label="navigation menu"
+                aria-controls="menu-appbar"
+                aria-haspopup="true"
+                onClick={toggleDrawer(true)}
+                color="inherit"
+              >
+                <MenuIcon />
+              </IconButton>
+            </Box>
+            
+            
             
             {/* Logo/Brand - Centered */}
             <Box sx={{ 
@@ -124,6 +215,28 @@ const Navbar = () => {
                   Valluvar Vaasal
                 </Typography>
               </Link>
+            </Box>
+
+            {/* Navigation Links for Desktop */}
+            <Box sx={{ display: { xs: 'none', md: 'flex' }, alignItems: 'center' }}>
+              {navItems.map((item) => (
+                <Button
+                  key={item.title}
+                  onClick={() => handleNavItemClick(item)}
+                  sx={{
+                    my: 2,
+                    mx: 1,
+                    color: 'inherit',
+                    display: 'block',
+                    fontFamily: '"Cinzel", serif',
+                    fontWeight: 500,
+                    fontSize: '0.9rem',
+                    textTransform: 'none',
+                  }}
+                >
+                  {item.title}
+                </Button>
+              ))}
             </Box>
             
             {/* Auth Button or Profile - Right aligned */}
@@ -225,6 +338,19 @@ const Navbar = () => {
                       <MenuItem 
                         onClick={() => {
                           handleClose();
+                          router.push(isAdmin ? '/admin/dashboard' : isAstrologer ? '/dashboard/astrologer' : '/dashboard');
+                        }}
+                        sx={{ 
+                          fontFamily: '"Cormorant Garamond", serif',
+                          fontSize: '1rem',
+                          py: 1.5
+                        }}
+                      >
+                        Dashboard
+                      </MenuItem>
+                      <MenuItem 
+                        onClick={() => {
+                          handleClose();
                           router.push('/profile');
                         }}
                         sx={{ 
@@ -291,109 +417,143 @@ const Navbar = () => {
         </Container>
       </AppBar>
       
-      {/* Mobile Profile Drawer - Only for authenticated users */}
-      {currentUser && (
-        <Drawer
-          anchor="right"
-          open={drawerOpen}
-          onClose={toggleDrawer(false)}
-          sx={{
-            '& .MuiDrawer-paper': {
-              width: '80%',
-              maxWidth: '300px',
-              boxSizing: 'border-box',
-              background: theme.palette.background.paper,
-            },
-          }}
-        >
-          <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
-            {currentUser.photoURL ? (
-              <Avatar 
-                src={currentUser.photoURL} 
-                alt={currentUser.displayName || 'User'} 
-                sx={{ width: 80, height: 80, mb: 2 }}
+      {/* Mobile Navigation Drawer */}
+      <Drawer
+        anchor="left"
+        open={drawerOpen}
+        onClose={toggleDrawer(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: '80%',
+            maxWidth: '300px',
+            boxSizing: 'border-box',
+            background: theme.palette.background.paper,
+          },
+        }}
+      >
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography 
+            variant="h6" 
+            sx={{ 
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 600,
+            }}
+          >
+            Menu
+          </Typography>
+          <IconButton onClick={toggleDrawer(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Divider />
+        <List>
+          {navItems.map((item) => (
+            <ListItem 
+              button 
+              key={item.title}
+              onClick={() => handleNavItemClick(item)}
+            >
+              {item.icon && <ListItemIcon>{item.icon}</ListItemIcon>}
+              <ListItemText 
+                primary={item.title} 
+                primaryTypographyProps={{
+                  fontFamily: '"Cinzel", serif',
+                  fontSize: '1.1rem'
+                }}
               />
-            ) : (
-              <Avatar 
+            </ListItem>
+          ))}
+        </List>
+        
+        {currentUser && (
+          <>
+            <Divider />
+            <Box sx={{ p: 3, display: 'flex', flexDirection: 'column', alignItems: 'center' }}>
+              {currentUser.photoURL ? (
+                <Avatar 
+                  src={currentUser.photoURL} 
+                  alt={currentUser.displayName || 'User'} 
+                  sx={{ width: 80, height: 80, mb: 2 }}
+                />
+              ) : (
+                <Avatar 
+                  sx={{ 
+                    width: 80, 
+                    height: 80, 
+                    mb: 2,
+                    bgcolor: theme.palette.primary.main,
+                    color: theme.palette.primary.contrastText,
+                    fontFamily: '"Cinzel", serif',
+                    fontWeight: 500,
+                    fontSize: '2rem'
+                  }}
+                >
+                  {getUserInitials()}
+                </Avatar>
+              )}
+              <Typography 
+                variant="h6" 
                 sx={{ 
-                  width: 80, 
-                  height: 80, 
-                  mb: 2,
-                  bgcolor: theme.palette.primary.main,
-                  color: theme.palette.primary.contrastText,
                   fontFamily: '"Cinzel", serif',
                   fontWeight: 500,
-                  fontSize: '2rem'
+                  textAlign: 'center'
                 }}
               >
-                {getUserInitials()}
-              </Avatar>
-            )}
-            <Typography 
-              variant="h6" 
-              sx={{ 
-                fontFamily: '"Cinzel", serif',
-                fontWeight: 500,
-                textAlign: 'center'
-              }}
-            >
-              {currentUser.displayName || 'User'}
-            </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
-                color: 'text.secondary',
-                mb: 2,
-                textAlign: 'center'
-              }}
-            >
-              {currentUser.email}
-            </Typography>
-            <Box sx={{ alignSelf: 'flex-end' }}>
-              <IconButton onClick={toggleDrawer(false)}>
-                <CloseIcon />
-              </IconButton>
+                {currentUser.displayName || 'User'}
+              </Typography>
+              <Typography 
+                variant="body2" 
+                sx={{ 
+                  color: 'text.secondary',
+                  mb: 2,
+                  textAlign: 'center'
+                }}
+              >
+                {currentUser.email}
+              </Typography>
             </Box>
-          </Box>
-          <Divider />
-          <List>
-            <ListItem button onClick={() => {
-              router.push('/profile');
-              setDrawerOpen(false);
-            }}>
-              <ListItemText 
-                primary="My Profile" 
-                primaryTypographyProps={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem'
-                }}
-              />
-            </ListItem>
-            <ListItem button onClick={() => {
-              router.push('/bookings');
-              setDrawerOpen(false);
-            }}>
-              <ListItemText 
-                primary="My Bookings" 
-                primaryTypographyProps={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem'
-                }}
-              />
-            </ListItem>
-            <ListItem button onClick={handleLogout}>
-              <ListItemText 
-                primary="Sign Out" 
-                primaryTypographyProps={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem',
-                  color: theme.palette.error.main
-                }}
-              />
-            </ListItem>
-          </List>
-        </Drawer>
-      )}
+            <List>
+              <ListItem button onClick={() => {
+                router.push('/profile');
+                setDrawerOpen(false);
+              }}>
+                <ListItemIcon><PersonIcon /></ListItemIcon>
+                <ListItemText 
+                  primary="My Profile" 
+                  primaryTypographyProps={{
+                    fontFamily: '"Cinzel", serif',
+                    fontSize: '1.1rem'
+                  }}
+                />
+              </ListItem>
+              <ListItem button onClick={() => {
+                router.push('/bookings');
+                setDrawerOpen(false);
+              }}>
+                <ListItemIcon><AssignmentIcon /></ListItemIcon>
+                <ListItemText 
+                  primary="My Bookings" 
+                  primaryTypographyProps={{
+                    fontFamily: '"Cinzel", serif',
+                    fontSize: '1.1rem'
+                  }}
+                />
+              </ListItem>
+              <ListItem button onClick={handleLogout}>
+                <ListItemIcon><LogoutIcon /></ListItemIcon>
+                <ListItemText 
+                  primary="Sign Out" 
+                  primaryTypographyProps={{
+                    fontFamily: '"Cinzel", serif',
+                    fontSize: '1.1rem',
+                    color: theme.palette.error.main
+                  }}
+                />
+              </ListItem>
+            </List>
+          </>
+        )}
+      </Drawer>
     </>
   );
 };

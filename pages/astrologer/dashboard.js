@@ -3,20 +3,21 @@ import {
   Box, 
   Container, 
   Typography, 
+  Grid, 
   Paper, 
   Tabs, 
-  Tab, 
+  Tab,
+  Card,
+  CardContent,
+  CardActions,
   Button,
+  Chip,
   Table,
   TableBody,
   TableCell,
   TableContainer,
   TableHead,
   TableRow,
-  Chip,
-  Card,
-  CardContent,
-  Grid,
   useTheme
 } from '@mui/material';
 import Head from 'next/head';
@@ -24,36 +25,29 @@ import { useRouter } from 'next/router';
 import Navbar from '../../src/components/navbar';
 import Footer from '../../src/components/footer';
 import { useAuth } from '../../src/context/AuthContext';
-import { 
-  collection, 
-  getDocs, 
-  query, 
-  where, 
-  orderBy, 
-  limit,
-  getDoc,
-  doc
-} from 'firebase/firestore';
-import { db } from '../../src/firebase/firebaseConfig';
-
-// Protected route component
+import AstrologerProfileManager from '../../src/components/AstrologerProfileManager';
+import DocumentVerification from '../../src/components/DocumentVerification';
 import ProtectedRoute from '../../src/components/ProtectedRoute';
+import { collection, query, where, getDocs, orderBy } from 'firebase/firestore';
+import { db } from '../../src/firebase/firebaseConfig';
 
 export default function AstrologerDashboard() {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser } = useAuth();
-  
+  const { currentUser, hasRole } = useAuth();
   const [tabValue, setTabValue] = useState(0);
   const [readings, setReadings] = useState([]);
-  const [revenue, setRevenue] = useState({
-    total: 0,
-    monthly: 0,
-    recentPayments: []
-  });
+  const [revenue, setRevenue] = useState([]);
   const [loading, setLoading] = useState(true);
   
-  // Fetch data based on active tab
+  // Get tab from query params
+  useEffect(() => {
+    if (router.query.tab !== undefined) {
+      setTabValue(parseInt(router.query.tab));
+    }
+  }, [router.query.tab]);
+  
+  // Fetch astrologer data
   useEffect(() => {
     const fetchData = async () => {
       if (!currentUser) return;
@@ -61,225 +55,199 @@ export default function AstrologerDashboard() {
       try {
         setLoading(true);
         
-        if (tabValue === 0) {
-          // Readings tab
-          const readingsRef = collection(db, 'chats');
-          const q = query(
-            readingsRef, 
-            where('astrologerId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc')
-          );
-          const querySnapshot = await getDocs(q);
-          
-          const readingsList = [];
-          querySnapshot.forEach((doc) => {
-            readingsList.push({
-              id: doc.id,
-              ...doc.data()
-            });
-          });
-          
-          setReadings(readingsList);
-        } else if (tabValue === 1) {
-          // Revenue tab
-          const paymentsRef = collection(db, 'payments');
-          const q = query(
-            paymentsRef, 
-            where('astrologerId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc')
-          );
-          const querySnapshot = await getDocs(q);
-          
-          let totalRevenue = 0;
-          let monthlyRevenue = 0;
-          const recentPayments = [];
-          
-          const now = new Date();
-          const firstDayOfMonth = new Date(now.getFullYear(), now.getMonth(), 1);
-          
-          querySnapshot.forEach((doc) => {
-            const payment = doc.data();
-            totalRevenue += payment.amount;
-            
-            // Check if payment is from current month
-            if (payment.createdAt && payment.createdAt.toDate() >= firstDayOfMonth) {
-              monthlyRevenue += payment.amount;
-            }
-            
-            recentPayments.push({
-              id: doc.id,
-              ...payment
-            });
-            
-            if (recentPayments.length > 10) {
-              recentPayments.pop(); // Keep only 10 most recent
-            }
-          });
-          
-          setRevenue({
-            total: totalRevenue,
-            monthly: monthlyRevenue,
-            recentPayments
-          });
-        }
+        // Fetch readings
+        const readingsQuery = query(
+          collection(db, 'readings'),
+          where('astrologerId', '==', currentUser.uid),
+          orderBy('createdAt', 'desc')
+        );
+        
+        const readingsSnapshot = await getDocs(readingsQuery);
+        const readingsData = readingsSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setReadings(readingsData);
+        
+        // Fetch revenue data
+        const revenueQuery = query(
+          collection(db, 'payments'),
+          where('astrologerId', '==', currentUser.uid),
+          orderBy('timestamp', 'desc')
+        );
+        
+        const revenueSnapshot = await getDocs(revenueQuery);
+        const revenueData = revenueSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+        setRevenue(revenueData);
+        
       } catch (error) {
-        console.error('Error fetching data:', error);
+        console.error('Error fetching astrologer data:', error);
       } finally {
         setLoading(false);
       }
     };
     
     fetchData();
-  }, [currentUser, tabValue]);
+  }, [currentUser]);
   
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
+    
+    // Update URL with tab parameter without full page reload
+    router.push({
+      pathname: router.pathname,
+      query: { tab: newValue }
+    }, undefined, { shallow: true });
   };
   
-  const handleViewReading = (readingId) => {
-    router.push(`/chat/${readingId}`);
-  };
-  
-  // Render readings tab content
-  const renderReadingsTab = () => (
-    <TableContainer component={Paper} elevation={0}>
-      <Table sx={{ minWidth: 650 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Reading Type</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Created</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {readings.length > 0 ? (
-            readings.map((reading) => (
+  const renderReadingsTab = () => {
+    if (loading) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography>Loading readings...</Typography>
+        </Box>
+      );
+    }
+    
+    if (readings.length === 0) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography>You don't have any readings yet.</Typography>
+        </Box>
+      );
+    }
+    
+    return (
+      <TableContainer component={Paper} elevation={1}>
+        <Table>
+          <TableHead>
+            <TableRow>
+              <TableCell>Client</TableCell>
+              <TableCell>Service</TableCell>
+              <TableCell>Date</TableCell>
+              <TableCell>Status</TableCell>
+              <TableCell>Actions</TableCell>
+            </TableRow>
+          </TableHead>
+          <TableBody>
+            {readings.map((reading) => (
               <TableRow key={reading.id}>
-                <TableCell>{reading.clientName || 'Anonymous'}</TableCell>
-                <TableCell>{reading.readingType || 'General Reading'}</TableCell>
+                <TableCell>{reading.clientName || 'Unknown'}</TableCell>
+                <TableCell>{reading.serviceType || 'General Reading'}</TableCell>
+                <TableCell>
+                  {reading.createdAt?.toDate().toLocaleDateString() || 'Unknown date'}
+                </TableCell>
                 <TableCell>
                   <Chip 
-                    label={reading.status || 'Open'} 
+                    label={reading.status || 'Pending'} 
                     color={
-                      reading.status === 'completed' ? 'success' : 
-                      reading.status === 'in-progress' ? 'primary' : 
+                      reading.status === 'completed' ? 'success' :
+                      reading.status === 'in-progress' ? 'primary' :
                       'default'
                     }
                     size="small"
                   />
                 </TableCell>
                 <TableCell>
-                  {reading.createdAt ? new Date(reading.createdAt.toDate()).toLocaleDateString() : 'N/A'}
-                </TableCell>
-                <TableCell>
-                  {reading.lastUpdated ? new Date(reading.lastUpdated.toDate()).toLocaleDateString() : 'N/A'}
-                </TableCell>
-                <TableCell>
                   <Button 
-                    variant="outlined" 
-                    size="small"
-                    onClick={() => handleViewReading(reading.id)}
+                    size="small" 
+                    variant="outlined"
+                    onClick={() => router.push(`/readings/${reading.id}`)}
                   >
                     View
                   </Button>
                 </TableCell>
               </TableRow>
-            ))
-          ) : (
-            <TableRow>
-              <TableCell colSpan={6} align="center">
-                <Typography variant="body1" sx={{ py: 2 }}>
-                  No readings found
-                </Typography>
-              </TableCell>
-            </TableRow>
-          )}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
-  
-  // Render revenue tab content
-  const renderRevenueTab = () => (
-    <Box>
-      <Grid container spacing={3} sx={{ mb: 4 }}>
-        <Grid item xs={12} md={6}>
-          <Card elevation={0} sx={{ 
-            p: 3, 
-            height: '100%',
-            background: 'linear-gradient(135deg, rgba(255,248,225,1) 0%, rgba(255,236,179,0.8) 100%)',
-          }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>
-                Total Revenue
-              </Typography>
-              <Typography variant="h3" sx={{ fontFamily: '"Cinzel", serif', color: theme.palette.primary.main }}>
-                ₹{revenue.total.toLocaleString()}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-        <Grid item xs={12} md={6}>
-          <Card elevation={0} sx={{ 
-            p: 3, 
-            height: '100%',
-            background: 'linear-gradient(135deg, rgba(255,248,225,1) 0%, rgba(255,236,179,0.8) 100%)',
-          }}>
-            <CardContent>
-              <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>
-                This Month
-              </Typography>
-              <Typography variant="h3" sx={{ fontFamily: '"Cinzel", serif', color: theme.palette.primary.main }}>
-                ₹{revenue.monthly.toLocaleString()}
-              </Typography>
-            </CardContent>
-          </Card>
-        </Grid>
-      </Grid>
-      
-      <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif', mb: 2 }}>
-        Recent Payments
-      </Typography>
-      
-      <TableContainer component={Paper} elevation={0}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Date</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Amount</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {revenue.recentPayments.length > 0 ? (
-              revenue.recentPayments.map((payment) => (
-                <TableRow key={payment.id}>
-                  <TableCell>
-                    {payment.createdAt ? new Date(payment.createdAt.toDate()).toLocaleDateString() : 'N/A'}
-                  </TableCell>
-                  <TableCell>{payment.clientName || 'Anonymous'}</TableCell>
-                  <TableCell>{payment.service || 'Reading'}</TableCell>
-                  <TableCell>₹{payment.amount.toLocaleString()}</TableCell>
-                </TableRow>
-              ))
-            ) : (
-              <TableRow>
-                <TableCell colSpan={4} align="center">
-                  <Typography variant="body1" sx={{ py: 2 }}>
-                    No payment records found
-                  </Typography>
-                </TableCell>
-              </TableRow>
-            )}
+            ))}
           </TableBody>
         </Table>
       </TableContainer>
-    </Box>
-  );
+    );
+  };
+  
+  const renderRevenueTab = () => {
+    if (loading) {
+      return (
+        <Box sx={{ textAlign: 'center', py: 4 }}>
+          <Typography>Loading revenue data...</Typography>
+        </Box>
+      );
+    }
+    
+    // Calculate total revenue
+    const totalRevenue = revenue.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    
+    return (
+      <Box>
+        <Grid container spacing={3} sx={{ mb: 4 }}>
+          <Grid item xs={12} md={4}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Total Revenue</Typography>
+                <Typography variant="h4" color="primary">₹{totalRevenue.toFixed(2)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Completed Readings</Typography>
+                <Typography variant="h4" color="primary">
+                  {readings.filter(r => r.status === 'completed').length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={4}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>Pending Readings</Typography>
+                <Typography variant="h4" color="primary">
+                  {readings.filter(r => r.status === 'pending').length}
+                </Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+        </Grid>
+        
+        <Typography variant="h6" sx={{ mb: 2 }}>Recent Transactions</Typography>
+        
+        {revenue.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography>No transactions yet.</Typography>
+          </Box>
+        ) : (
+          <TableContainer component={Paper} elevation={1}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Date</TableCell>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Service</TableCell>
+                  <TableCell align="right">Amount</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {revenue.map((payment) => (
+                  <TableRow key={payment.id}>
+                    <TableCell>
+                      {payment.timestamp?.toDate().toLocaleDateString() || 'Unknown date'}
+                    </TableCell>
+                    <TableCell>{payment.clientName || 'Unknown'}</TableCell>
+                    <TableCell>{payment.serviceType || 'General Reading'}</TableCell>
+                    <TableCell align="right">₹{payment.amount?.toFixed(2) || '0.00'}</TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
+    );
+  };
   
   return (
     <ProtectedRoute requiredRoles={['astrologer']}>
@@ -330,19 +298,15 @@ export default function AstrologerDashboard() {
             >
               <Tab label="Readings" />
               <Tab label="Revenue" />
+              <Tab label="Services & Pricing" />
+              <Tab label="Verification" />
             </Tabs>
           </Paper>
           
-          {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography>Loading...</Typography>
-            </Box>
-          ) : (
-            <>
-              {tabValue === 0 && renderReadingsTab()}
-              {tabValue === 1 && renderRevenueTab()}
-            </>
-          )}
+          {tabValue === 0 && renderReadingsTab()}
+          {tabValue === 1 && renderRevenueTab()}
+          {tabValue === 2 && <AstrologerProfileManager />}
+          {tabValue === 3 && <DocumentVerification />}
         </Container>
         
         <Footer />

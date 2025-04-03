@@ -43,7 +43,6 @@ const Hero = () => {
         overflow: 'hidden'
       }}
     >
-      {/* <Container maxWidth="lg"> */}
         <Grid container spacing={0} alignItems="center">
           {/* Text Content - Left Side */}
           <Container>
@@ -165,7 +164,6 @@ const Hero = () => {
             </MotionBox>
           </Container>
         </Grid>
-      {/* </Container> */}
     </Box>
   );
 };

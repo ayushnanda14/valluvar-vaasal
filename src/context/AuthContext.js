@@ -34,7 +34,6 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRoles, setUserRoles] = useState([]);
   const [loading, setLoading] = useState(true);
-  const [recaptchaVerifier, setRecaptchaVerifier] = useState(null);
   
   // Function to check if user has a specific role
   const hasRole = (role) => {

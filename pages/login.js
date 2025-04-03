@@ -365,7 +365,7 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
                   />
                   
                   <Box sx={{ textAlign: 'right', mt: 1, mb: 2 }}>
-                    <Link href="/forgot-password" passHref>
+                    <Link href="/reset-password" passHref>
                       <MuiLink 
                         variant="body2"
                         sx={{ 

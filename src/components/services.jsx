@@ -1,17 +1,18 @@
 import React from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Grid, 
-  Card, 
-  CardContent, 
-  CardMedia, 
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
+  Card,
+  CardContent,
+  CardMedia,
   Button,
   useTheme,
   useMediaQuery
 } from '@mui/material';
 import { motion } from 'framer-motion';
+import Link from 'next/link';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 
 // Wrap MUI components with motion
@@ -19,12 +20,12 @@ const MotionCard = motion(Card);
 const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 
-const ServiceCard = ({ title, description, imageSrc, delay }) => {
+const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  
+
   // Determine the optimal object position based on screen size
   let imagePosition;
   if (isMobile) {
@@ -34,14 +35,14 @@ const ServiceCard = ({ title, description, imageSrc, delay }) => {
   } else {
     imagePosition = 'center 20%'; // Lower focus point for desktop
   }
-  
+
   // Determine image height based on screen size
   const imageHeight = isDesktop ? 320 : 240; // Taller images on desktop
-  
+
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Box sx={{ 
-        display: 'flex', 
+      <Box sx={{
+        display: 'flex',
         justifyContent: 'center',
         height: '100%'
       }}>
@@ -118,17 +119,17 @@ const ServiceCard = ({ title, description, imageSrc, delay }) => {
               {title}
             </Typography>
           </Box>
-          
-          <CardContent sx={{ 
-            flexGrow: 1, 
+
+          <CardContent sx={{
+            flexGrow: 1,
             pt: 4,
             pb: 2,
             px: 3,
             background: theme.palette.background.paper
           }}>
-            <Typography 
-              variant="body1" 
-              sx={{ 
+            <Typography
+              variant="body1"
+              sx={{
                 mb: 2,
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '1.1rem',
@@ -137,24 +138,26 @@ const ServiceCard = ({ title, description, imageSrc, delay }) => {
             >
               {description}
             </Typography>
-            
-            <Button 
-              endIcon={<ArrowForwardIcon />}
-              sx={{
-                mt: 2,
-                textTransform: 'none',
-                fontFamily: '"Cormorant Garamond", serif',
-                fontWeight: 600,
-                fontSize: '1rem',
-                color: theme.palette.primary.main,
-                '&:hover': {
-                  backgroundColor: 'transparent',
-                  color: theme.palette.primary.dark,
-                }
-              }}
-            >
-              Learn more
-            </Button>
+            {console.log(destinationUrl)}
+            <Link href={destinationUrl || '/'} passHref legacyBehavior>
+              <Button
+                endIcon={<ArrowForwardIcon />}
+                sx={{
+                  mt: 2,
+                  textTransform: 'none',
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontWeight: 600,
+                  fontSize: '1rem',
+                  color: theme.palette.primary.main,
+                  '&:hover': {
+                    backgroundColor: 'transparent',
+                    color: theme.palette.primary.dark,
+                  }
+                }}
+              >
+                Learn more
+              </Button>
+            </Link>
           </CardContent>
         </MotionCard>
       </Box>
@@ -164,33 +167,36 @@ const ServiceCard = ({ title, description, imageSrc, delay }) => {
 
 const Services = () => {
   const theme = useTheme();
-  
+
   const services = [
     {
       title: "Marriage Matching",
       description: "Our expert astrologers analyze birth charts to determine compatibility between potential life partners, ensuring a harmonious and prosperous union based on ancient Tamil astrological principles.",
+      destinationUrl: "/services/marriage-matching",
       imageSrc: "/images/marriage-matching.png",
       delay: 0
     },
     {
       title: "Jathak Prediction",
       description: "Discover your life's path through our detailed Jathak predictions. We interpret celestial positions at your birth to reveal insights about career, relationships, health, and spiritual growth.",
+      destinationUrl: "/services/jathak-prediction",
       imageSrc: "/images/jathak-prediction.png",
       delay: 0.2
     },
     {
       title: "Jathak Writing",
       description: "Preserve your astrological blueprint with our meticulously crafted Jathak writing service. Our scholars document your birth chart with traditional methods, creating a valuable heirloom for generations.",
+      destinationUrl: "/services/jathak-writing",
       imageSrc: "/images/jathak-writing.png",
       delay: 0.4
     }
   ];
-  
+
   return (
-    <Box 
+    <Box
       id="services-section"
-      component="section" 
-      sx={{ 
+      component="section"
+      sx={{
         py: { xs: 6, md: 10 },
         background: 'linear-gradient(180deg, rgba(255,248,225,1) 0%, rgba(255,236,179,0.4) 100%)'
       }}
@@ -215,7 +221,7 @@ const Services = () => {
           >
             Our Services
           </MotionTypography>
-          
+
           <MotionTypography
             variant="body1"
             sx={{
@@ -226,16 +232,17 @@ const Services = () => {
               mx: 'auto'
             }}
           >
-            Discover our range of traditional Tamil astrological services, 
+            Discover our range of traditional Tamil astrological services,
             crafted with ancient wisdom to guide your life's journey
           </MotionTypography>
         </MotionBox>
-        
+
         <Grid container spacing={4}>
           {services.map((service, index) => (
             <ServiceCard
               key={index}
               title={service.title}
+              destinationUrl={service.destinationUrl}
               description={service.description}
               imageSrc={service.imageSrc}
               delay={service.delay}
