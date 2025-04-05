@@ -9,7 +9,9 @@ import {
   Alert,
   Link as MuiLink,
   CircularProgress,
-  useTheme
+  useTheme,
+  Snackbar,
+  Alert as MuiAlert
 } from '@mui/material';
 import Head from 'next/head';
 import Link from 'next/link';
@@ -32,6 +34,9 @@ export default function AdminSignup() {
   // This should be stored in an environment variable or secure database
   // For demo purposes, we're hardcoding it here
   const ADMIN_SECRET_CODE = 'admin123'; // Change this to a secure value
+  
+  // Add toast state
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'info' });
   
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -63,10 +68,31 @@ export default function AdminSignup() {
       router.push('/admin/dashboard');
     } catch (err) {
       console.error('Signup error:', err);
-      setError('Failed to create an account: ' + err.message);
+      
+      // Check if this is an email-already-in-use error
+      if (err.code === 'auth/email-already-in-use') {
+        setToast({
+          open: true,
+          message: 'This email is already registered. Please sign in instead.',
+          severity: 'info'
+        });
+        // Clear the error so the alert doesn't display
+        setError('');
+      } else {
+        // For other errors, display in the alert as before
+        setError('Failed to create an account: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
+  };
+  
+  // Add this handler
+  const handleCloseToast = (event, reason) => {
+    if (reason === 'clickaway') {
+      return;
+    }
+    setToast({ ...toast, open: false });
   };
   
   return (
@@ -226,6 +252,23 @@ export default function AdminSignup() {
           </Container>
         </Box>
       </Box>
+      
+      {/* Add the Snackbar component at the end of the return statement */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={handleCloseToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          elevation={6} 
+          variant="filled" 
+          onClose={handleCloseToast} 
+          severity={toast.severity}
+        >
+          {toast.message}
+        </MuiAlert>
+      </Snackbar>
     </>
   );
 } 

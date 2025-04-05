@@ -23,6 +23,7 @@ import {
 import CreditCardIcon from '@mui/icons-material/CreditCard';
 import AccountBalanceIcon from '@mui/icons-material/AccountBalance';
 import PhoneAndroidIcon from '@mui/icons-material/PhoneAndroid';
+import { SERVICE_TYPES } from '@/utils/constants';
 
 export default function PaymentSummary({ 
   selectedAstrologers, 
@@ -82,7 +83,7 @@ export default function PaymentSummary({
                   </ListItemAvatar>
                   <ListItemText 
                     primary={astrologer.displayName}
-                    secondary={`${serviceType} Service`}
+                    secondary={`${SERVICE_TYPES[serviceType]} Service`}
                   />
                   <Typography variant="body2">
                     ₹{astrologer.serviceCharges?.[serviceType] || 500}

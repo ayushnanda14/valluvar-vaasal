@@ -9,6 +9,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { uploadFiles } from './fileService';
+import { SERVICE_TYPES } from '@/utils/constants';
 
 // Create a new service request
 export const createServiceRequest = async (data) => {
@@ -94,7 +95,7 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
       lastMessage: {
-        text: `New ${serviceType} service request`,
+        text: `New ${SERVICE_TYPES[serviceType]} service request`,
         createdAt: serverTimestamp(),
         senderId: userId
       }
@@ -102,7 +103,7 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
     
     // Add initial system message
     await addDoc(collection(db, 'conversations', conversationRef.id, 'messages'), {
-      text: `${userData.displayName} has requested a ${serviceType} service. The astrologer will review the uploaded documents and provide insights soon.`,
+      text: `${userData.displayName} has requested a ${SERVICE_TYPES[serviceType]} service. The astrologer will review the uploaded documents and provide insights soon.`,
       senderId: 'system',
       createdAt: serverTimestamp(),
       isSystemMessage: true

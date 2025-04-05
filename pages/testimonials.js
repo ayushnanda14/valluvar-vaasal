@@ -28,6 +28,7 @@ export default function TestimonialsPage() {
   const { currentUser } = useAuth();
 
   const [testimonialText, setTestimonialText] = useState('');
+  const [name, setName] = useState('');
   const [service, setService] = useState('');
   const [rating, setRating] = useState(5);
   const [isAnonymous, setIsAnonymous] = useState(false);
@@ -45,8 +46,13 @@ export default function TestimonialsPage() {
   const handleSubmitTestimonial = async (e) => {
     e.preventDefault();
 
-    if (!currentUser) {
-      setError('You must be logged in to submit a testimonial');
+    // if (!currentUser) {
+    //   setError('You must be logged in to submit a testimonial');
+    //   return;
+    // }
+
+    if (!name.trim()) {
+      setError('Please enter your name');
       return;
     }
 
@@ -65,8 +71,8 @@ export default function TestimonialsPage() {
       setError('');
 
       await addDoc(collection(db, 'testimonials'), {
-        userId: currentUser.uid,
-        name: isAnonymous ? 'Anonymous' : (currentUser.displayName || 'Anonymous User'),
+        userId: currentUser ? currentUser.uid : 'anonymous',
+        name: isAnonymous ? 'Anonymous' : name,
         text: testimonialText.trim(),
         service: service,
         rating,
@@ -176,149 +182,159 @@ export default function TestimonialsPage() {
                 backgroundColor: 'rgba(255, 255, 255, 0.9)'
               }}
             >
-              {!currentUser ? (
-                <Alert severity="info" sx={{ mb: 2 }}>
-                  Please sign in to share your testimonial.
-                </Alert>
-              ) : (
-                <form onSubmit={handleSubmitTestimonial}>
-                  {error && (
-                    <Alert severity="error" sx={{ mb: 3 }}>
-                      {error}
-                    </Alert>
-                  )}
+              <form onSubmit={handleSubmitTestimonial}>
+                {error && (
+                  <Alert severity="error" sx={{ mb: 3 }}>
+                    {error}
+                  </Alert>
+                )}
 
-                  <Box sx={{ mb: 3 }}>
-                    <Typography
-                      variant="body1"
-                      sx={{
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontWeight: 600,
-                        mb: 1
-                      }}
-                    >
-                      Your Rating
-                    </Typography>
-                    <Rating
-                      name="testimonial-rating"
-                      value={rating}
-                      onChange={(event, newValue) => {
-                        setRating(newValue);
-                      }}
-                      size="large"
-                      sx={{ color: theme.palette.primary.main }}
-                    />
-                  </Box>
-
-                  <FormControl
-                    fullWidth
-                    variant="outlined"
-                    sx={{ mb: 3 }}
-                    required
-                  >
-                    <InputLabel
-                      id="service-select-label"
-                      sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                    >
-                      Which service did you receive?
-                    </InputLabel>
-                    <Select
-                      labelId="service-select-label"
-                      id="service-select"
-                      value={service}
-                      onChange={(e) => setService(e.target.value)}
-                      label="Which service did you receive?"
-                      sx={{
-                        fontFamily: '"Cormorant Garamond", serif',
-                        '& .MuiSelect-select': {
-                          fontFamily: '"Cormorant Garamond", serif'
-                        }
-                      }}
-                    >
-                      {services.map((serviceName) => (
-                        <MenuItem
-                          key={serviceName}
-                          value={serviceName}
-                          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                        >
-                          {serviceName}
-                        </MenuItem>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <TextField
-                    label="Share your experience"
-                    variant="outlined"
-                    fullWidth
-                    multiline
-                    rows={4}
-                    value={testimonialText}
-                    onChange={(e) => setTestimonialText(e.target.value)}
-                    sx={{ mb: 3 }}
-                    InputProps={{
-                      sx: { fontFamily: '"Cormorant Garamond", serif' }
-                    }}
-                    InputLabelProps={{
-                      sx: { fontFamily: '"Cormorant Garamond", serif' }
-                    }}
-                    required
-                  />
-
-                  <FormControlLabel
-                    control={
-                      <Checkbox
-                        checked={isAnonymous}
-                        onChange={(e) => setIsAnonymous(e.target.checked)}
-                        color="secondary"
-                      />
-                    }
-                    label={
-                      <Typography
-                        variant="body2"
-                        sx={{
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1rem'
-                        }}
-                      >
-                        Submit anonymously (your name will not be displayed)
-                      </Typography>
-                    }
-                    sx={{ mb: 3 }}
-                  />
-
+                <Box sx={{ mb: 3 }}>
                   <Typography
-                    variant="body2"
+                    variant="body1"
                     sx={{
                       fontFamily: '"Cormorant Garamond", serif',
-                      color: theme.palette.text.secondary,
-                      mb: 3,
-                      fontSize: '0.9rem'
+                      fontWeight: 600,
+                      mb: 1
                     }}
                   >
-                    Your testimonial will be reviewed before being published. We appreciate your honest feedback!
+                    Your Rating
                   </Typography>
-
-                  <Button
-                    type="submit"
-                    variant="contained"
-                    color="primary"
+                  <Rating
+                    name="testimonial-rating"
+                    value={rating}
+                    onChange={(event, newValue) => {
+                      setRating(newValue);
+                    }}
                     size="large"
-                    disabled={submitting}
+                    sx={{ color: theme.palette.primary.main }}
+                  />
+                </Box>
+
+                {!currentUser && <TextField
+                  label="Enter your name"
+                  variant="outlined"
+                  fullWidth
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  sx={{ mb: 3 }}
+                  InputProps={{
+                    sx: { fontFamily: '"Cormorant Garamond", serif' }
+                  }}
+                  InputLabelProps={{
+                    sx: { fontFamily: '"Cormorant Garamond", serif' }
+                  }}
+                  required
+                />}
+
+                <FormControl
+                  fullWidth
+                  variant="outlined"
+                  sx={{ mb: 3 }}
+                  required
+                >
+                  <InputLabel
+                    id="service-select-label"
+                    sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                  >
+                    Which service did you receive?
+                  </InputLabel>
+                  <Select
+                    labelId="service-select-label"
+                    id="service-select"
+                    value={service}
+                    onChange={(e) => setService(e.target.value)}
+                    label="Which service did you receive?"
                     sx={{
-                      fontFamily: '"Cinzel", serif',
-                      py: 1.5,
-                      px: 4,
-                      fontSize: '1rem',
-                      fontWeight: 500,
-                      textTransform: 'none',
-                      color: '#FFF8E1',
+                      fontFamily: '"Cormorant Garamond", serif',
+                      '& .MuiSelect-select': {
+                        fontFamily: '"Cormorant Garamond", serif'
+                      }
                     }}
                   >
-                    {submitting ? 'Submitting...' : 'Submit Testimonial'}
-                  </Button>
-                </form>
-              )}
+                    {services.map((serviceName) => (
+                      <MenuItem
+                        key={serviceName}
+                        value={serviceName}
+                        sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                      >
+                        {serviceName}
+                      </MenuItem>
+                    ))}
+                  </Select>
+                </FormControl>
+
+                <TextField
+                  label="Share your experience"
+                  variant="outlined"
+                  fullWidth
+                  multiline
+                  rows={4}
+                  value={testimonialText}
+                  onChange={(e) => setTestimonialText(e.target.value)}
+                  sx={{ mb: 3 }}
+                  InputProps={{
+                    sx: { fontFamily: '"Cormorant Garamond", serif' }
+                  }}
+                  InputLabelProps={{
+                    sx: { fontFamily: '"Cormorant Garamond", serif' }
+                  }}
+                  required
+                />
+
+                {currentUser && <FormControlLabel
+                  control={
+                    <Checkbox
+                      checked={isAnonymous}
+                      onChange={(e) => setIsAnonymous(e.target.checked)}
+                      color="secondary"
+                    />
+                  }
+                  label={
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontFamily: '"Cormorant Garamond", serif',
+                        fontSize: '1rem'
+                      }}
+                    >
+                      Submit anonymously (your name will not be displayed)
+                    </Typography>
+                  }
+                  sx={{ mb: 3 }}
+                />}
+
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    color: theme.palette.text.secondary,
+                    mb: 3,
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Your testimonial will be reviewed before being published. We appreciate your honest feedback!
+                </Typography>
+
+                <Button
+                  type="submit"
+                  variant="contained"
+                  color="primary"
+                  size="large"
+                  disabled={submitting}
+                  sx={{
+                    fontFamily: '"Cinzel", serif',
+                    py: 1.5,
+                    px: 4,
+                    fontSize: '1rem',
+                    fontWeight: 500,
+                    textTransform: 'none',
+                    color: '#FFF8E1',
+                  }}
+                >
+                  {submitting ? 'Submitting...' : 'Submit Testimonial'}
+                </Button>
+              </form>
             </Paper>
           </Container>
         </Box>

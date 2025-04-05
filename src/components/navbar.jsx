@@ -276,7 +276,7 @@ const Navbar = () => {
                       >
                         Dashboard
                       </MenuItem>
-                      <MenuItem
+                      {/* <MenuItem
                         onClick={() => {
                           handleClose();
                           router.push('/profile');
@@ -288,7 +288,7 @@ const Navbar = () => {
                         }}
                       >
                         My Profile
-                      </MenuItem>
+                      </MenuItem> */}
                       <MenuItem
                         onClick={() => {
                           handleClose();

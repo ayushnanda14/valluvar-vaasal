@@ -12,7 +12,7 @@ import {
   useTheme 
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 
@@ -27,6 +27,8 @@ const Testimonials = () => {
   const [loading, setLoading] = useState(true);
   
   useEffect(() => {
+    let unsubscribe;
+    
     const fetchTestimonials = async () => {
       try {
         setLoading(true);
@@ -38,24 +40,36 @@ const Testimonials = () => {
           limit(6)
         );
         
-        const querySnapshot = await getDocs(q);
-        const testimonialsList = [];
-        querySnapshot.forEach((doc) => {
-          testimonialsList.push({
-            id: doc.id,
-            ...doc.data()
+        // Use onSnapshot for real-time updates
+        unsubscribe = onSnapshot(q, (querySnapshot) => {
+          const testimonialsList = [];
+          querySnapshot.forEach((doc) => {
+            testimonialsList.push({
+              id: doc.id,
+              ...doc.data()
+            });
           });
+          
+          setTestimonials(testimonialsList);
+          setLoading(false);
+        }, (error) => {
+          console.error('Error in testimonials listener:', error);
+          setLoading(false);
         });
-        
-        setTestimonials(testimonialsList);
       } catch (error) {
-        console.error('Error fetching testimonials:', error);
-      } finally {
+        console.error('Error setting up testimonials listener:', error);
         setLoading(false);
       }
     };
     
     fetchTestimonials();
+    
+    // Clean up listener when component unmounts
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
   
   // Function to get initials from name

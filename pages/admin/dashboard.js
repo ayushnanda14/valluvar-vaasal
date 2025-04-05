@@ -31,6 +31,10 @@ import {
   Grid,
   Alert,
   Avatar,
+  ListItemIcon,
+  Divider,
+  Menu,
+  Badge,
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -52,6 +56,13 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
+import FilterListIcon from '@mui/icons-material/FilterList';
+import MoreVertIcon from '@mui/icons-material/MoreVert';
+import BlockIcon from '@mui/icons-material/Block';
+import VerifiedIcon from '@mui/icons-material/Verified';
+import ChatIcon from '@mui/icons-material/Chat';
+import ToggleButton from '@mui/material/ToggleButton';
+import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
 // Protected route component
 import ProtectedRoute from '../../src/components/ProtectedRoute';
@@ -109,6 +120,11 @@ export default function AdminDashboard() {
   const [selectedAstrologer, setSelectedAstrologer] = useState(null);
   const [pendingAstrologers, setPendingAstrologers] = useState([]);
   const [loadingAstrologers, setLoadingAstrologers] = useState(true);
+
+  // Add these state variables to the component
+  const [roleFilter, setRoleFilter] = useState('all');
+  const [anchorEl, setAnchorEl] = useState(null);
+  const [selectedActionUser, setSelectedActionUser] = useState(null);
 
   // Get tab from query params
   useEffect(() => {
@@ -284,52 +300,229 @@ export default function AdminDashboard() {
     }
   };
 
-  // Render users tab content
-  const renderUsersTab = () => (
-    <TableContainer component={Paper} elevation={0}>
-      <Table sx={{ minWidth: 650 }}>
-        <TableHead>
-          <TableRow>
-            <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Roles</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
-            <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-          </TableRow>
-        </TableHead>
-        <TableBody>
-          {users.map((user) => (
-            <TableRow key={user.id}>
-              <TableCell>{user.displayName || 'N/A'}</TableCell>
-              <TableCell>{user.email}</TableCell>
-              <TableCell>
-                {user.roles && user.roles.map((role) => (
-                  <Chip
-                    key={role}
-                    label={role}
-                    size="small"
-                    color={role === 'admin' ? 'primary' : role === 'astrologer' ? 'secondary' : 'default'}
-                    sx={{ mr: 0.5, mb: 0.5 }}
-                  />
-                ))}
-              </TableCell>
-              <TableCell>
-                {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}
-              </TableCell>
-              <TableCell>
-                <IconButton
-                  color="primary"
-                  onClick={() => handleOpenRoleDialog(user)}
-                >
-                  <EditIcon />
-                </IconButton>
-              </TableCell>
-            </TableRow>
-          ))}
-        </TableBody>
-      </Table>
-    </TableContainer>
-  );
+  // Add these handlers for the dropdown menu
+  const handleOpenActionMenu = (event, user) => {
+    setAnchorEl(event.currentTarget);
+    setSelectedActionUser(user);
+  };
+
+  const handleCloseActionMenu = () => {
+    setAnchorEl(null);
+    setSelectedActionUser(null);
+  };
+
+  const handleRoleFilterChange = (event, newFilter) => {
+    if (newFilter !== null) {
+      setRoleFilter(newFilter);
+    }
+  };
+
+  const handleViewChats = (userId) => {
+    // Navigate to a filtered view of chats for this user
+    router.push(`/admin/chats?userId=${userId}`);
+    handleCloseActionMenu();
+  };
+
+  const handleDisableUser = async (userId) => {
+    if (!confirm('Are you sure you want to disable this user?')) {
+      handleCloseActionMenu();
+      return;
+    }
+    
+    try {
+      const userRef = doc(db, 'users', userId);
+      await updateDoc(userRef, {
+        disabled: true,
+        updatedAt: serverTimestamp()
+      });
+      
+      // Update local state
+      setUsers(users.map(user =>
+        user.id === userId
+          ? { ...user, disabled: true }
+          : user
+      ));
+      
+    } catch (error) {
+      console.error('Error disabling user:', error);
+    }
+    
+    handleCloseActionMenu();
+  };
+
+  // Update the renderUsersTab function
+  const renderUsersTab = () => {
+    // Filter users based on selected role filter
+    const filteredUsers = users.filter(user => {
+      if (roleFilter === 'all') return true;
+      if (!user.roles) return false;
+      return user.roles.includes(roleFilter);
+    });
+
+    return (
+      <Box>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif' }}>
+            Manage Users
+          </Typography>
+          
+          <Box sx={{ display: 'flex', alignItems: 'center' }}>
+            <FilterListIcon sx={{ mr: 1, color: 'text.secondary' }} />
+            <ToggleButtonGroup
+              value={roleFilter}
+              exclusive
+              onChange={handleRoleFilterChange}
+              size="small"
+            >
+              <ToggleButton value="all">
+                All
+              </ToggleButton>
+              <ToggleButton value="client">
+                Clients
+              </ToggleButton>
+              <ToggleButton value="astrologer">
+                Astrologers
+              </ToggleButton>
+              <ToggleButton value="admin">
+                Admins
+              </ToggleButton>
+            </ToggleButtonGroup>
+          </Box>
+        </Box>
+
+        <TableContainer component={Paper} elevation={0}>
+          <Table sx={{ minWidth: 650 }}>
+            <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Roles</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
+            <TableBody>
+              {filteredUsers.map((user) => {
+                // Check if user is an astrologer that needs verification
+                const needsVerification = 
+                  user.roles?.includes('astrologer') && 
+                  (!user.verificationStatus || user.verificationStatus === 'pending' || user.verificationStatus === 'rejected');
+                
+                return (
+                  <TableRow 
+                    key={user.id} 
+                    sx={{ 
+                      bgcolor: user.disabled ? 'rgba(0,0,0,0.05)' : 'inherit',
+                      '&:hover': {
+                        bgcolor: user.disabled ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.04)',
+                      },
+                    }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar
+                          src={user.photoURL}
+                          sx={{ mr: 1, width: 32, height: 32 }}
+                        />
+                        <Box>
+                          <Typography variant="body1">
+                            {user.displayName || 'Unnamed User'}
+                            {user.disabled && (
+                              <Typography component="span" sx={{ ml: 1, color: 'error.main', fontStyle: 'italic' }}>
+                                (Disabled)
+                              </Typography>
+                            )}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">{user.email}</Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      {user.roles && user.roles.map((role) => (
+                        <Chip
+                          key={role}
+                          label={role}
+                          size="small"
+                          color={role === 'admin' ? 'primary' : role === 'astrologer' ? 'secondary' : 'default'}
+                          sx={{ mr: 0.5, mb: 0.5 }}
+                        />
+                      ))}
+                    </TableCell>
+                    <TableCell>
+                      {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <IconButton
+                        onClick={(e) => handleOpenActionMenu(e, user)}
+                      >
+                        {needsVerification ? (
+                          <Badge color="error" variant="dot">
+                            <MoreVertIcon />
+                          </Badge>
+                        ) : (
+                          <MoreVertIcon />
+                        )}
+                      </IconButton>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
+            </TableBody>
+          </Table>
+        </TableContainer>
+        
+        {/* Actions Menu */}
+        <Menu
+          anchorEl={anchorEl}
+          open={Boolean(anchorEl)}
+          onClose={handleCloseActionMenu}
+        >
+          <MenuItem onClick={() => {
+            handleOpenRoleDialog(selectedActionUser);
+            handleCloseActionMenu();
+          }}>
+            <ListItemIcon>
+              <EditIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>Edit Roles</ListItemText>
+          </MenuItem>
+          
+          {selectedActionUser?.roles?.includes('astrologer') && 
+           (!selectedActionUser?.verificationStatus || 
+            selectedActionUser?.verificationStatus === 'pending' || 
+            selectedActionUser?.verificationStatus === 'rejected') && (
+            <MenuItem onClick={() => {
+              handleOpenAstrologerVerification(selectedActionUser);
+              handleCloseActionMenu();
+            }}>
+              <ListItemIcon>
+                <VerifiedIcon fontSize="small" color="secondary" />
+              </ListItemIcon>
+              <ListItemText primary="Verify Astrologer" />
+            </MenuItem>
+          )}
+          
+          <MenuItem onClick={() => handleViewChats(selectedActionUser?.id)}>
+            <ListItemIcon>
+              <ChatIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText>View Chats</ListItemText>
+          </MenuItem>
+          
+          <Divider />
+          
+          <MenuItem 
+            onClick={() => handleDisableUser(selectedActionUser?.id)}
+            disabled={selectedActionUser?.disabled}
+          >
+            <ListItemIcon>
+              <BlockIcon fontSize="small" color="error" />
+            </ListItemIcon>
+            <ListItemText primary="Disable User" />
+          </MenuItem>
+        </Menu>
+      </Box>
+    );
+  };
 
   // Render testimonials tab content
   const renderTestimonialsTab = () => (
@@ -520,7 +713,7 @@ export default function AdminDashboard() {
                       <Chip
                         label={astrologer.verificationStatus || 'Pending'}
                         color={
-                          astrologer.verificationStatus === 'approved' ? 'success' :
+                          astrologer.verificationStatus === 'verified' ? 'success' :
                             astrologer.verificationStatus === 'rejected' ? 'error' :
                               'warning'
                         }
@@ -574,10 +767,10 @@ export default function AdminDashboard() {
 
       // Update astrologer document with verification status
       await updateDoc(astrologerRef, {
-        verified: verificationStatus === 'approved',
+        verified: verificationStatus === 'verified',
         verificationStatus: verificationStatus,
         verificationMessage: verificationMessage || '',
-        verifiedAt: verificationStatus === 'approved' ? serverTimestamp() : null,
+        verifiedAt: verificationStatus === 'verified' ? serverTimestamp() : null,
         verifiedBy: currentUser.uid,
         updatedAt: serverTimestamp()
       });
@@ -590,7 +783,7 @@ export default function AdminDashboard() {
         const userData = userDoc.data();
         let userRoles = userData.roles || [];
 
-        if (verificationStatus === 'approved' && !userRoles.includes('astrologer')) {
+        if (verificationStatus === 'verified' && !userRoles.includes('astrologer')) {
           userRoles.push('astrologer');
         } else if (verificationStatus === 'rejected' && userRoles.includes('astrologer')) {
           userRoles = userRoles.filter(role => role !== 'astrologer');

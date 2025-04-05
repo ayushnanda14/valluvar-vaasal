@@ -57,6 +57,7 @@ export default function AstrologerProfileManager() {
 
         const verificationData = await getAstrologerVerificationStatus(currentUser.uid);
 
+        console.log('verificationData', verificationData, verificationData.verificationStatus);
         // Set verification status
         setVerificationStatus(verificationData.verificationStatus);
 

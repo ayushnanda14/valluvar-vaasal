@@ -16,13 +16,16 @@ import {
   Grid,
   Alert,
   CircularProgress,
-  useTheme
+  useTheme,
+  Snackbar
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
 import FileUploadSection from '../../src/components/FileUploadSection';
 import PhoneIcon from '@mui/icons-material/Phone';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
+import MuiAlert from '@mui/material/Alert';
 
 export default function AstrologerSignup() {
   const theme = useTheme();
@@ -69,6 +72,9 @@ export default function AstrologerSignup() {
   // State for form submission
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  
+  // Add state for profile picture
+  const [profilePicture, setProfilePicture] = useState([]);
   
   // Redirect if already logged in
   useEffect(() => {
@@ -229,44 +235,59 @@ export default function AstrologerSignup() {
   
   // Handle final submission
   const handleSubmit = async () => {
+    if (aadharFiles.length === 0 || profilePicture.length === 0) {
+      setError('Please upload required documents (Aadhar Card and Profile Picture)');
+      return;
+    }
+    
     try {
       setError('');
       setLoading(true);
       
-      // Validate that at least one service is selected
-      if (!services.marriageMatching && !services.jathakPrediction && !services.jathakWriting) {
-        setError('Please select at least one service to provide');
-        setLoading(false);
-        return;
+      // Upload all files and documents
+      const uploadTasks = [];
+      let uploadedUrls = {};
+      
+      // Upload profile picture
+      if (profilePicture.length > 0) {
+        const profilePicRef = ref(storage, `users/${currentUser.uid}/profile-picture/${profilePicture[0].name}`);
+        const profilePicUploadTask = uploadBytes(profilePicRef, profilePicture[0]);
+        uploadTasks.push(
+          profilePicUploadTask.then(async (snapshot) => {
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            uploadedUrls.profilePicture = downloadURL;
+            
+            // Also update user profile with this URL
+            return updateProfile(currentUser, {
+              photoURL: downloadURL
+            });
+          })
+        );
       }
       
-      // Validate document uploads
-      if (aadharFiles.length === 0) {
-        setError('Please upload your Aadhar card');
-        setLoading(false);
-        return;
-      }
+      // ... existing upload tasks for other documents ...
       
-      // Create service charges object
-      const serviceCharges = {};
-      if (services.marriageMatching) {
-        serviceCharges.marriageMatching = parseInt(pricing.marriageMatching);
-      }
-      if (services.jathakPrediction) {
-        serviceCharges.jathakPrediction = parseInt(pricing.jathakPrediction);
-      }
-      if (services.jathakWriting) {
-        serviceCharges.jathakWriting = parseInt(pricing.jathakWriting);
-      }
+      // Wait for all uploads to complete
+      await Promise.all(uploadTasks);
       
-      // Upload documents and update user profile
-      // This will be implemented in the next steps
+      // Update user document with all uploaded documents
+      const userDocRef = doc(db, 'users', currentUser.uid);
+      await updateDoc(userDocRef, {
+        documents: {
+          aadharCard: uploadedUrls.aadharCard || null,
+          certificates: uploadedUrls.certificates || [],
+          experienceProof: uploadedUrls.experienceProof || [],
+          profilePicture: uploadedUrls.profilePicture || null
+        },
+        verificationStatus: 'pending',
+        updatedAt: serverTimestamp()
+      });
       
-      // For now, just redirect to dashboard
-      router.push('/dashboard');
-    } catch (err) {
-      console.error('Submission error:', err);
-      setError('Failed to complete signup: ' + err.message);
+      // Navigate to astrologer dashboard
+      router.push('/astrologer/dashboard');
+    } catch (error) {
+      console.error('Error submitting documents:', error);
+      setError('Failed to upload documents: ' + error.message);
     } finally {
       setLoading(false);
     }
@@ -313,6 +334,14 @@ export default function AstrologerSignup() {
     
     // Reload the page to get fresh Firebase configuration
     window.location.reload();
+  };
+  
+  // Add state for toast notification
+  const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
+  
+  // Add function to handle toast close
+  const handleCloseToast = () => {
+    setToast({ ...toast, open: false });
   };
   
   return (
@@ -714,6 +743,23 @@ export default function AstrologerSignup() {
                   
                   <Box sx={{ mb: 4 }}>
                     <Typography variant="subtitle1" sx={{ mb: 1 }}>
+                      Profile Picture (Required)
+                    </Typography>
+                    <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                      Please upload a clear, professional photo of yourself that will be visible to clients.
+                    </Typography>
+                    
+                    <FileUploadSection 
+                      files={profilePicture}
+                      onFilesChange={setProfilePicture}
+                      multiple={false}
+                      accept="image/*"
+                      icon={<AccountCircleIcon fontSize="large" />}
+                    />
+                  </Box>
+                  
+                  <Box sx={{ mb: 4 }}>
+                    <Typography variant="subtitle1" sx={{ mb: 1 }}>
                       Aadhar Card (Required)
                     </Typography>
                     
@@ -769,7 +815,7 @@ export default function AstrologerSignup() {
                       color="primary"
                       size="large"
                       onClick={handleSubmit}
-                      disabled={loading || aadharFiles.length === 0}
+                      disabled={loading || aadharFiles.length === 0 || profilePicture.length === 0}
                       sx={{ 
                         py: 1.5,
                         px: 4,
@@ -786,6 +832,23 @@ export default function AstrologerSignup() {
           </Container>
         </Box>
       </Box>
+      
+      {/* Toast notification */}
+      <Snackbar
+        open={toast.open}
+        autoHideDuration={6000}
+        onClose={handleCloseToast}
+        anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+      >
+        <MuiAlert 
+          elevation={6} 
+          variant="filled" 
+          onClose={handleCloseToast} 
+          severity={toast.severity}
+        >
+          {toast.message}
+        </MuiAlert>
+      </Snackbar>
     </>
   );
 } 

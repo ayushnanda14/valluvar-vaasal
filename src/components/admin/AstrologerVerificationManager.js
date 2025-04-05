@@ -30,7 +30,8 @@ import {
   getDocs, 
   doc, 
   updateDoc, 
-  serverTimestamp 
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
@@ -55,6 +56,8 @@ export default function AstrologerVerificationManager() {
   
   // Fetch astrologers with pending verification
   useEffect(() => {
+    let unsubscribe;
+    
     const fetchAstrologers = async () => {
       try {
         setLoading(true);
@@ -65,23 +68,35 @@ export default function AstrologerVerificationManager() {
           where('verificationStatus', '==', 'pending')
         );
         
-        const querySnapshot = await getDocs(astrologersQuery);
-        
-        const astrologersList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
-        
-        setAstrologers(astrologersList);
+        // Use onSnapshot for real-time updates
+        unsubscribe = onSnapshot(astrologersQuery, (querySnapshot) => {
+          const astrologersList = querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+          }));
+          
+          setAstrologers(astrologersList);
+          setLoading(false);
+        }, (error) => {
+          console.error('Error in astrologers verification listener:', error);
+          setError('Failed to load astrologers. Please try again.');
+          setLoading(false);
+        });
       } catch (err) {
-        console.error('Error fetching astrologers:', err);
+        console.error('Error setting up astrologers verification listener:', err);
         setError('Failed to load astrologers. Please try again.');
-      } finally {
         setLoading(false);
       }
     };
     
     fetchAstrologers();
+    
+    // Clean up listener when component unmounts
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, []);
   
   // Handle view documents

@@ -1,10 +1,10 @@
 import React from 'react';
-import { 
-  Box, 
-  Container, 
-  Typography, 
-  Grid, 
-  Divider, 
+import {
+  Box,
+  Container,
+  Typography,
+  Grid,
+  Divider,
   Link as MuiLink,
   useTheme
 } from '@mui/material';
@@ -13,22 +13,22 @@ import Link from 'next/link';
 const Footer = () => {
   const theme = useTheme();
   const currentYear = new Date().getFullYear();
-  
+
   // Function to handle smooth scroll to services section
   const scrollToServices = () => {
     const servicesSection = document.getElementById('services-section');
     if (servicesSection) {
-      servicesSection.scrollIntoView({ 
+      servicesSection.scrollIntoView({
         behavior: 'smooth',
         block: 'start'
       });
     }
   };
-  
+
   return (
-    <Box 
-      component="footer" 
-      sx={{ 
+    <Box
+      component="footer"
+      sx={{
         backgroundColor: 'rgba(139, 69, 19, 0.1)', // Slightly darker than the theme
         color: theme.palette.secondary.dark,
         mt: 'auto', // This helps it stick to the bottom when used with flexbox
@@ -40,9 +40,9 @@ const Footer = () => {
         <Grid container spacing={4}>
           {/* Brand/Logo Section */}
           <Grid item xs={12} md={6}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
+            <Typography
+              variant="h6"
+              sx={{
                 fontFamily: '"Cinzel", serif',
                 fontWeight: 600,
                 letterSpacing: '1px',
@@ -52,25 +52,25 @@ const Footer = () => {
             >
               Valluvar Vaasal
             </Typography>
-            <Typography 
-              variant="body2" 
-              sx={{ 
+            <Typography
+              variant="body2"
+              sx={{
                 mb: 3,
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '1rem',
                 maxWidth: '90%'
               }}
             >
-              Guiding souls through the cosmic wisdom of ancient Tamil astrology. 
+              Guiding souls through the cosmic wisdom of ancient Tamil astrology.
               Discover your path written in the stars.
             </Typography>
           </Grid>
-          
+
           {/* Quick Links */}
           <Grid item xs={12} sm={6} md={2}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
+            <Typography
+              variant="h6"
+              sx={{
                 fontFamily: '"Cinzel", serif',
                 fontSize: '1.1rem',
                 mb: 2,
@@ -80,25 +80,21 @@ const Footer = () => {
               Quick Links
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Link href="/about" passHref legacyBehavior>
-                <MuiLink 
-                  underline="true" 
-                  sx={{ 
-                    color: theme.palette.secondary.main,
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem',
-                    '&:hover': { color: theme.palette.primary.main }
+              <Link href="/about" passHref legacyBehavior sx={{
+                color: theme.palette.secondary.main,
+                fontFamily: '"Cormorant Garamond", serif',
+                fontSize: '1rem',
+                textDecoration: 'underline',
+                '&:hover': { color: theme.palette.primary.main }
 
-                  }}
-                >
-                  About Us
-                </MuiLink>
+              }}>
+                About Us
               </Link>
-              <MuiLink 
+              <MuiLink
                 component="button"
-                underline="true" 
+                underline="true"
                 onClick={scrollToServices}
-                sx={{ 
+                sx={{
                   color: theme.palette.secondary.main,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1rem',
@@ -109,14 +105,24 @@ const Footer = () => {
               >
                 Services
               </MuiLink>
+              <Link href="/testimonials" passHref legacyBehavior sx={{
+                color: theme.palette.secondary.main,
+                fontFamily: '"Cormorant Garamond", serif',
+                fontSize: '1rem',
+                textDecoration: 'underline',
+                '&:hover': { color: theme.palette.primary.main }
+
+              }}>
+                Leave a Feedback
+              </Link>
             </Box>
           </Grid>
-          
+
           {/* Contact */}
           <Grid item xs={12} md={4}>
-            <Typography 
-              variant="h6" 
-              sx={{ 
+            <Typography
+              variant="h6"
+              sx={{
                 fontFamily: '"Cinzel", serif',
                 fontSize: '1.1rem',
                 mb: 2,
@@ -126,36 +132,36 @@ const Footer = () => {
               Contact Us
             </Typography>
             <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1rem'
                 }}
               >
                 123 Cosmic Avenue
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1rem'
                 }}
               >
                 Chennai, Tamil Nadu 600001
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1rem'
                 }}
               >
                 Email: info@valluvarvaasal.com
               </Typography>
-              <Typography 
-                variant="body2" 
-                sx={{ 
+              <Typography
+                variant="body2"
+                sx={{
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1rem'
                 }}
@@ -165,13 +171,13 @@ const Footer = () => {
             </Box>
           </Grid>
         </Grid>
-        
+
         <Divider sx={{ mt: 4, mb: 3, borderColor: 'rgba(139, 69, 19, 0.2)' }} />
-        
+
         <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
-          <Typography 
-            variant="body2" 
-            sx={{ 
+          <Typography
+            variant="body2"
+            sx={{
               fontFamily: '"Cormorant Garamond", serif',
               fontSize: '0.9rem',
               color: theme.palette.secondary.main
@@ -181,9 +187,9 @@ const Footer = () => {
           </Typography>
           <Box sx={{ display: 'flex', gap: 3 }}>
             <Link href="/privacy" passHref legacyBehavior>
-              <MuiLink 
-                underline="hover" 
-                sx={{ 
+              <MuiLink
+                underline="hover"
+                sx={{
                   color: theme.palette.secondary.main,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '0.9rem',
@@ -194,9 +200,9 @@ const Footer = () => {
               </MuiLink>
             </Link>
             <Link href="/terms" passHref legacyBehavior>
-              <MuiLink 
-                underline="hover" 
-                sx={{ 
+              <MuiLink
+                underline="hover"
+                sx={{
                   color: theme.palette.secondary.main,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '0.9rem',

@@ -33,7 +33,7 @@ export default async function handler(req, res) {
     // Create email subject and body based on verification status
     let subject, htmlBody;
 
-    if (status === 'approved') {
+    if (status === 'verified') {
       subject = 'Your Astrologer Account Has Been Approved!';
       htmlBody = `
         <h1>Congratulations, ${userName}!</h1>

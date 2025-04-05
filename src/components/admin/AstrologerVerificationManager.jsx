@@ -43,22 +43,22 @@ const AstrologerVerificationManager = () => {
   const [loading, setLoading] = useState(true);
   const [openDialog, setOpenDialog] = useState(false);
   const [selectedAstrologer, setSelectedAstrologer] = useState(null);
-  const [verificationStatus, setVerificationStatus] = useState('approved');
+  const [verificationStatus, setVerificationStatus] = useState('verified');
   const [verificationMessage, setVerificationMessage] = useState('');
   const [tabValue, setTabValue] = useState(0);
-  
+
   useEffect(() => {
     fetchPendingAstrologers();
   }, []);
-  
+
   const fetchPendingAstrologers = async () => {
     try {
       setLoading(true);
-      const astrologersRef = collection(db, 'astrologers');
+      const astrologersRef = collection(db, 'users');
       // Get both pending and rejected to allow re-review
-      const q = query(astrologersRef, where('verificationStatus', 'in', ['pending', 'rejected']));
+      const q = query(astrologersRef, where('roles', 'array-contains', 'astrologer'), where('verificationStatus', 'in', ['pending', 'rejected']));
       const querySnapshot = await getDocs(q);
-      
+
       const astrologersList = [];
       querySnapshot.forEach((doc) => {
         astrologersList.push({
@@ -66,7 +66,7 @@ const AstrologerVerificationManager = () => {
           ...doc.data()
         });
       });
-      
+
       setPendingAstrologers(astrologersList);
     } catch (error) {
       console.error('Error fetching pending astrologers:', error);
@@ -74,75 +74,75 @@ const AstrologerVerificationManager = () => {
       setLoading(false);
     }
   };
-  
+
   const handleOpenDialog = (astrologer) => {
     setSelectedAstrologer(astrologer);
-    setVerificationStatus('approved');
+    setVerificationStatus('verified');
     setVerificationMessage('');
     setTabValue(0);
     setOpenDialog(true);
   };
-  
+
   const handleCloseDialog = () => {
     setOpenDialog(false);
     setSelectedAstrologer(null);
   };
-  
+
   const handleVerificationStatusChange = (event) => {
     setVerificationStatus(event.target.value);
   };
-  
+
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
   };
-  
+
   const handleSaveVerification = async () => {
     if (!selectedAstrologer) return;
-    
+
     try {
-      const astrologerRef = doc(db, 'astrologers', selectedAstrologer.id);
-      
+      const astrologerRef = doc(db, 'users', selectedAstrologer.id);
+
       // Update astrologer document
       await updateDoc(astrologerRef, {
-        verified: verificationStatus === 'approved',
+        verified: verificationStatus === 'verified',
         verificationStatus: verificationStatus,
         verificationMessage: verificationMessage || '',
-        verifiedAt: verificationStatus === 'approved' ? serverTimestamp() : null,
-        verifiedBy: verificationStatus === 'approved' ? currentUser.uid : null,
+        verifiedAt: verificationStatus === 'verified' ? serverTimestamp() : null,
+        verifiedBy: verificationStatus === 'verified' ? currentUser.uid : null,
         updatedAt: serverTimestamp()
       });
-      
+
       // Update user document to add/remove astrologer role
       const userRef = doc(db, 'users', selectedAstrologer.id);
       const userDoc = await getDoc(userRef);
-      
+
       if (userDoc.exists()) {
         const userData = userDoc.data();
         let userRoles = userData.roles || [];
-        
-        if (verificationStatus === 'approved' && !userRoles.includes('astrologer')) {
+
+        if (verificationStatus === 'verified' && !userRoles.includes('astrologer')) {
           userRoles.push('astrologer');
         } else if (verificationStatus === 'rejected' && userRoles.includes('astrologer')) {
           userRoles = userRoles.filter(role => role !== 'astrologer');
         }
-        
+
         await updateDoc(userRef, {
           roles: userRoles,
           updatedAt: serverTimestamp()
         });
       }
-      
+
       // Update local state
       setPendingAstrologers(pendingAstrologers.filter(
         astrologer => astrologer.id !== selectedAstrologer.id
       ));
-      
+
       handleCloseDialog();
     } catch (error) {
       console.error('Error updating verification status:', error);
     }
   };
-  
+
   if (loading) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -150,7 +150,7 @@ const AstrologerVerificationManager = () => {
       </Box>
     );
   }
-  
+
   if (pendingAstrologers.length === 0) {
     return (
       <Card elevation={1} sx={{ p: 3, textAlign: 'center' }}>
@@ -161,7 +161,7 @@ const AstrologerVerificationManager = () => {
       </Card>
     );
   }
-  
+
   return (
     <Box>
       <TableContainer component={Paper} elevation={0}>
@@ -177,7 +177,7 @@ const AstrologerVerificationManager = () => {
           </TableHead>
           <TableBody>
             {pendingAstrologers.map((astrologer) => (
-              <TableRow 
+              <TableRow
                 key={astrologer.id}
                 hover
                 onClick={() => handleOpenDialog(astrologer)}
@@ -185,8 +185,8 @@ const AstrologerVerificationManager = () => {
               >
                 <TableCell>
                   <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar 
-                      src={astrologer.photoURL} 
+                    <Avatar
+                      src={astrologer.photoURL}
                       sx={{ mr: 1, width: 32, height: 32 }}
                     >
                       <PersonIcon fontSize="small" />
@@ -196,12 +196,12 @@ const AstrologerVerificationManager = () => {
                 </TableCell>
                 <TableCell>{astrologer.email}</TableCell>
                 <TableCell>
-                  <Chip 
-                    label={astrologer.verificationStatus || 'Pending'} 
+                  <Chip
+                    label={astrologer.verificationStatus || 'Pending'}
                     color={
-                      astrologer.verificationStatus === 'approved' ? 'success' :
-                      astrologer.verificationStatus === 'rejected' ? 'error' :
-                      'warning'
+                      astrologer.verificationStatus === 'verified' ? 'success' :
+                        astrologer.verificationStatus === 'rejected' ? 'error' :
+                          'warning'
                     }
                     size="small"
                   />
@@ -226,10 +226,10 @@ const AstrologerVerificationManager = () => {
           </TableBody>
         </Table>
       </TableContainer>
-      
+
       {/* Verification Review Dialog */}
-      <Dialog 
-        open={openDialog} 
+      <Dialog
+        open={openDialog}
         onClose={handleCloseDialog}
         maxWidth="md"
         fullWidth
@@ -241,8 +241,8 @@ const AstrologerVerificationManager = () => {
           {selectedAstrologer && (
             <Box>
               <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
-                <Avatar 
-                  src={selectedAstrologer.photoURL} 
+                <Avatar
+                  src={selectedAstrologer.photoURL}
                   sx={{ width: 80, height: 80, mr: 2 }}
                 >
                   <PersonIcon fontSize="large" />
@@ -261,7 +261,7 @@ const AstrologerVerificationManager = () => {
                   )}
                 </Box>
               </Box>
-              
+
               <Tabs
                 value={tabValue}
                 onChange={handleTabChange}
@@ -272,7 +272,7 @@ const AstrologerVerificationManager = () => {
                 <Tab icon={<MonetizationOnIcon />} label="Services & Pricing" />
                 <Tab icon={<DescriptionIcon />} label="Documents" />
               </Tabs>
-              
+
               {tabValue === 0 && (
                 <Box>
                   <Grid container spacing={2}>
@@ -281,7 +281,7 @@ const AstrologerVerificationManager = () => {
                       <Typography variant="body2" sx={{ mb: 2 }}>
                         {selectedAstrologer.experience || 'Not specified'}
                       </Typography>
-                      
+
                       <Typography variant="subtitle2">Languages</Typography>
                       <Typography variant="body2" sx={{ mb: 2 }}>
                         {selectedAstrologer.languages?.join(', ') || 'Not specified'}
@@ -292,7 +292,7 @@ const AstrologerVerificationManager = () => {
                       <Typography variant="body2" sx={{ mb: 2 }}>
                         {selectedAstrologer.specialization || 'Not specified'}
                       </Typography>
-                      
+
                       <Typography variant="subtitle2">Location</Typography>
                       <Typography variant="body2" sx={{ mb: 2 }}>
                         {selectedAstrologer.location || 'Not specified'}
@@ -309,7 +309,7 @@ const AstrologerVerificationManager = () => {
                   </Grid>
                 </Box>
               )}
-              
+
               {tabValue === 1 && (
                 <Box>
                   {selectedAstrologer.services && selectedAstrologer.services.length > 0 ? (
@@ -326,9 +326,9 @@ const AstrologerVerificationManager = () => {
                                 {service.description || 'No description provided'}
                               </Typography>
                               <Box sx={{ mt: 1 }}>
-                                <Chip 
-                                  size="small" 
-                                  label={`Duration: ${service.duration || 'Not specified'}`} 
+                                <Chip
+                                  size="small"
+                                  label={`Duration: ${service.duration || 'Not specified'}`}
                                   sx={{ mr: 1, mb: 1 }}
                                 />
                               </Box>
@@ -344,7 +344,7 @@ const AstrologerVerificationManager = () => {
                   )}
                 </Box>
               )}
-              
+
               {tabValue === 2 && (
                 <Box>
                   {selectedAstrologer.documents && selectedAstrologer.documents.length > 0 ? (
@@ -355,9 +355,9 @@ const AstrologerVerificationManager = () => {
                             <CardContent>
                               <Typography variant="subtitle1">{doc.type || 'Document'}</Typography>
                               {doc.url && (
-                                <Button 
-                                  variant="outlined" 
-                                  href={doc.url} 
+                                <Button
+                                  variant="outlined"
+                                  href={doc.url}
                                   target="_blank"
                                   sx={{ mt: 1 }}
                                 >
@@ -376,11 +376,11 @@ const AstrologerVerificationManager = () => {
                   )}
                 </Box>
               )}
-              
+
               <Divider sx={{ my: 3 }} />
-              
+
               <Typography variant="h6" sx={{ mb: 2 }}>Verification Decision</Typography>
-              
+
               <FormControl fullWidth sx={{ mb: 2 }}>
                 <InputLabel id="verification-status-label">Status</InputLabel>
                 <Select
@@ -394,7 +394,7 @@ const AstrologerVerificationManager = () => {
                   <MenuItem value="pending">Keep Pending</MenuItem>
                 </Select>
               </FormControl>
-              
+
               <TextField
                 label="Message to Astrologer"
                 multiline
@@ -403,15 +403,15 @@ const AstrologerVerificationManager = () => {
                 onChange={(e) => setVerificationMessage(e.target.value)}
                 fullWidth
                 placeholder={
-                  verificationStatus === 'rejected' 
-                    ? 'Please provide a reason for rejection' 
+                  verificationStatus === 'rejected'
+                    ? 'Please provide a reason for rejection'
                     : 'Optional message for the astrologer'
                 }
                 required={verificationStatus === 'rejected'}
                 error={verificationStatus === 'rejected' && !verificationMessage}
                 helperText={
-                  verificationStatus === 'rejected' && !verificationMessage 
-                    ? 'A reason is required when rejecting' 
+                  verificationStatus === 'rejected' && !verificationMessage
+                    ? 'A reason is required when rejecting'
                     : ''
                 }
               />
@@ -420,9 +420,9 @@ const AstrologerVerificationManager = () => {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSaveVerification} 
-            variant="contained" 
+          <Button
+            onClick={handleSaveVerification}
+            variant="contained"
             color="primary"
             disabled={verificationStatus === 'rejected' && !verificationMessage}
           >

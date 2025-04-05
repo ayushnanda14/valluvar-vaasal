@@ -24,10 +24,12 @@ import {
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { collection, getDocs, query, where } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig';
+import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+import { db, storage } from '../firebase/firebaseConfig';
 import FileUploadSection from './FileUploadSection';
 import PaymentSummary from './PaymentSummary';
+import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
+import { SERVICE_TYPES } from '@/utils/constants';
 
 export default function ServicePageLayout({
   title,
@@ -39,7 +41,7 @@ export default function ServicePageLayout({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser, hasRole } = useAuth();
+  const { currentUser } = useAuth();
 
   const [astrologers, setAstrologers] = useState([]);
   const [selectedAstrologers, setSelectedAstrologers] = useState([]);
@@ -56,7 +58,8 @@ export default function ServicePageLayout({
         setLoading(true);
         const astrologersQuery = query(
           collection(db, 'users'),
-          where('roles', 'array-contains', 'astrologer')
+          // where('roles', 'array-contains', 'astrologer'),
+          where('services', 'array-contains', serviceType)
         );
 
         const querySnapshot = await getDocs(astrologersQuery);
@@ -146,6 +149,146 @@ export default function ServicePageLayout({
     // This will be implemented with the payment gateway
     try {
       // Create a new service request in Firestore
+
+      // Create a new service request in Firestore
+      const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), {
+        clientId: currentUser.uid,
+        serviceType: serviceType,
+        astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
+        status: 'pending',
+        totalAmount: calculateTotal(),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp()
+      });
+
+      // Create conversation threads with each selected astrologer
+      for (const astrologer of selectedAstrologers) {
+        const conversationRef = await addDoc(collection(db, 'chats'), {
+          participants: [currentUser.uid, astrologer.id],
+          serviceRequestId: serviceRequestRef.id,
+          serviceType: serviceType,
+          lastMessage: null,
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        // Add initial system message to the conversation
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: `Service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`,
+          timestamp: serverTimestamp(),
+          read: false
+        });
+
+        // Upload file references to the chat
+        // This allows us to:
+        // 1. Associate uploaded documents with specific chats
+        // 2. Support multiple document uploads over time
+        // 3. Keep track of document metadata and access permissions
+
+        // For the initial files uploaded by the client
+        const fileReferences = [];
+
+        // Process main files
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          // Generate appropriate file name based on service type
+          let newFileName;
+          if (serviceType === 'marriageMatching') {
+            newFileName = `Bride_Jathak${files.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
+          } else {
+            newFileName = `Jathak${files.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
+          }
+          
+          // Create a blob with the same content but a new name
+          const renamedFile = new File([file], newFileName, { type: file.type });
+          
+          // Create a reference in Firebase Storage with a path that includes the chat ID
+          const storageRef = ref(storage, `chats/${conversationRef.id}/files/${newFileName}`);
+          
+          // Upload the file to Firebase Storage
+          const uploadTask = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(uploadTask.ref);
+          
+          // Add file metadata to the array
+          fileReferences.push({
+            name: newFileName,
+            originalName: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+            uploadedBy: currentUser.uid,
+            uploadedAt: serverTimestamp()
+          });
+        }
+
+        // Process secondary files if dual upload is enabled
+        if (dualUpload && secondFiles.length > 0) {
+          for (let i = 0; i < secondFiles.length; i++) {
+            const file = secondFiles[i];
+            
+            // For marriage matching, second set is for Groom
+            const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
+            
+            // Create a blob with the same content but a new name
+            const renamedFile = new File([file], newFileName, { type: file.type });
+            
+            const storageRef = ref(storage, `chats/${conversationRef.id}/files/${newFileName}`);
+            const uploadTask = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(uploadTask.ref);
+            
+            fileReferences.push({
+              name: newFileName,
+              originalName: file.name,
+              type: file.type,
+              size: file.size,
+              url: downloadURL,
+              category: dualUploadLabels[1], // Add category to distinguish second set of files
+              uploadedBy: currentUser.uid,
+              uploadedAt: serverTimestamp()
+            });
+          }
+        }
+
+        // Store file references in a subcollection of the chat
+        // This allows for easy querying of files associated with a chat
+        for (const fileRef of fileReferences) {
+          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+        }
+
+        // Add a system message about the uploaded files
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
+          timestamp: serverTimestamp(),
+          read: false,
+          fileReferences: fileReferences.map(f => ({ 
+            name: f.name, 
+            url: f.url,
+            type: f.type
+          }))
+        });
+
+        /* 
+        Future considerations for chat structure:
+        1. We're using a 'chats' collection with subcollections for 'messages' and 'files'
+        2. This structure supports:
+           - Adding more documents throughout the conversation
+           - Tracking which user uploaded which files
+           - Associating files directly with specific chats
+           - Maintaining file metadata for display in the UI
+        3. For the chat UI implementation, we'll need to:
+           - Display files in the chat timeline
+           - Allow downloading/viewing of files
+           - Support uploading new files within an ongoing chat
+           - Show file previews where possible
+        4. Security rules should ensure:
+           - Only participants can access chat files
+           - Files are properly secured in Storage
+           - Metadata doesn't contain sensitive information
+        */
+      }
       // Upload files to Firebase Storage
       // Create conversation threads with selected astrologers
       // Redirect to payment gateway
@@ -414,7 +557,7 @@ export default function ServicePageLayout({
                                     </ListItemAvatar>
                                     <ListItemText
                                       primary={astrologer.displayName}
-                                      secondary={`₹${astrologer.serviceCharges?.[serviceType] || 500}`}
+                                      secondary={`₹${astrologer.serviceCharges?.[serviceType] || 0}`}
                                     />
                                   </ListItem>
                                 ))}
