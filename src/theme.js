@@ -18,8 +18,8 @@ const theme = createTheme({
       paper: '#FFFAF0',   // Floral white for paper elements
     },
     text: {
-      primary: '#3E2723', // Dark brown for text
-      secondary: '#5D4037', // Medium brown for secondary text
+      primary: '#2C1810', // Darker brown for better contrast
+      secondary: '#4A2C1A', // Darker secondary text
     },
     error: { main: '#D32F2F' },
     warning: { main: '#FFA000' }, // Amber warning
@@ -27,74 +27,118 @@ const theme = createTheme({
     success: { main: '#388E3C' },
   },
   typography: {
-    fontFamily: '"Cormorant Garamond", "Playfair Display", "Times New Roman", serif',
+    fontFamily: '"Poppins", "Roboto", "Helvetica", "Arial", sans-serif',
     h1: {
       fontSize: '2.5rem',
-      fontWeight: 600,
-      color: '#3E2723', // Dark brown
-      fontFamily: '"Playfair Display", serif',
+      fontWeight: 700,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
       letterSpacing: '0.5px',
     },
     h2: {
       fontSize: '2rem',
-      fontWeight: 500,
-      color: '#3E2723',
-      fontFamily: '"Playfair Display", serif',
+      fontWeight: 600,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
       letterSpacing: '0.3px',
     },
     h3: {
+      fontSize: '1.75rem',
+      fontWeight: 600,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
+    },
+    h4: {
       fontSize: '1.5rem',
-      fontWeight: 400,
-      color: '#3E2723',
-      fontFamily: '"Playfair Display", serif',
+      fontWeight: 600,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
+    },
+    h5: {
+      fontSize: '1.25rem',
+      fontWeight: 600,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
     },
     h6: {
-      fontFamily: '"Cinzel", "Playfair Display", serif',
-      letterSpacing: '1px',
+      fontSize: '1.1rem',
+      fontWeight: 600,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
+    },
+    subtitle1: {
+      fontSize: '1rem',
+      fontWeight: 500,
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
+    },
+    subtitle2: {
+      fontSize: '0.875rem',
+      fontWeight: 500,
+      color: '#4A2C1A',
+      fontFamily: '"Poppins", sans-serif',
     },
     body1: {
       fontSize: '1rem',
       fontWeight: 400,
-      color: '#5D4037', // Medium brown
-      fontFamily: '"Cormorant Garamond", serif',
+      color: '#2C1810',
+      fontFamily: '"Poppins", sans-serif',
+      lineHeight: 1.5,
     },
-    button: {
-      fontSize: '1rem',
-      fontWeight: 500,
-      textTransform: 'none',
-      fontFamily: '"Cormorant Garamond", serif',
-      letterSpacing: '0.5px',
-    },
-    caption: {
+    body2: {
       fontSize: '0.875rem',
       fontWeight: 400,
-      color: '#795548', // Light brown
-      fontFamily: '"Cormorant Garamond", serif',
-      fontStyle: 'italic',
+      color: '#4A2C1A',
+      fontFamily: '"Poppins", sans-serif',
+      lineHeight: 1.5,
+    },
+    button: {
+      fontSize: '0.875rem',
+      fontWeight: 600,
+      fontFamily: '"Poppins", sans-serif',
+      textTransform: 'none',
+    },
+    caption: {
+      fontSize: '0.75rem',
+      fontWeight: 400,
+      color: '#4A2C1A',
+      fontFamily: '"Poppins", sans-serif',
+    },
+    overline: {
+      fontSize: '0.75rem',
+      fontWeight: 600,
+      color: '#4A2C1A',
+      fontFamily: '"Poppins", sans-serif',
+      textTransform: 'uppercase',
+      letterSpacing: '1px',
     },
   },
   components: {
-    MuiAppBar: {
-      defaultProps: {
-        elevation: 0,
-      },
+    MuiTypography: {
       styleOverrides: {
         root: {
-          backgroundColor: 'rgba(255, 236, 179, 0.85)', // Translucent amber
-          backdropFilter: 'blur(8px)',
+          letterSpacing: '0.2px',
+        },
+      },
+    },
+    MuiListItemText: {
+      styleOverrides: {
+        primary: {
+          fontWeight: 500,
+          fontSize: '1rem',
+        },
+        secondary: {
+          fontWeight: 400,
+          fontSize: '0.875rem',
         },
       },
     },
     MuiButton: {
       styleOverrides: {
         root: {
-          borderRadius: 8,
-        },
-        contained: {
-          boxShadow: 'none',
-          '&:hover': {
-            boxShadow: '0px 2px 4px rgba(0,0,0,0.2)',
-          },
+          borderRadius: '8px',
+          padding: '8px 16px',
+          fontWeight: 600,
         },
       },
     },

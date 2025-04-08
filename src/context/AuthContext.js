@@ -36,8 +36,21 @@ export function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   
   // Function to check if user has a specific role
-  const hasRole = (role) => {
-    return userRoles.includes(role);
+  const hasRole = async (role) => {
+    if (!currentUser) return false;
+    
+    try {
+      const userDoc = await getDoc(doc(db, 'users', currentUser.uid));
+      if (userDoc.exists()) {
+        const userData = userDoc.data();
+        const roles = userData.roles || [];
+        return roles.includes(role);
+      }
+      return false;
+    } catch (error) {
+      console.error('Error checking role:', error);
+      return false;
+    }
   };
   
   // Function to check if user is admin

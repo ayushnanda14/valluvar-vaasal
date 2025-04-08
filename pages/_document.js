@@ -11,6 +11,10 @@ export default class MyDocument extends Document {
         <Head>
           {this.props.emotionStyleTags}
           <link rel="shortcut icon" href="/favicon.ico" />
+          <link
+            href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
+            rel="stylesheet"
+          />
           {/* This is only needed during development */}
           {process.env.NODE_ENV !== 'production' && (
             <script

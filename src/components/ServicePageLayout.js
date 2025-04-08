@@ -189,105 +189,88 @@ export default function ServicePageLayout({
         // For the initial files uploaded by the client
         const fileReferences = [];
 
-        // Process main files
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          // Generate appropriate file name based on service type
-          let newFileName;
-          if (serviceType === 'marriageMatching') {
-            newFileName = `Bride_Jathak${files.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
-          } else {
-            newFileName = `Jathak${files.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
-          }
-          
-          // Create a blob with the same content but a new name
-          const renamedFile = new File([file], newFileName, { type: file.type });
-          
-          // Create a reference in Firebase Storage with a path that includes the chat ID
-          const storageRef = ref(storage, `chats/${conversationRef.id}/files/${newFileName}`);
-          
-          // Upload the file to Firebase Storage
-          const uploadTask = await uploadBytes(storageRef, file);
-          const downloadURL = await getDownloadURL(uploadTask.ref);
-          
-          // Add file metadata to the array
-          fileReferences.push({
-            name: newFileName,
-            originalName: file.name,
-            type: file.type,
-            size: file.size,
-            url: downloadURL,
-            uploadedBy: currentUser.uid,
-            uploadedAt: serverTimestamp()
-          });
-        }
-
-        // Process secondary files if dual upload is enabled
-        if (dualUpload && secondFiles.length > 0) {
-          for (let i = 0; i < secondFiles.length; i++) {
-            const file = secondFiles[i];
+        try {
+          // Process main files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
             
-            // For marriage matching, second set is for Groom
-            const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i+1}` : ''}.${file.name.split('.').pop()}`;
+            // Generate appropriate file name based on service type
+            let newFileName;
+            if (serviceType === 'marriageMatching') {
+              newFileName = `Bride_Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            } else {
+              newFileName = `Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            }
             
-            // Create a blob with the same content but a new name
-            const renamedFile = new File([file], newFileName, { type: file.type });
+            // Create a storage reference with the user's UID in the path for better security
+            const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
             
-            const storageRef = ref(storage, `chats/${conversationRef.id}/files/${newFileName}`);
+            // Upload the file to Firebase Storage
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
             
+            // Add file metadata to the array
             fileReferences.push({
               name: newFileName,
               originalName: file.name,
               type: file.type,
               size: file.size,
               url: downloadURL,
-              category: dualUploadLabels[1], // Add category to distinguish second set of files
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
+
+          // Process secondary files if dual upload is enabled
+          if (dualUpload && secondFiles.length > 0) {
+            for (let i = 0; i < secondFiles.length; i++) {
+              const file = secondFiles[i];
+              
+              // For marriage matching, second set is for Groom
+              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+              
+              // Create a storage reference with the user's UID in the path for better security
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+              
+              const uploadTask = await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(uploadTask.ref);
+              
+              fileReferences.push({
+                name: newFileName,
+                originalName: file.name,
+                type: file.type,
+                size: file.size,
+                url: downloadURL,
+                category: dualUploadLabels[1], // Add category to distinguish second set of files
+                uploadedBy: currentUser.uid,
+                uploadedAt: serverTimestamp()
+              });
+            }
+          }
+
+          // Store file references in a subcollection of the chat
+          // This allows for easy querying of files associated with a chat
+          for (const fileRef of fileReferences) {
+            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+          }
+
+          // Add a system message about the uploaded files
+          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+            senderId: 'system',
+            text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
+            timestamp: serverTimestamp(),
+            read: false,
+            fileReferences: fileReferences.map(f => ({ 
+              name: f.name, 
+              url: f.url,
+              type: f.type
+            }))
+          });
+        } catch (err) {
+          console.error('Error uploading files:', err);
+          setError('There was an error uploading your files. Please try again.');
+          return;
         }
-
-        // Store file references in a subcollection of the chat
-        // This allows for easy querying of files associated with a chat
-        for (const fileRef of fileReferences) {
-          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-        }
-
-        // Add a system message about the uploaded files
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-          senderId: 'system',
-          text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
-          timestamp: serverTimestamp(),
-          read: false,
-          fileReferences: fileReferences.map(f => ({ 
-            name: f.name, 
-            url: f.url,
-            type: f.type
-          }))
-        });
-
-        /* 
-        Future considerations for chat structure:
-        1. We're using a 'chats' collection with subcollections for 'messages' and 'files'
-        2. This structure supports:
-           - Adding more documents throughout the conversation
-           - Tracking which user uploaded which files
-           - Associating files directly with specific chats
-           - Maintaining file metadata for display in the UI
-        3. For the chat UI implementation, we'll need to:
-           - Display files in the chat timeline
-           - Allow downloading/viewing of files
-           - Support uploading new files within an ongoing chat
-           - Show file previews where possible
-        4. Security rules should ensure:
-           - Only participants can access chat files
-           - Files are properly secured in Storage
-           - Metadata doesn't contain sensitive information
-        */
       }
       // Upload files to Firebase Storage
       // Create conversation threads with selected astrologers
@@ -479,103 +462,264 @@ export default function ServicePageLayout({
                       <CircularProgress />
                     </Box>
                   ) : (
-                    <Grid container spacing={3}>
-                      <Grid item xs={12} md={8}>
-                        <Grid container spacing={2}>
-                          {astrologers.map(astrologer => (
-                            <Grid item xs={12} sm={6} md={4} key={astrologer.id}>
-                              <Card
+                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                      <Box
+                        sx={{
+                          flex: { xs: '1 1 100%', md: '1 1 75%' },
+                          minHeight: { md: '500px' }
+                        }}
+                      >
+                        <Paper
+                          elevation={2}
+                          sx={{
+                            p: 3,
+                            borderRadius: '8px',
+                            backgroundColor: theme.palette.background.paper,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column'
+                          }}
+                        >
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              mb: 2,
+                              color: theme.palette.primary.main,
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
+                            Available Astrologers
+                          </Typography>
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              overflowX: 'auto',
+                              gap: 2,
+                              pb: 2,
+                              flex: '1 1 auto',
+                              scrollbarWidth: 'thin',
+                              '&::-webkit-scrollbar': {
+                                height: '8px',
+                              },
+                              '&::-webkit-scrollbar-track': {
+                                background: 'rgba(0,0,0,0.1)',
+                                borderRadius: '4px',
+                              },
+                              '&::-webkit-scrollbar-thumb': {
+                                background: 'rgba(0,0,0,0.2)',
+                                borderRadius: '4px',
+                                '&:hover': {
+                                  background: 'rgba(0,0,0,0.3)',
+                                },
+                              },
+                            }}
+                          >
+                            {astrologers.map(astrologer => (
+                              <Box
+                                key={astrologer.id}
                                 sx={{
-                                  height: '100%',
-                                  border: selectedAstrologers.some(a => a.id === astrologer.id)
-                                    ? `2px solid ${theme.palette.primary.main}`
-                                    : 'none'
+                                  minWidth: { xs: '280px', sm: '320px' },
+                                  flexShrink: 0,
                                 }}
                               >
-                                <CardActionArea
-                                  onClick={() => handleAstrologerSelect(astrologer)}
-                                  sx={{ height: '100%', display: 'flex', flexDirection: 'column', alignItems: 'stretch' }}
+                                <Card
+                                  sx={{
+                                    height: '100%',
+                                    border: selectedAstrologers.some(a => a.id === astrologer.id)
+                                      ? `2px solid ${theme.palette.primary.main}`
+                                      : 'none',
+                                    transition: 'all 0.3s ease',
+                                    '&:hover': {
+                                      transform: 'translateY(-4px)',
+                                      boxShadow: theme.shadows[4],
+                                    }
+                                  }}
                                 >
-                                  <CardMedia
-                                    component="img"
-                                    height="140"
-                                    image={astrologer.photoURL || '/images/default-avatar.png'}
-                                    alt={astrologer.displayName}
-                                  />
-                                  <CardContent sx={{ flexGrow: 1 }}>
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                      <Typography gutterBottom variant="h6" component="div">
-                                        {astrologer.displayName}
+                                  <CardActionArea
+                                    onClick={() => handleAstrologerSelect(astrologer)}
+                                    sx={{ 
+                                      display: 'flex', 
+                                      flexDirection: 'column', 
+                                      alignItems: 'stretch',
+                                      height: '100%',
+                                      padding: 0,
+                                      overflow: 'hidden'
+                                    }}
+                                  >
+                                    <CardMedia
+                                      component="img"
+                                      height="200px"
+                                      image={astrologer.photoURL || '/images/default-avatar.png'}
+                                      alt={astrologer.displayName}
+                                      sx={{ 
+                                        objectFit: 'cover',
+                                        margin: 0,
+                                        display: 'block'
+                                      }}
+                                    />
+                                    <CardContent 
+                                      sx={{ 
+                                        padding: 2, 
+                                        paddingBottom: '16px !important', // Override default padding
+                                        display: 'flex',
+                                        flexDirection: 'column'
+                                      }}
+                                    >
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                        <Typography
+                                          gutterBottom
+                                          variant="h6"
+                                          component="div"
+                                          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                        >
+                                          {astrologer.displayName}
+                                        </Typography>
+                                        <Checkbox
+                                          checked={selectedAstrologers.some(a => a.id === astrologer.id)}
+                                          color="primary"
+                                        />
+                                      </Box>
+                                      <Typography
+                                        variant="body2"
+                                        color="text.secondary"
+                                        sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
+                                      >
+                                        {astrologer.services.map(service => service.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')).join(', ') || 'General Astrology'}
                                       </Typography>
-                                      <Checkbox
-                                        checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                        color="primary"
-                                      />
-                                    </Box>
-                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                      {astrologer.specialization || 'General Astrology'}
-                                    </Typography>
-                                    <Typography variant="body2" color="text.primary" sx={{ fontWeight: 'bold' }}>
-                                      ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                    </Typography>
-                                  </CardContent>
-                                </CardActionArea>
-                              </Card>
-                            </Grid>
-                          ))}
-                        </Grid>
-                      </Grid>
+                                      <Typography
+                                        variant="body2"
+                                        color="text.primary"
+                                        sx={{
+                                          fontWeight: 'bold',
+                                          color: theme.palette.primary.main,
+                                          fontFamily: '"Cormorant Garamond", serif'
+                                        }}
+                                      >
+                                        ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                      </Typography>
+                                    </CardContent>
+                                  </CardActionArea>
+                                </Card>
+                              </Box>
+                            ))}
+                          </Box>
+                        </Paper>
+                      </Box>
 
-                      <Grid item xs={12} md={4}>
+                      <Box
+                        sx={{
+                          flex: { xs: '1 1 100%', md: '1 1 25%' },
+                          minHeight: { md: '500px' }
+                        }}
+                      >
                         <Paper
                           elevation={2}
                           sx={{
                             p: 3,
                             borderRadius: '8px',
                             position: 'sticky',
-                            top: '20px'
+                            top: '20px',
+                            backgroundColor: theme.palette.background.paper,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column'
                           }}
                         >
-                          <Typography variant="h6" sx={{ mb: 2 }}>
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              mb: 2,
+                              color: theme.palette.primary.main,
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
                             Selected Astrologers
                           </Typography>
 
                           {selectedAstrologers.length === 0 ? (
-                            <Typography variant="body2" color="text.secondary">
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{
+                                fontFamily: '"Cormorant Garamond", serif',
+                                flex: '1',
+                                display: 'flex',
+                                alignItems: 'center',
+                                justifyContent: 'center'
+                              }}
+                            >
                               No astrologers selected yet
                             </Typography>
                           ) : (
                             <>
-                              <List>
-                                {selectedAstrologers.map(astrologer => (
-                                  <ListItem key={astrologer.id} disablePadding sx={{ mb: 1 }}>
-                                    <ListItemAvatar>
-                                      <Avatar
-                                        src={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt={astrologer.displayName}
+                              <Box sx={{ flex: '1', overflowY: 'auto' }}>
+                                <List>
+                                  {selectedAstrologers.map(astrologer => (
+                                    <ListItem
+                                      key={astrologer.id}
+                                      disablePadding
+                                      sx={{
+                                        mb: 1,
+                                        p: 1,
+                                        borderRadius: '4px',
+                                        backgroundColor: theme.palette.background.default
+                                      }}
+                                    >
+                                      <ListItemAvatar>
+                                        <Avatar
+                                          src={astrologer.photoURL || '/images/default-avatar.png'}
+                                          alt={astrologer.displayName}
+                                        />
+                                      </ListItemAvatar>
+                                      <ListItemText
+                                        primary={
+                                          <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                            {astrologer.displayName}
+                                          </Typography>
+                                        }
+                                        secondary={
+                                          <Typography
+                                            sx={{
+                                              color: theme.palette.primary.main,
+                                              fontFamily: '"Cormorant Garamond", serif'
+                                            }}
+                                          >
+                                            ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                                          </Typography>
+                                        }
                                       />
-                                    </ListItemAvatar>
-                                    <ListItemText
-                                      primary={astrologer.displayName}
-                                      secondary={`₹${astrologer.serviceCharges?.[serviceType] || 0}`}
-                                    />
-                                  </ListItem>
-                                ))}
-                              </List>
+                                    </ListItem>
+                                  ))}
+                                </List>
+                              </Box>
 
                               <Divider sx={{ my: 2 }} />
 
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography variant="body1">Total:</Typography>
-                                <Typography variant="body1" sx={{ fontWeight: 'bold' }}>
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
+                                  Total:
+                                </Typography>
+                                <Typography
+                                  variant="h6"
+                                  sx={{
+                                    color: theme.palette.primary.main,
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
                                   ₹{calculateTotal()}
                                 </Typography>
                               </Box>
                             </>
                           )}
                         </Paper>
-                      </Grid>
-                    </Grid>
+                      </Box>
+                    </Box>
                   )}
 
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
@@ -628,12 +772,169 @@ export default function ServicePageLayout({
                     Payment
                   </Typography>
 
-                  <PaymentSummary
-                    selectedAstrologers={selectedAstrologers}
-                    serviceType={serviceType}
-                    total={calculateTotal()}
-                    onPaymentComplete={handlePayment}
-                  />
+                  <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                    <Box 
+                      sx={{ 
+                        flex: { xs: '1 1 100%', md: '1 1 75%' },
+                        minHeight: { md: '500px' }
+                      }}
+                    >
+                      <Paper
+                        elevation={2}
+                        sx={{
+                          p: 3,
+                          borderRadius: '8px',
+                          backgroundColor: theme.palette.background.paper,
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            mb: 2,
+                            color: theme.palette.primary.main,
+                            fontFamily: '"Cormorant Garamond", serif'
+                          }}
+                        >
+                          Payment Method
+                        </Typography>
+                        <PaymentSummary
+                          total={calculateTotal()}
+                          onPaymentComplete={handlePayment}
+                        />
+                      </Paper>
+                    </Box>
+
+                    <Box 
+                      sx={{ 
+                        flex: { xs: '1 1 100%', md: '1 1 25%' },
+                        minHeight: { md: '500px' }
+                      }}
+                    >
+                      <Paper
+                        elevation={2}
+                        sx={{
+                          p: 3,
+                          borderRadius: '8px',
+                          position: 'sticky',
+                          top: '20px',
+                          backgroundColor: theme.palette.background.paper,
+                          height: '100%',
+                          display: 'flex',
+                          flexDirection: 'column'
+                        }}
+                      >
+                        <Typography 
+                          variant="h6" 
+                          sx={{ 
+                            mb: 2, 
+                            color: theme.palette.primary.main,
+                            fontFamily: '"Cormorant Garamond", serif'
+                          }}
+                        >
+                          Order Summary
+                        </Typography>
+                        <Box sx={{ flex: '1', overflowY: 'auto' }}>
+                          <List>
+                            {selectedAstrologers.map(astrologer => (
+                              <ListItem 
+                                key={astrologer.id} 
+                                disablePadding 
+                                sx={{ 
+                                  mb: 1,
+                                  p: 1,
+                                  borderRadius: '4px',
+                                  backgroundColor: theme.palette.background.default
+                                }}
+                              >
+                                <ListItemAvatar>
+                                  <Avatar
+                                    src={astrologer.photoURL || '/images/default-avatar.png'}
+                                    alt={astrologer.displayName}
+                                  />
+                                </ListItemAvatar>
+                                <ListItemText
+                                  primary={
+                                    <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                      {astrologer.displayName}
+                                    </Typography>
+                                  }
+                                  secondary={
+                                    <Typography 
+                                      sx={{ 
+                                        color: theme.palette.primary.main,
+                                        fontFamily: '"Cormorant Garamond", serif'
+                                      }}
+                                    >
+                                      ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                                    </Typography>
+                                  }
+                                />
+                              </ListItem>
+                            ))}
+                          </List>
+                        </Box>
+                        <Divider sx={{ my: 2 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold',
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
+                            Subtotal:
+                          </Typography>
+                          <Typography 
+                            variant="body1"
+                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                          >
+                            ₹{calculateTotal()}
+                          </Typography>
+                        </Box>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                          <Typography 
+                            variant="body1" 
+                            sx={{ 
+                              fontWeight: 'bold',
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
+                            GST (18%):
+                          </Typography>
+                          <Typography 
+                            variant="body1"
+                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                          >
+                            ₹{Math.round(calculateTotal() * 0.18)}
+                          </Typography>
+                        </Box>
+                        <Divider sx={{ my: 2 }} />
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                          <Typography 
+                            variant="h6" 
+                            sx={{ 
+                              fontWeight: 'bold',
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
+                            Total:
+                          </Typography>
+                          <Typography 
+                            variant="h5" 
+                            sx={{ 
+                              color: theme.palette.primary.main,
+                              fontFamily: '"Cormorant Garamond", serif'
+                            }}
+                          >
+                            ₹{calculateTotal() + Math.round(calculateTotal() * 0.18)}
+                          </Typography>
+                        </Box>
+                      </Paper>
+                    </Box>
+                  </Box>
 
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                     <Button

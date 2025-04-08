@@ -244,7 +244,7 @@ export default function Messages() {
                                     {SERVICE_TYPES[chat.serviceType] || 'Consultation'}
                                   </Typography>
                                   
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                                     <Typography
                                       noWrap
                                       variant="body2"

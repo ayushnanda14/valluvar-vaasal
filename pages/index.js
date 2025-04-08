@@ -13,16 +13,21 @@ export default function Home() {
   useEffect(() => {
     const redirectToDashboard = async () => {
       if (currentUser) {
-        // Check user roles and redirect accordingly
-        const isAdmin = await hasRole('admin');
-        const isAstrologer = await hasRole('astrologer');
+        try {
+          // Check user roles and redirect accordingly
+          const isAdmin = await hasRole('admin');
+          const isAstrologer = await hasRole('astrologer');
 
-        console.log("ROLES::", currentUser, isAdmin, isAstrologer);
-        if (isAdmin) {
-          router.push('/admin/dashboard');
-        } else if (isAstrologer) {
-          router.push('/astrologer/dashboard');
-        } else {
+          console.log("ROLES::", currentUser, isAdmin, isAstrologer);
+          if (isAdmin) {
+            router.push('/admin/dashboard');
+          } else if (isAstrologer) {
+            router.push('/astrologer/dashboard');
+          } else {
+            router.push('/dashboard');
+          }
+        } catch (error) {
+          console.error('Error checking roles:', error);
           router.push('/dashboard');
         }
       }

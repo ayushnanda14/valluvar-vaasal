@@ -147,11 +147,39 @@ const Testimonials = () => {
           </MotionTypography>
         </MotionBox>
         
-        <Grid container spacing={3}>
+        <Box
+          sx={{
+            display: 'flex',
+            overflowX: 'auto',
+            gap: 3,
+            pb: 2,
+            scrollbarWidth: 'thin',
+            '&::-webkit-scrollbar': {
+              height: '8px',
+            },
+            '&::-webkit-scrollbar-track': {
+              background: 'rgba(0,0,0,0.1)',
+              borderRadius: '4px',
+            },
+            '&::-webkit-scrollbar-thumb': {
+              background: 'rgba(0,0,0,0.2)',
+              borderRadius: '4px',
+              '&:hover': {
+                background: 'rgba(0,0,0,0.3)',
+              },
+            },
+          }}
+        >
           {loading ? (
             // Loading skeletons
             Array.from(new Array(6)).map((_, index) => (
-              <Grid item xs={12} md={6} lg={4} key={`skeleton-${index}`}>
+              <Box
+                key={`skeleton-${index}`}
+                sx={{
+                  minWidth: { xs: '280px', sm: '320px', md: '360px' },
+                  flexShrink: 0,
+                }}
+              >
                 <Card sx={{ height: '100%', boxShadow: '0px 4px 12px rgba(0,0,0,0.05)' }}>
                   <CardContent>
                     <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
@@ -167,12 +195,18 @@ const Testimonials = () => {
                     <Skeleton variant="text" width="60%" />
                   </CardContent>
                 </Card>
-              </Grid>
+              </Box>
             ))
           ) : testimonials.length > 0 ? (
             // Testimonial cards
             testimonials.map((testimonial, index) => (
-              <Grid item xs={12} md={6} lg={4} key={testimonial.id}>
+              <Box
+                key={testimonial.id}
+                sx={{
+                  minWidth: { xs: '280px', sm: '320px', md: '360px' },
+                  flexShrink: 0,
+                }}
+              >
                 <MotionCard
                   initial={{ opacity: 0, y: 20 }}
                   whileInView={{ opacity: 1, y: 0 }}
@@ -262,26 +296,24 @@ const Testimonials = () => {
                     </Typography>
                   </CardContent>
                 </MotionCard>
-              </Grid>
+              </Box>
             ))
           ) : (
             // No testimonials yet
-            <Grid item xs={12}>
-              <Box sx={{ textAlign: 'center', py: 4 }}>
-                <Typography 
-                  variant="body1"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    color: theme.palette.text.secondary,
-                    fontSize: '1.1rem'
-                  }}
-                >
-                  No testimonials available yet. Be the first to share your experience!
-                </Typography>
-              </Box>
-            </Grid>
+            <Box sx={{ textAlign: 'center', py: 4, width: '100%' }}>
+              <Typography 
+                variant="body1"
+                sx={{
+                  fontFamily: '"Cormorant Garamond", serif',
+                  color: theme.palette.text.secondary,
+                  fontSize: '1.1rem'
+                }}
+              >
+                No testimonials available yet. Be the first to share your experience!
+              </Typography>
+            </Box>
           )}
-        </Grid>
+        </Box>
       </Container>
     </Box>
   );

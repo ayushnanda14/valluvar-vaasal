@@ -100,7 +100,7 @@ export default function AstrologerDashboard() {
   // Fetch astrologer data
   useEffect(() => {
     let unsubscribe;
-    
+
     const fetchData = async () => {
       if (!currentUser) return;
 
@@ -110,7 +110,7 @@ export default function AstrologerDashboard() {
         // Use the real-time listener for chats
         unsubscribe = getUserChats(currentUser.uid, (userChats) => {
           setChats(userChats);
-          
+
           if (!userChats) return;
 
           console.log('userChats', userChats);
@@ -118,7 +118,7 @@ export default function AstrologerDashboard() {
           const newChats = userChats?.filter(chat => {
             // Check if the last message was from the other participant and is unread
             return chat.lastMessage &&
-              chat.lastMessage.senderId !== currentUser.uid &&
+              chat.lastMessage.senderId !== currentUser?.uid &&
               !chat.lastMessage.read;
           });
 
@@ -145,7 +145,7 @@ export default function AstrologerDashboard() {
               setLoading(false);
             }
           };
-          
+
           fetchRevenue();
         });
       } catch (error) {
@@ -155,7 +155,7 @@ export default function AstrologerDashboard() {
     };
 
     fetchData();
-    
+
     // Clean up the listener when component unmounts
     return () => {
       if (unsubscribe) {
