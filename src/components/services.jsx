@@ -36,8 +36,8 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
     imagePosition = 'center 20%'; // Lower focus point for desktop
   }
 
-  // Determine image height based on screen size
-  const imageHeight = isDesktop ? 320 : 240; // Taller images on desktop
+  // Fixed image height for all screen sizes
+  const imageHeight = 280;
 
   return (
     <Grid item xs={12} sm={6} md={4}>
@@ -70,7 +70,6 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
               overflow: 'hidden',
               boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
               position: 'relative',
-              maxWidth: isDesktop ? '90%' : '100%', // Narrower cards on desktop
               width: '100%',
               '&:hover': {
                 boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
@@ -82,12 +81,12 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
             <Box sx={{ position: 'relative' }}>
               <CardMedia
                 component="img"
-                height={imageHeight} // Dynamic height based on screen size
+                height={imageHeight}
                 image={imageSrc}
                 alt={title}
                 sx={{
                   objectFit: 'cover',
-                  objectPosition: imagePosition, // Dynamic positioning based on screen size
+                  objectPosition: imagePosition,
                   '&::after': {
                     content: '""',
                     position: 'absolute',
@@ -136,7 +135,11 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
               pt: 4,
               pb: 2,
               px: 3,
-              background: theme.palette.background.paper
+              background: theme.palette.background.paper,
+              display: 'flex',
+              flexDirection: 'column',
+              justifyContent: 'space-between',
+              height: '220px' // Fixed height for content area
             }}>
               <Typography
                 variant="body1"
@@ -144,30 +147,35 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                   mb: 2,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: '1.1rem',
-                  color: theme.palette.secondary.main
+                  color: theme.palette.secondary.main,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: 4,
+                  WebkitBoxOrient: 'vertical'
                 }}
               >
                 {description}
               </Typography>
-              <Link href={destinationUrl || '/'} passHref legacyBehavior>
-                <Button
-                  endIcon={<ArrowForwardIcon />}
-                  sx={{
-                    mt: 2,
-                    textTransform: 'none',
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontWeight: 600,
-                    fontSize: '1rem',
-                    color: theme.palette.primary.main,
-                    '&:hover': {
-                      backgroundColor: 'transparent',
-                      color: theme.palette.primary.dark,
-                    }
-                  }}
-                >
-                  Check out
-                </Button>
-              </Link>
+              <Box sx={{ mt: 'auto' }}>
+                <Link href={destinationUrl || '/'} passHref legacyBehavior>
+                  <Button
+                    endIcon={<ArrowForwardIcon />}
+                    sx={{
+                      textTransform: 'none',
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontWeight: 600,
+                      fontSize: '1rem',
+                      color: theme.palette.primary.main,
+                      '&:hover': {
+                        backgroundColor: 'transparent',
+                        color: theme.palette.primary.dark,
+                      }
+                    }}
+                  >
+                    Check out
+                  </Button>
+                </Link>
+              </Box>
             </CardContent>
           </MotionCard>
         </Box>
