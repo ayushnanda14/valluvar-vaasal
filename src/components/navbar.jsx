@@ -128,7 +128,7 @@ const Navbar = () => {
         <Container maxWidth="lg">
           <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
             {/* Menu Icon for Mobile */}
-            <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
+            {/* <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
               <IconButton
                 size="large"
                 aria-label="navigation menu"
@@ -139,7 +139,7 @@ const Navbar = () => {
               >
                 <MenuIcon />
               </IconButton>
-            </Box>
+            </Box> */}
 
 
 

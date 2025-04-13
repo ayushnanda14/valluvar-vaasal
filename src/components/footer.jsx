@@ -6,7 +6,11 @@ import {
   Grid,
   Divider,
   Link as MuiLink,
-  useTheme
+  useTheme,
+  List,
+  ListItem,
+  ListItemButton,
+  ListItemText
 } from '@mui/material';
 import Link from 'next/link';
 
@@ -67,9 +71,9 @@ const Footer = () => {
           </Grid>
 
           {/* Quick Links */}
-          <Grid item xs={12} sm={6} md={2}>
-            <Typography
-              variant="h6"
+          <Grid item xs={12} sm={4}>
+            <Typography 
+              variant="h6" 
               sx={{
                 fontFamily: '"Cinzel", serif',
                 fontSize: '1.1rem',
@@ -79,43 +83,74 @@ const Footer = () => {
             >
               Quick Links
             </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-              <Link href="/about" passHref legacyBehavior sx={{
-                color: theme.palette.secondary.main,
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: '1rem',
-                textDecoration: 'underline',
-                '&:hover': { color: theme.palette.primary.main }
-
-              }}>
-                About Us
-              </Link>
-              <MuiLink
-                component="button"
-                underline="true"
-                onClick={scrollToServices}
-                sx={{
-                  color: theme.palette.secondary.main,
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1rem',
-                  textAlign: 'left',
-                  '&:hover': { color: theme.palette.primary.main },
-                  textDecoration: 'underline'
-                }}
-              >
-                Services
-              </MuiLink>
-              <Link href="/testimonials" passHref legacyBehavior sx={{
-                color: theme.palette.secondary.main,
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: '1rem',
-                textDecoration: 'underline',
-                '&:hover': { color: theme.palette.primary.main }
-
-              }}>
-                Leave a Feedback
-              </Link>
-            </Box>
+            <List>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  component={Link} 
+                  href="/about" 
+                  sx={{ 
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': { 
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': { 
+                      color: theme.palette.secondary.main 
+                    },
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary="About Us" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  component={MuiLink} 
+                  onClick={scrollToServices} 
+                  sx={{ 
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': { 
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': { 
+                      color: theme.palette.secondary.main 
+                    },
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary="Services" />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton 
+                  component={Link} 
+                  href="/feedback" 
+                  sx={{ 
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': { 
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': { 
+                      color: theme.palette.secondary.main 
+                    },
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary="Leave a Feedback" />
+                </ListItemButton>
+              </ListItem>
+            </List>
           </Grid>
 
           {/* Contact */}

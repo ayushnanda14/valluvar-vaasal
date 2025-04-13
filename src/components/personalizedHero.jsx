@@ -83,68 +83,69 @@ const PersonalizedHero = () => {
   // Fetch recent chats
   useEffect(() => {
     let unsubscribe;
-    
+
     const fetchRecentChats = async () => {
-        if (!currentUser) return;
-        
-        try {
-            setLoading(true);
-            const chatsRef = collection(db, 'chats');
-            const q = query(
-                chatsRef,
-                where('participants', 'array-contains', currentUser.uid),
-                orderBy('updatedAt', 'desc'),
-                limit(3)
-            );
-            
-            // Use onSnapshot for real-time updates
-            unsubscribe = onSnapshot(q, async (querySnapshot) => {
-                const chats = [];
-                
-                for (const dc of querySnapshot.docs) {
-                    const chatData = dc.data();
-                    
-                    // Get other participant details
-                    const otherParticipantId = chatData.participants.find(id => id !== currentUser.uid);
-                    if (otherParticipantId) {
-                        const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
-                        if (userDoc.exists()) {
-                            const userData = userDoc.data();
-                            chatData.otherParticipant = {
-                                id: otherParticipantId,
-                                displayName: userData.displayName || 'User',
-                                photoURL: userData.photoURL || null
-                            };
-                        }
-                    }
-                    
-                    chats.push({
-                        id: dc.id,
-                        ...chatData
-                    });
-                }
-                
-                setRecentChats(chats);
-                setLoading(false);
-            }, (error) => {
-                console.error('Error in recent chats listener:', error);
-                setLoading(false);
+      if (!currentUser) return;
+
+      try {
+        setLoading(true);
+        const chatsRef = collection(db, 'chats');
+        const q = query(
+          chatsRef,
+          where('participants', 'array-contains', currentUser.uid),
+          orderBy('updatedAt', 'desc'),
+          limit(3)
+        );
+
+        // Use onSnapshot for real-time updates
+        unsubscribe = onSnapshot(q, async (querySnapshot) => {
+          const chats = [];
+
+          for (const dc of querySnapshot.docs) {
+            const chatData = dc.data();
+
+            // Get other participant details
+            const otherParticipantId = chatData.participants.find(id => id !== currentUser.uid);
+            if (otherParticipantId) {
+              const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
+              if (userDoc.exists()) {
+                const userData = userDoc.data();
+                chatData.otherParticipant = {
+                  id: otherParticipantId,
+                  displayName: userData.displayName || 'User',
+                  photoURL: userData.photoURL || null
+                };
+              }
+            }
+
+            chats.push({
+              id: dc.id,
+              ...chatData
             });
-        } catch (error) {
-            console.error('Error setting up recent chats listener:', error);
-            setLoading(false);
-        }
+            console.log(chats);
+          }
+
+          setRecentChats(chats);
+          setLoading(false);
+        }, (error) => {
+          console.error('Error in recent chats listener:', error);
+          setLoading(false);
+        });
+      } catch (error) {
+        console.error('Error setting up recent chats listener:', error);
+        setLoading(false);
+      }
     };
-    
+
     fetchRecentChats();
-    
+
     // Clean up listener when component unmounts
     return () => {
-        if (unsubscribe) {
-            unsubscribe();
-        }
+      if (unsubscribe) {
+        unsubscribe();
+      }
     };
-}, [currentUser]);
+  }, [currentUser]);
 
   const openFilePreview = (fileData) => {
     setPreviewFile(fileData);
@@ -158,7 +159,7 @@ const PersonalizedHero = () => {
   return (
     <Box
       sx={{
-        py: { xs: 6, md: 10 },
+        py: { xs: 4, md: 10 },
         background: `linear-gradient(180deg, ${theme.palette.background.default} 20%, ${theme.palette.background.paper} 100%)`,
         position: 'relative',
         overflow: 'hidden',
@@ -178,10 +179,18 @@ const PersonalizedHero = () => {
           backgroundSize: 'cover',
         }}
       />
+
       <Container maxWidth="lg" sx={{ position: 'relative', zIndex: 1 }}>
-        <Grid container spacing={4} alignItems="center">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            alignItems: 'center',
+            gap: { xs: 3, md: 4 }
+          }}
+        >
           {/* Left side: Welcome Message */}
-          <Grid item xs={12} md={7}>
+          <Box sx={{ flex: { xs: '1 1 100%', sm: '3 1 0%' } }}>
             <MotionBox
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
@@ -192,7 +201,7 @@ const PersonalizedHero = () => {
                 component="h1"
                 sx={{
                   fontFamily: '"Playfair Display", serif',
-                  fontSize: { xs: '2.5rem', md: '3.5rem' },
+                  fontSize: { xs: '2rem', sm: '2.2rem', md: '3.5rem' },
                   fontWeight: 700,
                   mb: 2
                 }}
@@ -210,11 +219,11 @@ const PersonalizedHero = () => {
                 variant="h6"
                 sx={{
                   fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: { xs: '1.2rem', md: '1.4rem' },
+                  fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.4rem' },
                   fontWeight: 400,
                   color: theme.palette.text.secondary,
                   mb: 4,
-                  maxWidth: '90%'
+                  maxWidth: '60%'
                 }}
               >
                 {currentUser
@@ -229,10 +238,10 @@ const PersonalizedHero = () => {
                   size="large"
                   onClick={() => router.push('/signup')}
                   sx={{
-                    py: 1.5,
-                    px: 4,
+                    py: { xs: 1, md: 1.5 },
+                    px: { xs: 2, md: 4 },
                     fontFamily: '"Cinzel", serif',
-                    fontSize: '1rem',
+                    fontSize: { xs: '0.875rem', md: '1rem' },
                     fontWeight: 500,
                     textTransform: 'none',
                     boxShadow: '0px 8px 24px rgba(149, 157, 165, 0.2)'
@@ -242,10 +251,10 @@ const PersonalizedHero = () => {
                 </MotionButton>
               )}
             </MotionBox>
-          </Grid>
+          </Box>
 
           {/* Right side: Recent Readings or Testimonials */}
-          <Grid item xs={12} md={5}>
+          <Box sx={{ flex: { xs: '1 1 100%', sm: '2 1 0%' } }}>
             <MotionBox
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -254,7 +263,7 @@ const PersonalizedHero = () => {
                 background: 'rgba(255, 255, 255, 0.8)',
                 backdropFilter: 'blur(10px)',
                 borderRadius: 2,
-                p: 3,
+                p: { xs: 2, md: 3 },
                 boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
               }}
             >
@@ -265,7 +274,8 @@ const PersonalizedHero = () => {
                   fontFamily: '"Cormorant Garamond", serif',
                   fontWeight: 600,
                   color: theme.palette.secondary.dark,
-                  mb: 2
+                  mb: 2,
+                  fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.5rem' }
                 }}
               >
                 {currentUser ? 'Your Readings' : 'Client Testimonials'}
@@ -305,26 +315,42 @@ const PersonalizedHero = () => {
                         router.push(`/messages?chatId=${chat.id}`);
                       }
                     }}>
-                      <CardContent>
-                        <Typography
-                          variant="h6"
-                          sx={{
-                            fontFamily: '"Cormorant Garamond", serif',
-                            fontWeight: 600,
-                            fontSize: '1.2rem',
-                            color: theme.palette.secondary.dark
-                          }}
-                        >
-                          {SERVICE_TYPES[chat.serviceType] || 'Astrology Reading'}
-                        </Typography>
+                      <CardContent sx={{ p: { xs: 1.5, md: 2 } }}>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start' }}>
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              fontFamily: '"Cormorant Garamond", serif',
+                              fontWeight: 600,
+                              fontSize: { xs: '1rem', sm: '1.1rem', md: '1.2rem' },
+                              color: theme.palette.secondary.dark
+                            }}
+                          >
+                            {SERVICE_TYPES[chat.serviceType] || 'Astrology Reading'}
+                          </Typography>
 
-                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
-                          <AccessTimeIcon sx={{ fontSize: '0.9rem', color: theme.palette.text.secondary, mr: 0.5 }} />
                           <Typography
                             variant="body2"
                             sx={{
                               fontFamily: '"Cormorant Garamond", serif',
-                              color: theme.palette.text.secondary
+                              color: theme.palette.primary.main,
+                              fontSize: { xs: '0.75rem', md: '0.875rem' },
+                              fontWeight: 800,
+                              textAlign: 'right'
+                            }}
+                          >
+                            {chat.astrologerName || chat.otherParticipant.displayName || 'Astrologer'}
+                          </Typography>
+                        </Box>
+
+                        <Box sx={{ display: 'flex', alignItems: 'center', mt: 1 }}>
+                          <AccessTimeIcon sx={{ fontSize: { xs: '0.8rem', md: '0.9rem' }, color: theme.palette.text.secondary, mr: 0.5 }} />
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              fontFamily: '"Cormorant Garamond", serif',
+                              color: theme.palette.text.secondary,
+                              fontSize: { xs: '0.75rem', md: '0.875rem' }
                             }}
                           >
                             {formatDate(chat.updatedAt)}
@@ -341,7 +367,8 @@ const PersonalizedHero = () => {
                             textOverflow: 'ellipsis',
                             display: '-webkit-box',
                             WebkitLineClamp: 2,
-                            WebkitBoxOrient: 'vertical'
+                            WebkitBoxOrient: 'vertical',
+                            fontSize: { xs: '0.75rem', md: '0.875rem' }
                           }}
                         >
                           {chat.lastMessage?.text || 'Click to view your reading...'}
@@ -353,13 +380,14 @@ const PersonalizedHero = () => {
               ) : (
                 // No chats yet
                 !loading && currentUser && (
-                  <Box sx={{ textAlign: 'center', py: 4 }}>
-                    <ChatIcon sx={{ fontSize: '3rem', color: 'rgba(0,0,0,0.2)', mb: 2 }} />
+                  <Box sx={{ textAlign: 'center', py: { xs: 2, md: 4 } }}>
+                    <ChatIcon sx={{ fontSize: { xs: '2rem', md: '3rem' }, color: 'rgba(0,0,0,0.2)', mb: 1 }} />
                     <Typography
                       variant="body1"
                       sx={{
                         fontFamily: '"Cormorant Garamond", serif',
-                        color: theme.palette.text.secondary
+                        color: theme.palette.text.secondary,
+                        fontSize: { xs: '0.875rem', md: '1rem' }
                       }}
                     >
                       You haven't had any readings yet.
@@ -367,12 +395,13 @@ const PersonalizedHero = () => {
                     <Button
                       variant="contained"
                       color="primary"
-                      size="medium"
+                      size="small"
                       onClick={scrollToServices}
                       sx={{
-                        mt: 2,
+                        mt: 1,
                         fontFamily: '"Cinzel", serif',
-                        textTransform: 'none'
+                        textTransform: 'none',
+                        fontSize: { xs: '0.75rem', md: '0.875rem' }
                       }}
                     >
                       Start Your First Reading
@@ -386,16 +415,17 @@ const PersonalizedHero = () => {
                   <Button
                     variant="contained"
                     color="primary"
-                    size="medium"
+                    size="small"
                     onClick={scrollToServices}
                     sx={{
                       fontFamily: '"Cinzel", serif',
-                      textTransform: 'none'
+                      textTransform: 'none',
+                      fontSize: { xs: '0.75rem', md: '0.875rem' }
                     }}
                   >
                     New Reading
                   </Button>
-                  <Box sx={{ mt: 2 }}>
+                  <Box sx={{ mt: 1 }}>
                     <Button
                       variant="text"
                       color="secondary"
@@ -403,7 +433,8 @@ const PersonalizedHero = () => {
                       sx={{
                         fontFamily: '"Cormorant Garamond", serif',
                         textTransform: 'none',
-                        fontWeight: 600
+                        fontWeight: 600,
+                        fontSize: { xs: '0.75rem', md: '0.875rem' }
                       }}
                     >
                       See All Chats
@@ -412,9 +443,10 @@ const PersonalizedHero = () => {
                 </Box>
               )}
             </MotionBox>
-          </Grid>
-        </Grid>
+          </Box>
+        </Box>
       </Container>
+
       <FilePreviewModal
         open={modalOpen}
         onClose={closeFilePreview}

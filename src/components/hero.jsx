@@ -4,12 +4,10 @@ import {
   Container, 
   Typography, 
   Button, 
-  Grid, 
   useTheme,
   useMediaQuery
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import Image from 'next/image';
 import Link from 'next/link';
 import ExploreIcon from '@mui/icons-material/Explore';
 import StarIcon from '@mui/icons-material/Star';
@@ -43,9 +41,17 @@ const Hero = () => {
         overflow: 'hidden'
       }}
     >
-        <Grid container spacing={0} alignItems="center">
+      <Container maxWidth="lg">
+        <Box
+          sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', md: 'row' },
+            alignItems: 'center',
+            gap: { xs: 4, md: 6 }
+          }}
+        >
           {/* Text Content - Left Side */}
-          <Container>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 50%' } }}>
             <MotionBox
               initial={{ opacity: 0, x: -50 }}
               animate={{ opacity: 1, x: 0 }}
@@ -134,10 +140,10 @@ const Hero = () => {
                 </Link>
               </Box>
             </MotionBox>
-          </Container>
+          </Box>
           
           {/* Image - Right Side */}
-          <Container>
+          <Box sx={{ flex: { xs: '1 1 100%', md: '1 1 50%' } }}>
             <MotionBox
               initial={{ opacity: 0, scale: 0.9 }}
               animate={{ opacity: 1, scale: 1 }}
@@ -162,8 +168,9 @@ const Hero = () => {
                 }}
               />
             </MotionBox>
-          </Container>
-        </Grid>
+          </Box>
+        </Box>
+      </Container>
     </Box>
   );
 };

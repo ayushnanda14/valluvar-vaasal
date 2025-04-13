@@ -13,6 +13,36 @@ import { useAppCheck } from '../src/hooks/useAppCheck';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 
+// Safe polyfill for crypto.randomUUID()
+if (typeof window !== 'undefined') {
+  const generateUUID = () => {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+      const r = Math.random() * 16 | 0;
+      const v = c === 'x' ? r : (r & 0x3 | 0x8);
+      return v.toString(16);
+    });
+  };
+
+  if (!window.crypto?.randomUUID) {
+    try {
+      // Try to create a new crypto object if it doesn't exist
+      if (!window.crypto) {
+        window.crypto = {};
+      }
+      // Use Object.defineProperty to safely add the method
+      Object.defineProperty(window.crypto, 'randomUUID', {
+        value: generateUUID,
+        writable: false,
+        configurable: false,
+        enumerable: false
+      });
+    } catch (e) {
+      // If we can't modify crypto, create a global function instead
+      window.randomUUID = generateUUID;
+    }
+  }
+}
+
 const clientSideEmotionCache = createEmotionCache();
 
 export default function MyApp(props) {
