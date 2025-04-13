@@ -41,44 +41,67 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
 
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Box sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        height: '100%'
-      }}>
-        <MotionCard
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
-          viewport={{ once: true, margin: "-100px" }}
-          sx={{
-            height: '100%',
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
-            position: 'relative',
-            maxWidth: isDesktop ? '90%' : '100%', // Narrower cards on desktop
-            width: '100%',
-            '&:hover': {
-              boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
-              transform: 'translateY(-5px)',
-              transition: 'all 0.3s ease'
-            }
-          }}
-        >
-          <Box sx={{ position: 'relative' }}>
-            <CardMedia
-              component="img"
-              height={imageHeight} // Dynamic height based on screen size
-              image={imageSrc}
-              alt={title}
-              sx={{
-                objectFit: 'cover',
-                objectPosition: imagePosition, // Dynamic positioning based on screen size
-                '&::after': {
-                  content: '""',
+      <Link href={destinationUrl || '/'} passHref legacyBehavior>
+        <Box sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          height: '100%',
+          cursor: 'pointer',
+          '&:hover': {
+            transform: 'translateY(-7px)',
+            transition: 'all 0.3s ease'
+          },
+          '&:not(:hover)': {
+            transform: 'translateY(0)',
+            transition: 'all 0.4s ease-out'
+          },
+          transition: 'all 0.3s ease'
+        }}>
+          <MotionCard
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
+            sx={{
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
+              position: 'relative',
+              maxWidth: isDesktop ? '90%' : '100%', // Narrower cards on desktop
+              width: '100%',
+              '&:hover': {
+                boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
+                transform: 'translateY(-5px)',
+                transition: 'all 0.3s ease'
+              }
+            }}
+          >
+            <Box sx={{ position: 'relative' }}>
+              <CardMedia
+                component="img"
+                height={imageHeight} // Dynamic height based on screen size
+                image={imageSrc}
+                alt={title}
+                sx={{
+                  objectFit: 'cover',
+                  objectPosition: imagePosition, // Dynamic positioning based on screen size
+                  '&::after': {
+                    content: '""',
+                    position: 'absolute',
+                    bottom: 0,
+                    left: 0,
+                    width: '100%',
+                    height: '40%',
+                    background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
+                    zIndex: 1
+                  }
+                }}
+              />
+              <Box
+                sx={{
                   position: 'absolute',
                   bottom: 0,
                   left: 0,
@@ -86,81 +109,69 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                   height: '40%',
                   background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
                   zIndex: 1
-                }
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '100%',
-                height: '40%',
-                background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
-                zIndex: 1
-              }}
-            />
-            <Typography
-              variant="h5"
-              component="h3"
-              sx={{
-                position: 'absolute',
-                bottom: -10,
-                left: 0,
-                width: '100%',
-                px: 3,
-                fontFamily: '"Cinzel", serif',
-                fontWeight: 600,
-                color: theme.palette.secondary.dark,
-                zIndex: 2,
-                textShadow: '0 1px 2px rgba(255,255,255,0.8)'
-              }}
-            >
-              {title}
-            </Typography>
-          </Box>
-
-          <CardContent sx={{
-            flexGrow: 1,
-            pt: 4,
-            pb: 2,
-            px: 3,
-            background: theme.palette.background.paper
-          }}>
-            <Typography
-              variant="body1"
-              sx={{
-                mb: 2,
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: '1.1rem',
-                color: theme.palette.secondary.main
-              }}
-            >
-              {description}
-            </Typography>
-            {console.log(destinationUrl)}
-            <Link href={destinationUrl || '/'} passHref legacyBehavior>
-              <Button
-                endIcon={<ArrowForwardIcon />}
+                }}
+              />
+              <Typography
+                variant="h5"
+                component="h3"
                 sx={{
-                  mt: 2,
-                  textTransform: 'none',
-                  fontFamily: '"Cormorant Garamond", serif',
+                  position: 'absolute',
+                  bottom: -10,
+                  left: 0,
+                  width: '100%',
+                  px: 3,
+                  fontFamily: '"Cinzel", serif',
                   fontWeight: 600,
-                  fontSize: '1rem',
-                  color: theme.palette.primary.main,
-                  '&:hover': {
-                    backgroundColor: 'transparent',
-                    color: theme.palette.primary.dark,
-                  }
+                  color: theme.palette.secondary.dark,
+                  zIndex: 2,
+                  textShadow: '0 1px 2px rgba(255,255,255,0.8)'
                 }}
               >
-                Learn more
-              </Button>
-            </Link>
-          </CardContent>
-        </MotionCard>
-      </Box>
+                {title}
+              </Typography>
+            </Box>
+
+            <CardContent sx={{
+              flexGrow: 1,
+              pt: 4,
+              pb: 2,
+              px: 3,
+              background: theme.palette.background.paper
+            }}>
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 2,
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontSize: '1.1rem',
+                  color: theme.palette.secondary.main
+                }}
+              >
+                {description}
+              </Typography>
+              <Link href={destinationUrl || '/'} passHref legacyBehavior>
+                <Button
+                  endIcon={<ArrowForwardIcon />}
+                  sx={{
+                    mt: 2,
+                    textTransform: 'none',
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontWeight: 600,
+                    fontSize: '1rem',
+                    color: theme.palette.primary.main,
+                    '&:hover': {
+                      backgroundColor: 'transparent',
+                      color: theme.palette.primary.dark,
+                    }
+                  }}
+                >
+                  Check out
+                </Button>
+              </Link>
+            </CardContent>
+          </MotionCard>
+        </Box>
+      </Link>
     </Grid>
   );
 };
@@ -237,7 +248,7 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid container spacing={4}>
+        <Grid container spacing={2} direction="row" sx={{ flexWrap: 'nowrap' }}>
           {services.map((service, index) => (
             <ServiceCard
               key={index}
