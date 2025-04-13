@@ -106,11 +106,11 @@ export default function ChatBox({ chatId, otherUser }) {
             if (containerWidth) {
                 messagesContainerRef.current.style.minWidth = `${containerWidth}px`;
             }
-            
+
             await sendTextMessage(chatId, currentUser.uid, newMessage);
             setNewMessage('');
             scrollToBottom();
-            
+
             // Reset the min-width after a short delay
             setTimeout(() => {
                 if (messagesContainerRef.current) {
@@ -227,21 +227,21 @@ export default function ChatBox({ chatId, otherUser }) {
 
     return (
         <>
-            <Paper 
-                sx={{ 
-                    height: '70vh', 
-                    display: 'flex', 
+            <Paper
+                sx={{
+                    height: '70vh',
+                    display: 'flex',
                     flexDirection: 'column',
                     width: '100%',  // Ensure full width
                     maxWidth: '100%' // Prevent overflow
                 }}
             >
                 {/* Messages area */}
-                <Box 
-                    ref={messagesContainerRef} 
-                    sx={{ 
-                        flex: 1, 
-                        overflow: 'auto', 
+                <Box
+                    ref={messagesContainerRef}
+                    sx={{
+                        flex: 1,
+                        overflow: 'auto',
                         p: 2,
                         width: '100%', // Ensure full width 
                         transition: 'none' // Prevent transitions that could cause layout shifts
@@ -256,7 +256,6 @@ export default function ChatBox({ chatId, otherUser }) {
                             {messages.map((message) => {
                                 const isCurrentUser = message.senderId === currentUser.uid;
                                 const isSystem = message.senderId === 'system';
-                                console.log('message', message);
 
                                 return (
                                     <ListItem
@@ -394,20 +393,20 @@ export default function ChatBox({ chatId, otherUser }) {
                 </Box>
 
                 {/* Message input */}
-                <Box 
-                    sx={{ 
-                        p: 2, 
+                <Box
+                    sx={{
+                        p: 2,
                         borderTop: '1px solid #e0e0e0',
                         width: '100%' // Ensure full width
                     }}
                 >
-                    <form 
+                    <form
                         onSubmit={handleSendMessage}
                         style={{ width: '100%' }} // Full width form
-                    > 
-                        <Grid 
-                            container 
-                            spacing={1} 
+                    >
+                        <Grid
+                            container
+                            spacing={1}
                             alignItems="center"
                             sx={{ width: '100%' }} // Full width grid
                         >
@@ -428,10 +427,10 @@ export default function ChatBox({ chatId, otherUser }) {
                                     </IconButton>
                                 </Tooltip>
                             </Grid>
-                            <Grid 
-                                item 
-                                xs 
-                                sx={{ 
+                            <Grid
+                                item
+                                xs
+                                sx={{
                                     flex: 1,
                                     minWidth: 0 // Allow the text field to shrink properly
                                 }}

@@ -168,123 +168,133 @@ export default function Messages() {
               </Box>
             </Paper>
           ) : (
-            <Grid container spacing={3}>
-              {/* Chat List - Hide on mobile when a chat is selected */}
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'center',
+              alignItems: 'flex-start',
+              gap: 3,
+              flexDirection: { xs: 'column', md: 'row' }
+            }}>
+              {/* Chat List */}
               {(!isMobile || !selectedChat) && (
-                <Grid item xs={12} md={4} lg={3}>
-                  <Paper 
-                    elevation={1} 
-                    sx={{ 
-                      height: { md: 'calc(100vh - 200px)' }, 
-                      overflow: 'auto',
-                      borderRadius: 2
-                    }}
-                  >
-                    <List sx={{ p: 0 }}>
-                      {chats.map((chat, index) => (
-                        <React.Fragment key={chat.id}>
-                          <ListItem 
-                            button 
-                            selected={selectedChat?.id === chat.id}
-                            onClick={() => handleSelectChat(chat)}
-                            sx={{ 
-                              px: 2, 
-                              py: 2,
-                              bgcolor: selectedChat?.id === chat.id ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
-                              '&:hover': {
-                                bgcolor: selectedChat?.id === chat.id ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)'
-                              }
-                            }}
-                          >
-                            <ListItemAvatar>
-                              <Badge
-                                color="primary"
-                                variant="dot"
-                                invisible={!chat.hasUnread}
-                                overlap="circular"
-                                anchorOrigin={{
-                                  vertical: 'bottom',
-                                  horizontal: 'right',
+                <Paper 
+                  elevation={1} 
+                  sx={{ 
+                    width: { xs: '100%', md: '300px' },
+                    height: { xs: '300px', md: '70vh' },
+                    overflow: 'auto',
+                    borderRadius: 2,
+                    order: { xs: 2, md: 1 }
+                  }}
+                >
+                  <List sx={{ p: 0 }}>
+                    {chats.map((chat, index) => (
+                      <React.Fragment key={chat.id}>
+                        <ListItem 
+                          button 
+                          selected={selectedChat?.id === chat.id}
+                          onClick={() => handleSelectChat(chat)}
+                          sx={{ 
+                            px: 2, 
+                            py: 2,
+                            bgcolor: selectedChat?.id === chat.id ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
+                            '&:hover': {
+                              bgcolor: selectedChat?.id === chat.id ? 'rgba(25, 118, 210, 0.12)' : 'rgba(0, 0, 0, 0.04)'
+                            }
+                          }}
+                        >
+                          <ListItemAvatar>
+                            <Badge
+                              color="primary"
+                              variant="dot"
+                              invisible={!chat.hasUnread}
+                              overlap="circular"
+                              anchorOrigin={{
+                                vertical: 'bottom',
+                                horizontal: 'right',
+                              }}
+                            >
+                              <Avatar 
+                                src={chat.otherParticipant?.photoURL} 
+                                alt={chat.otherParticipant?.displayName}
+                              >
+                                {chat.otherParticipant?.displayName?.[0] || 'A'}
+                              </Avatar>
+                            </Badge>
+                          </ListItemAvatar>
+                          <ListItemText
+                            primary={
+                              <Typography
+                                variant="body1"
+                                sx={{ 
+                                  fontWeight: chat.hasUnread ? 600 : 400,
+                                  fontFamily: '"Cormorant Garamond", serif',
+                                  fontSize: '1.05rem',
+                                  color: 'text.primary'
                                 }}
                               >
-                                <Avatar 
-                                  src={chat.otherParticipant?.photoURL} 
-                                  alt={chat.otherParticipant?.displayName}
-                                >
-                                  {chat.otherParticipant?.displayName?.[0] || 'A'}
-                                </Avatar>
-                              </Badge>
-                            </ListItemAvatar>
-                            <ListItemText
-                              primary={
+                                {chat.otherParticipant?.displayName || 'Astrologer'}
+                              </Typography>
+                            }
+                            secondary={
+                              <Box sx={{ mt: 0.5 }}>
                                 <Typography
-                                  variant="body1"
+                                  variant="caption"
+                                  component="span"
                                   sx={{ 
-                                    fontWeight: chat.hasUnread ? 600 : 400,
-                                    fontFamily: '"Cormorant Garamond", serif',
-                                    fontSize: '1.05rem',
-                                    color: 'text.primary'
+                                    display: 'block',
+                                    fontSize: '0.8rem',
+                                    color: 'primary.main',
+                                    mb: 0.5
                                   }}
                                 >
-                                  {chat.otherParticipant?.displayName || 'Astrologer'}
+                                  {SERVICE_TYPES[chat.serviceType] || 'Consultation'}
                                 </Typography>
-                              }
-                              secondary={
-                                <Box sx={{ mt: 0.5 }}>
+                                
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                                   <Typography
-                                    variant="caption"
+                                    noWrap
+                                    variant="body2"
                                     component="span"
                                     sx={{ 
-                                      display: 'block',
-                                      fontSize: '0.8rem',
-                                      color: 'primary.main',
-                                      mb: 0.5
+                                      maxWidth: '140px',
+                                      overflow: 'hidden',
+                                      textOverflow: 'ellipsis',
+                                      color: chat.hasUnread ? 'text.primary' : 'text.secondary',
+                                      fontSize: '0.85rem',
+                                      fontWeight: chat.hasUnread ? 500 : 400
                                     }}
                                   >
-                                    {SERVICE_TYPES[chat.serviceType] || 'Consultation'}
+                                    {chat.lastMessage?.text || 'No messages yet'}
                                   </Typography>
                                   
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
-                                    <Typography
-                                      noWrap
-                                      variant="body2"
-                                      component="span"
-                                      sx={{ 
-                                        maxWidth: '140px',
-                                        overflow: 'hidden',
-                                        textOverflow: 'ellipsis',
-                                        color: chat.hasUnread ? 'text.primary' : 'text.secondary',
-                                        fontSize: '0.85rem',
-                                        fontWeight: chat.hasUnread ? 500 : 400
-                                      }}
-                                    >
-                                      {chat.lastMessage?.text || 'No messages yet'}
-                                    </Typography>
-                                    
-                                    <Typography
-                                      variant="caption"
-                                      sx={{ 
-                                        fontSize: '0.75rem',
-                                        color: 'text.secondary'
-                                      }}
-                                    >
-                                      {formatChatDate(chat.updatedAt)}
-                                    </Typography>
-                                  </Box>
+                                  <Typography
+                                    variant="caption"
+                                    sx={{ 
+                                      fontSize: '0.75rem',
+                                      color: 'text.secondary'
+                                    }}
+                                  >
+                                    {formatChatDate(chat.updatedAt)}
+                                  </Typography>
                                 </Box>
-                              }
-                            />
-                          </ListItem>
-                          {index < chats.length - 1 && <Divider component="li" />}
-                        </React.Fragment>
-                      ))}
-                    </List>
-                  </Paper>
-                </Grid>
+                              </Box>
+                            }
+                          />
+                        </ListItem>
+                        {index < chats.length - 1 && <Divider component="li" />}
+                      </React.Fragment>
+                    ))}
+                  </List>
+                </Paper>
               )}
               
               {/* Chat View Area */}
-              <Grid item xs={12} md={8} lg={9}>
+              <Box sx={{ 
+                flex: 1,
+                width: { xs: '100%', md: '600px' },
+                order: { xs: 1, md: 2 }
+              }}>
                 {selectedChat ? (
                   <Box>
                     {/* Mobile Back Button */}
@@ -343,7 +353,7 @@ export default function Messages() {
                   !isMobile && (
                     <Box 
                       sx={{ 
-                        height: 'calc(100vh - 200px)',
+                        height: '70vh',
                         display: 'flex',
                         flexDirection: 'column',
                         justifyContent: 'center',
@@ -363,8 +373,8 @@ export default function Messages() {
                     </Box>
                   )
                 )}
-              </Grid>
-            </Grid>
+              </Box>
+            </Box>
           )}
         </Container>
       </Box>

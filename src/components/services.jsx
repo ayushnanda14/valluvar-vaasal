@@ -248,7 +248,7 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid container spacing={2} direction="row" sx={{ flexWrap: 'nowrap' }}>
+        <Grid container spacing={2} direction={{ xs: "column", md: "row" }} sx={{ flexWrap: 'nowrap' }}>
           {services.map((service, index) => (
             <ServiceCard
               key={index}

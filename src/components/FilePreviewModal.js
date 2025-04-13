@@ -34,7 +34,7 @@ export default function FilePreviewModal({ open, onClose, file }) {
       setLoading(true);
       setPageNumber(1);
       setNumPages(null);
-      
+
       // For non-image and non-PDF files, we can set loading to false immediately
       const fileType = file.type || '';
       if (!fileType.startsWith('image/') && fileType !== 'application/pdf') {
@@ -42,7 +42,7 @@ export default function FilePreviewModal({ open, onClose, file }) {
       }
     }
   }, [file]);
-  
+
   // Handle PDF document loading
   const onDocumentLoadSuccess = ({ numPages }) => {
     setNumPages(numPages);
@@ -94,20 +94,20 @@ export default function FilePreviewModal({ open, onClose, file }) {
     if (fileType.startsWith('image/')) {
       return (
         <Box sx={{ textAlign: 'center', pt: 2 }}>
-          <img 
-            src={file.url} 
-            alt={file.name} 
-            style={{ 
-              maxWidth: '100%', 
+          <img
+            src={file.url}
+            alt={file.name}
+            style={{
+              maxWidth: '100%',
               maxHeight: 'calc(80vh - 100px)',
-              objectFit: 'contain' 
-            }} 
+              objectFit: 'contain'
+            }}
             onLoad={handleImageLoad}
           />
         </Box>
       );
     }
-    
+
     // PDF files
     else if (fileType === 'application/pdf') {
       return (
@@ -118,19 +118,19 @@ export default function FilePreviewModal({ open, onClose, file }) {
             loading={<CircularProgress />}
             onError={() => setLoading(false)}
           >
-            <Page 
-              pageNumber={pageNumber} 
+            <Page
+              pageNumber={pageNumber}
               renderTextLayer={false}
               renderAnnotationLayer={false}
               width={Math.min(600, window.innerWidth - 80)}
             />
           </Document>
-          
+
           {!loading && numPages > 1 && (
             <Box sx={{ mt: 2, display: 'flex', justifyContent: 'center', alignItems: 'center', gap: 2 }}>
-              <Button 
-                variant="outlined" 
-                disabled={pageNumber <= 1} 
+              <Button
+                variant="outlined"
+                disabled={pageNumber <= 1}
                 onClick={goToPrevPage}
               >
                 Previous
@@ -138,9 +138,9 @@ export default function FilePreviewModal({ open, onClose, file }) {
               <Typography>
                 Page {pageNumber} of {numPages}
               </Typography>
-              <Button 
-                variant="outlined" 
-                disabled={pageNumber >= numPages} 
+              <Button
+                variant="outlined"
+                disabled={pageNumber >= numPages}
                 onClick={goToNextPage}
               >
                 Next
@@ -150,13 +150,13 @@ export default function FilePreviewModal({ open, onClose, file }) {
         </Box>
       );
     }
-    
+
     // Other files - show icon and download button
     else {
       return (
-        <Box sx={{ 
-          textAlign: 'center', 
-          pt: 4, 
+        <Box sx={{
+          textAlign: 'center',
+          pt: 4,
           pb: 4,
           display: 'flex',
           flexDirection: 'column',
@@ -178,8 +178,8 @@ export default function FilePreviewModal({ open, onClose, file }) {
           <Typography variant="body2" color="text.secondary" sx={{ mb: 3 }}>
             This file type cannot be previewed directly.
           </Typography>
-          <Button 
-            variant="contained" 
+          <Button
+            variant="contained"
             startIcon={<DownloadIcon />}
             onClick={handleDownload}
           >
@@ -204,14 +204,14 @@ export default function FilePreviewModal({ open, onClose, file }) {
         }
       }}
     >
-      <DialogTitle sx={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
+      <DialogTitle sx={{
+        display: 'flex',
+        justifyContent: 'space-between',
         alignItems: 'center',
         borderBottom: '1px solid',
         borderColor: 'divider'
       }}>
-        <Typography variant="h6" sx={{ 
+        <Typography variant="h6" sx={{
           fontFamily: '"Cormorant Garamond", serif',
           fontWeight: 600,
           pr: 4
@@ -219,8 +219,8 @@ export default function FilePreviewModal({ open, onClose, file }) {
           {file.name || 'File Preview'}
         </Typography>
         <Box>
-          <IconButton 
-            edge="end" 
+          <IconButton
+            edge="end"
             color="primary"
             onClick={handleDownload}
             aria-label="download"
@@ -228,8 +228,8 @@ export default function FilePreviewModal({ open, onClose, file }) {
           >
             <DownloadIcon />
           </IconButton>
-          <IconButton 
-            edge="end" 
+          <IconButton
+            edge="end"
             onClick={onClose}
             aria-label="close"
           >
@@ -237,13 +237,13 @@ export default function FilePreviewModal({ open, onClose, file }) {
           </IconButton>
         </Box>
       </DialogTitle>
-      <DialogContent dividers sx={{ p: 0, position: 'relative' }}>
+      <DialogContent dividers sx={{ p: 0, position: 'relative', padding: '2em' }}>
         {loading && (
-          <Box sx={{ 
-            position: 'absolute', 
-            top: '50%', 
-            left: '50%', 
-            transform: 'translate(-50%, -50%)' 
+          <Box sx={{
+            position: 'absolute',
+            top: '50%',
+            left: '50%',
+            transform: 'translate(-50%, -50%)',
           }}>
             <CircularProgress />
           </Box>

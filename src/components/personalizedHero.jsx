@@ -190,18 +190,27 @@ const PersonalizedHero = () => {
           }}
         >
           {/* Left side: Welcome Message */}
-          <Box sx={{ flex: { xs: '1 1 100%', sm: '3 1 0%' } }}>
+          <Box sx={{ 
+            flex: { xs: '1 1 100%', sm: '3 1 0%' },
+            textAlign: { xs: 'center', sm: 'left' }, // Center text on mobile
+            mx: { xs: 'auto', sm: 0 } // Center horizontally on mobile
+          }}>
             <MotionBox
               initial={{ opacity: 0, y: -20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ duration: 0.5 }}
+              sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: { xs: 'center', sm: 'flex-start' } // Center content on mobile
+              }}
             >
               <MotionTypography
                 variant="h2"
                 component="h1"
                 sx={{
                   fontFamily: '"Playfair Display", serif',
-                  fontSize: { xs: '2rem', sm: '2.2rem', md: '3.5rem' },
+                  fontSize: { xs: '2.5rem', sm: '2.2rem', md: '3.5rem' },
                   fontWeight: 700,
                   mb: 2
                 }}
@@ -219,11 +228,11 @@ const PersonalizedHero = () => {
                 variant="h6"
                 sx={{
                   fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: { xs: '1.1rem', sm: '1.2rem', md: '1.4rem' },
+                  fontSize: { xs: '1.2rem', sm: '1.2rem', md: '1.4rem' },
                   fontWeight: 400,
                   color: theme.palette.text.secondary,
                   mb: 4,
-                  maxWidth: '60%'
+                  maxWidth: { xs: '100%', sm: '60%' } // Full width on mobile
                 }}
               >
                 {currentUser
@@ -254,7 +263,11 @@ const PersonalizedHero = () => {
           </Box>
 
           {/* Right side: Recent Readings or Testimonials */}
-          <Box sx={{ flex: { xs: '1 1 100%', sm: '2 1 0%' } }}>
+          <Box sx={{ 
+            flex: { xs: '1 1 100%', sm: '2 1 0%' },
+            width: { xs: '95%', sm: 'auto' },
+            mx: { xs: 'auto', sm: 0 }
+          }}>
             <MotionBox
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}

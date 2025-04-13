@@ -159,7 +159,7 @@ const Navbar = () => {
                     letterSpacing: '1px',
                     color: 'inherit',
                     textDecoration: 'none',
-                    fontSize: { xs: '1.2rem', md: '1.5rem' }
+                    fontSize: { xs: '1.5rem', md: '1.75rem' }
                   }}
                 >
                   Valluvar Vaasal
