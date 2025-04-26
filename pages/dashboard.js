@@ -4,13 +4,16 @@ import Head from 'next/head';
 import PersonalizedHero from '../src/components/personalizedHero';
 import Services from '../src/components/services';
 import Testimonials from '../src/components/testimonials';
+import { useTranslation } from 'react-i18next';
 
 export default function Dashboard() {
+    const { t } = useTranslation('common');
+
     return (
         <>
             <Head>
-                <title>Valluvar Vaasal - Astrology Services</title>
-                <meta name="description" content="Connect with expert astrologers for jathak predictions, marriage matching, and more." />
+                <title>{t('brand')} - {t('dashboard.title')}</title>
+                <meta name="description" content={t('dashboard.description')} />
             </Head>
 
             <Box sx={{

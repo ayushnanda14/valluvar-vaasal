@@ -33,11 +33,13 @@ import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '../src/firebase/firebaseConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function Bookings() {
   const theme = useTheme();
   const router = useRouter();
   const { currentUser, hasRole } = useAuth();
+  const { t } = useTranslation('common');
   
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -61,7 +63,7 @@ export default function Bookings() {
     checkRoles();
   }, [currentUser, hasRole]);
 
-  // Fetch bookings based on user role
+  // Fetch bookings
   useEffect(() => {
     const fetchBookings = async () => {
       if (!currentUser) return;
@@ -70,64 +72,46 @@ export default function Bookings() {
         setLoading(true);
         let bookingsQuery;
         
-        if (isAstrologer) {
-          // Fetch bookings where current user is the astrologer
+        if (isClient) {
+          bookingsQuery = query(
+            collection(db, 'bookings'),
+            where('clientId', '==', currentUser.uid),
+            orderBy('createdAt', 'desc')
+          );
+        } else if (isAstrologer) {
           bookingsQuery = query(
             collection(db, 'bookings'),
             where('astrologerId', '==', currentUser.uid),
             orderBy('createdAt', 'desc')
           );
         } else {
-          // Fetch bookings where current user is the client
-          bookingsQuery = query(
-            collection(db, 'bookings'),
-            where('clientId', '==', currentUser.uid),
-            orderBy('createdAt', 'desc')
-          );
+          return;
         }
         
         const querySnapshot = await getDocs(bookingsQuery);
-        const bookingsList = [];
+        const bookingsData = [];
         
-        // Process bookings
-        for (const bookingDoc of querySnapshot.docs) {
-          const bookingData = bookingDoc.data();
-          let astrologerData = {};
-          let clientData = {};
+        for (const doc of querySnapshot.docs) {
+          const booking = doc.data();
+          booking.id = doc.id;
           
-          // Get astrologer details
-          if (bookingData.astrologerId) {
-            const astrologerDoc = await getDoc(doc(db, 'users', bookingData.astrologerId));
+          // Fetch user details
+          if (isClient) {
+            const astrologerDoc = await getDoc(doc(db, 'users', booking.astrologerId));
             if (astrologerDoc.exists()) {
-              astrologerData = astrologerDoc.data();
+              booking.astrologer = astrologerDoc.data();
             }
-          }
-          
-          // Get client details
-          if (bookingData.clientId) {
-            const clientDoc = await getDoc(doc(db, 'users', bookingData.clientId));
+          } else if (isAstrologer) {
+            const clientDoc = await getDoc(doc(db, 'users', booking.clientId));
             if (clientDoc.exists()) {
-              clientData = clientDoc.data();
+              booking.client = clientDoc.data();
             }
           }
           
-          bookingsList.push({
-            id: bookingDoc.id,
-            ...bookingData,
-            astrologer: {
-              id: bookingData.astrologerId,
-              name: astrologerData.displayName || 'Unknown Astrologer',
-              photoURL: astrologerData.photoURL || null
-            },
-            client: {
-              id: bookingData.clientId,
-              name: clientData.displayName || 'Unknown Client',
-              photoURL: clientData.photoURL || null
-            }
-          });
+          bookingsData.push(booking);
         }
         
-        setBookings(bookingsList);
+        setBookings(bookingsData);
       } catch (error) {
         console.error('Error fetching bookings:', error);
       } finally {
@@ -135,9 +119,7 @@ export default function Bookings() {
       }
     };
     
-    if (isClient || isAstrologer) {
-      fetchBookings();
-    }
+    fetchBookings();
   }, [currentUser, isClient, isAstrologer]);
 
   const handleViewInvoice = (booking) => {
@@ -150,247 +132,146 @@ export default function Bookings() {
     setSelectedBooking(null);
   };
 
-  const handleGoToChat = (chatId) => {
-    router.push(`/chat/${chatId}`);
+  const handleChat = (booking) => {
+    router.push(`/messages?chatId=${booking.chatId}`);
   };
 
-  // Format date with time
-  const formatDateTime = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleString();
-  };
-
-  // Format date only
-  const formatDate = (timestamp) => {
-    if (!timestamp) return 'N/A';
-    const date = timestamp.toDate ? timestamp.toDate() : new Date(timestamp);
-    return date.toLocaleDateString();
-  };
-
-  // Format currency
-  const formatCurrency = (amount) => {
-    return new Intl.NumberFormat('en-IN', {
-      style: 'currency',
-      currency: 'INR',
-      maximumFractionDigits: 0
-    }).format(amount || 0);
-  };
-
-  // Render the client's bookings view
-  const renderClientBookings = () => {
-    return (
-      <TableContainer component={Paper} elevation={0}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Booking Date
+  const renderClientBookings = () => (
+    <TableContainer>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('bookings.astrologer')}</TableCell>
+            <TableCell>{t('bookings.service')}</TableCell>
+            <TableCell>{t('bookings.date')}</TableCell>
+            <TableCell>{t('bookings.status')}</TableCell>
+            <TableCell align="right">{t('bookings.actions')}</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {bookings.map((booking) => (
+            <TableRow key={booking.id}>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar src={booking.astrologer?.photoURL}>
+                    {booking.astrologer?.displayName?.[0]}
+                  </Avatar>
+                  <Typography>{booking.astrologer?.displayName}</Typography>
                 </Box>
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CurrencyRupeeIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Amount
-                </Box>
+              <TableCell>{booking.serviceType}</TableCell>
+              <TableCell>
+                {new Date(booking.date.toDate()).toLocaleDateString()}
               </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {bookings.map((booking) => (
-              <TableRow key={booking.id}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar 
-                      src={booking.astrologer.photoURL} 
-                      sx={{ mr: 1, width: 32, height: 32 }}
-                    >
-                      {!booking.astrologer.photoURL && <PersonIcon />}
-                    </Avatar>
-                    {booking.astrologer.name}
-                  </Box>
-                </TableCell>
-                <TableCell>{booking.service || 'Consultation'}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CalendarTodayIcon color="action" fontSize="small" sx={{ mr: 0.5, opacity: 0.7 }} />
-                    {formatDateTime(booking.createdAt)}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CurrencyRupeeIcon color="action" fontSize="small" sx={{ mr: 0.5, opacity: 0.7 }} />
-                    {formatCurrency(booking.amount).replace('₹', '')}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={booking.status || 'Completed'}
-                    color={
-                      booking.status === 'completed' ? 'success' :
-                      booking.status === 'cancelled' ? 'error' :
-                      booking.status === 'refunded' ? 'warning' :
-                      'primary'
-                    }
+              <TableCell>
+                <Chip
+                  label={booking.status}
+                  color={
+                    booking.status === 'completed' ? 'success' :
+                    booking.status === 'cancelled' ? 'error' :
+                    'warning'
+                  }
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="outlined"
                     size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      startIcon={<ReceiptIcon />}
-                      onClick={() => handleViewInvoice(booking)}
-                    >
-                      Receipt
-                    </Button>
-                    {booking.chatId && (
-                      <Button
-                        variant="contained"
-                        size="small"
-                        startIcon={<ChatIcon />}
-                        onClick={() => handleGoToChat(booking.chatId)}
-                      >
-                        Chat
-                      </Button>
-                    )}
-                  </Box>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  };
-
-  // Render the astrologer's bookings view
-  const renderAstrologerBookings = () => {
-    return (
-      <TableContainer component={Paper} elevation={0}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Booking Date
-                </Box>
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CurrencyRupeeIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Amount
-                </Box>
-              </TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
-              <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {bookings.map((booking) => (
-              <TableRow key={booking.id}>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <Avatar 
-                      src={booking.client.photoURL} 
-                      sx={{ mr: 1, width: 32, height: 32 }}
-                    >
-                      {!booking.client.photoURL && <PersonIcon />}
-                    </Avatar>
-                    {booking.client.name}
-                  </Box>
-                </TableCell>
-                <TableCell>{booking.service || 'Consultation'}</TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CalendarTodayIcon color="action" fontSize="small" sx={{ mr: 0.5, opacity: 0.7 }} />
-                    {formatDateTime(booking.createdAt)}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    <CurrencyRupeeIcon color="action" fontSize="small" sx={{ mr: 0.5, opacity: 0.7 }} />
-                    {formatCurrency(booking.astrologerAmount || booking.amount * 0.8).replace('₹', '')}
-                  </Box>
-                </TableCell>
-                <TableCell>
-                  <Chip 
-                    label={booking.status || 'Completed'}
-                    color={
-                      booking.status === 'completed' ? 'success' :
-                      booking.status === 'cancelled' ? 'error' :
-                      booking.status === 'refunded' ? 'warning' :
-                      'primary'
-                    }
+                    startIcon={<ReceiptIcon />}
+                    onClick={() => handleViewInvoice(booking)}
+                  >
+                    {t('bookings.invoice')}
+                  </Button>
+                  <Button
+                    variant="contained"
                     size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  {booking.chatId && (
-                    <Button
-                      variant="contained"
-                      size="small"
-                      startIcon={<ChatIcon />}
-                      onClick={() => handleGoToChat(booking.chatId)}
-                    >
-                      Chat
-                    </Button>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
-    );
-  };
+                    startIcon={<ChatIcon />}
+                    onClick={() => handleChat(booking)}
+                  >
+                    {t('bookings.chat')}
+                  </Button>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
+
+  const renderAstrologerBookings = () => (
+    <TableContainer>
+      <Table>
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('bookings.client')}</TableCell>
+            <TableCell>{t('bookings.service')}</TableCell>
+            <TableCell>{t('bookings.date')}</TableCell>
+            <TableCell>{t('bookings.status')}</TableCell>
+            <TableCell align="right">{t('bookings.actions')}</TableCell>
+          </TableRow>
+        </TableHead>
+        <TableBody>
+          {bookings.map((booking) => (
+            <TableRow key={booking.id}>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Avatar src={booking.client?.photoURL}>
+                    {booking.client?.displayName?.[0]}
+                  </Avatar>
+                  <Typography>{booking.client?.displayName}</Typography>
+                </Box>
+              </TableCell>
+              <TableCell>{booking.serviceType}</TableCell>
+              <TableCell>
+                {new Date(booking.date.toDate()).toLocaleDateString()}
+              </TableCell>
+              <TableCell>
+                <Chip
+                  label={booking.status}
+                  color={
+                    booking.status === 'completed' ? 'success' :
+                    booking.status === 'cancelled' ? 'error' :
+                    'warning'
+                  }
+                />
+              </TableCell>
+              <TableCell align="right">
+                <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
+                  <Button
+                    variant="outlined"
+                    size="small"
+                    startIcon={<ReceiptIcon />}
+                    onClick={() => handleViewInvoice(booking)}
+                  >
+                    {t('bookings.invoice')}
+                  </Button>
+                  <Button
+                    variant="contained"
+                    size="small"
+                    startIcon={<ChatIcon />}
+                    onClick={() => handleChat(booking)}
+                  >
+                    {t('bookings.chat')}
+                  </Button>
+                </Box>
+              </TableCell>
+            </TableRow>
+          ))}
+        </TableBody>
+      </Table>
+    </TableContainer>
+  );
 
   return (
     <ProtectedRoute>
       <Head>
-        <title>My Bookings | Valluvar Vaasal</title>
-        <meta name="description" content="View your astrology consultation bookings" />
+        <title>{t('brand')} - {t('bookings.title')}</title>
+        <meta name="description" content={t('bookings.description')} />
       </Head>
 
-      <Box sx={{
-        display: 'flex',
-        flexDirection: 'column',
-        minHeight: '100vh'
-      }}>
-        <Box
-          sx={{
-            pt: { xs: 4, md: 6 },
-            pb: { xs: 2, md: 3 },
-            background: 'linear-gradient(135deg, rgba(255,248,225,1) 0%, rgba(255,236,179,0.8) 100%)',
-          }}
-        >
-          <Container maxWidth="lg">
-            <Typography
-              variant="h1"
-              component="h1"
-              sx={{
-                fontFamily: '"Playfair Display", serif',
-                fontWeight: 600,
-                fontSize: { xs: '2rem', md: '2.8rem' },
-                mb: 2,
-                color: theme.palette.secondary.dark
-              }}
-            >
-              My Bookings
-            </Typography>
-          </Container>
-        </Box>
-
+      <Box sx={{ minHeight: '100vh', bgcolor: 'background.default' }}>
         <Container maxWidth="lg" sx={{ py: 4, flex: 1 }}>
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 8 }}>
@@ -399,12 +280,12 @@ export default function Bookings() {
           ) : bookings.length === 0 ? (
             <Paper elevation={0} sx={{ p: 4, textAlign: 'center' }}>
               <Typography variant="h6" gutterBottom>
-                No bookings found
+                {t('bookings.noBookings')}
               </Typography>
               <Typography variant="body1" color="textSecondary">
                 {isClient 
-                  ? "You haven't made any bookings yet. Explore our services to get started!"
-                  : "You don't have any client bookings yet. They will appear here once clients book your services."
+                  ? t('bookings.clientNoBookings')
+                  : t('bookings.astrologerNoBookings')
                 }
               </Typography>
               {isClient && (
@@ -414,7 +295,7 @@ export default function Bookings() {
                   sx={{ mt: 3 }}
                   onClick={() => router.push('/dashboard')}
                 >
-                  Explore Services
+                  {t('bookings.exploreServices')}
                 </Button>
               )}
             </Paper>
@@ -428,8 +309,8 @@ export default function Bookings() {
                 }}
               >
                 {isClient 
-                  ? 'Your Astrology Consultations' 
-                  : 'Your Client Bookings'
+                  ? t('bookings.clientBookings')
+                  : t('bookings.astrologerBookings')
                 }
               </Typography>
               
@@ -441,128 +322,111 @@ export default function Bookings() {
       </Box>
 
       {/* Invoice Dialog */}
-      <Dialog 
-        open={openInvoice} 
+      <Dialog
+        open={openInvoice}
         onClose={handleCloseInvoice}
         maxWidth="md"
         fullWidth
       >
-        <DialogTitle sx={{ 
-          fontFamily: '"Playfair Display", serif',
-          bgcolor: theme.palette.background.default,
-          borderBottom: `1px solid ${theme.palette.divider}`
-        }}>
-          Receipt Details
-        </DialogTitle>
-        <DialogContent sx={{ p: 3, mt: 2 }}>
-          {selectedBooking && (
-            <Box>
-              <Box sx={{ 
-                display: 'flex', 
-                justifyContent: 'space-between', 
-                alignItems: 'flex-start',
-                mb: 3
-              }}>
-                <Typography variant="h6" fontWeight="bold">
-                  Valluvar Vaasal
+        {selectedBooking && (
+          <>
+            <DialogTitle>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                <ReceiptIcon color="primary" />
+                <Typography variant="h6">
+                  {t('bookings.invoice')} #{selectedBooking.id.slice(0, 8)}
                 </Typography>
-                <Box textAlign="right">
-                  <Typography variant="body1" fontWeight="bold">
-                    Receipt #{selectedBooking.id.substring(0, 8).toUpperCase()}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                      <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
-                      Date: {formatDate(selectedBooking.createdAt)}
-                    </Box>
-                  </Typography>
-                </Box>
               </Box>
-              
-              <Divider sx={{ mb: 3 }} />
-              
-              <Grid container spacing={3} sx={{ mb: 4 }}>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Client
-                  </Typography>
-                  <Typography variant="body1">
-                    {selectedBooking.client.name}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    ID: {selectedBooking.clientId.substring(0, 8)}
-                  </Typography>
+            </DialogTitle>
+            <DialogContent>
+              <Grid container spacing={3} sx={{ mt: 1 }}>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      {isClient ? t('bookings.astrologer') : t('bookings.client')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <Avatar 
+                        src={isClient ? selectedBooking.astrologer?.photoURL : selectedBooking.client?.photoURL}
+                      >
+                        {isClient 
+                          ? selectedBooking.astrologer?.displayName?.[0]
+                          : selectedBooking.client?.displayName?.[0]
+                        }
+                      </Avatar>
+                      <Typography>
+                        {isClient 
+                          ? selectedBooking.astrologer?.displayName
+                          : selectedBooking.client?.displayName
+                        }
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Grid>
-                <Grid item xs={12} sm={6}>
-                  <Typography variant="subtitle2" color="textSecondary" gutterBottom>
-                    Astrologer
-                  </Typography>
-                  <Typography variant="body1">
-                    {selectedBooking.astrologer.name}
-                  </Typography>
-                  <Typography variant="body2" color="textSecondary">
-                    ID: {selectedBooking.astrologerId.substring(0, 8)}
-                  </Typography>
+                <Grid item xs={12} md={6}>
+                  <Box sx={{ mb: 3 }}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      {t('bookings.bookingDate')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CalendarTodayIcon fontSize="small" color="action" />
+                      <Typography>
+                        {new Date(selectedBooking.date.toDate()).toLocaleDateString()}
+                      </Typography>
+                    </Box>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      {t('bookings.service')}
+                    </Typography>
+                    <Typography>{selectedBooking.serviceType}</Typography>
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ mb: 2 }}>
+                    <Typography variant="subtitle2" color="textSecondary" gutterBottom>
+                      {t('bookings.status')}
+                    </Typography>
+                    <Chip
+                      label={selectedBooking.status}
+                      color={
+                        selectedBooking.status === 'completed' ? 'success' :
+                        selectedBooking.status === 'cancelled' ? 'error' :
+                        'warning'
+                      }
+                    />
+                  </Box>
+                </Grid>
+                <Grid item xs={12}>
+                  <Divider sx={{ my: 2 }} />
+                </Grid>
+                <Grid item xs={12}>
+                  <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                    <Typography variant="h6">
+                      {t('bookings.total')}
+                    </Typography>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      <CurrencyRupeeIcon color="primary" />
+                      <Typography variant="h6" color="primary">
+                        {selectedBooking.amount}
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Grid>
               </Grid>
-              
-              <TableContainer component={Paper} elevation={0} sx={{ mb: 4 }}>
-                <Table>
-                  <TableHead>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>
-                        <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'flex-end' }}>
-                          <CurrencyRupeeIcon fontSize="small" sx={{ mr: 0.5 }} />
-                          Amount
-                        </Box>
-                      </TableCell>
-                    </TableRow>
-                  </TableHead>
-                  <TableBody>
-                    <TableRow>
-                      <TableCell>{selectedBooking.service || 'Astrological Consultation'}</TableCell>
-                      <TableCell align="right">{formatCurrency(selectedBooking.amount)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell>Platform Fee</TableCell>
-                      <TableCell align="right">{formatCurrency(selectedBooking.platformFee || selectedBooking.amount * 0.2)}</TableCell>
-                    </TableRow>
-                    <TableRow>
-                      <TableCell sx={{ fontWeight: 'bold' }}>Total</TableCell>
-                      <TableCell align="right" sx={{ fontWeight: 'bold' }}>{formatCurrency(selectedBooking.amount)}</TableCell>
-                    </TableRow>
-                  </TableBody>
-                </Table>
-              </TableContainer>
-              
-              <Box sx={{ bgcolor: theme.palette.background.default, p: 2, borderRadius: 1 }}>
-                <Typography variant="subtitle2" gutterBottom>
-                  Payment Information
-                </Typography>
-                <Typography variant="body2">
-                  Payment Method: {selectedBooking.paymentMethod || 'Online Payment'}
-                </Typography>
-                <Typography variant="body2">
-                  Transaction ID: {selectedBooking.transactionId || '-'}
-                </Typography>
-                <Typography variant="body2">
-                  Status: {selectedBooking.paymentStatus || 'Paid'}
-                </Typography>
-              </Box>
-            </Box>
-          )}
-        </DialogContent>
-        <DialogActions>
-          <Button onClick={handleCloseInvoice}>Close</Button>
-          <Button 
-            variant="contained" 
-            startIcon={<ReceiptIcon />}
-            onClick={() => window.print()}
-          >
-            Print Receipt
-          </Button>
-        </DialogActions>
+            </DialogContent>
+            <DialogActions>
+              <Button onClick={handleCloseInvoice}>
+                {t('bookings.close')}
+              </Button>
+            </DialogActions>
+          </>
+        )}
       </Dialog>
     </ProtectedRoute>
   );

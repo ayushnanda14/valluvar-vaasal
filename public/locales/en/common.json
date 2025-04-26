@@ -1,0 +1,166 @@
+{
+  "brand": "Valluvar Vaasal",
+  "meta": {
+    "title": "Authentic Tamil Astrology & Spiritual Guidance",
+    "description": "Explore ancient Tamil astrology with Valluvar Vaasal. Get personalized Jathakam predictions, marriage matching, and spiritual insights."
+  },
+  "navbar": {
+    "home": "Home",
+    "services": "Services",
+    "astrologers": "Astrologers",
+    "testimonials": "Testimonials",
+    "about": "About Us",
+    "dashboard": "Dashboard",
+    "admin": "Admin",
+    "login": "Login",
+    "logout": "Logout",
+    "profile": "Profile",
+    "settings": "Settings",
+    "bookings": "My Bookings",
+    "messages": "My Readings"
+  },
+  "footer": {
+    "description": "Connecting you with ancient Tamil wisdom for modern life.",
+    "quickLinks": "Quick Links",
+    "legal": "Legal",
+    "privacy": "Privacy Policy",
+    "terms": "Terms of Service",
+    "feedback": "Leave a Feedback",
+    "contact": "Contact Us",
+    "copyright": "© 2025 Valluvar Vaasal. All rights reserved."
+  },
+  "auth": {
+    "loginTitle": "Welcome Back",
+    "signupTitle": "Join Valluvar Vaasal",
+    "emailLabel": "Email Address",
+    "passwordLabel": "Password",
+    "loginButton": "Login",
+    "signupButton": "Sign Up",
+    "forgotPassword": "Forgot Password?",
+    "noAccount": "Don't have an account?",
+    "haveAccount": "Already have an account?",
+    "googleSignIn": "Sign in with Google",
+    "orSeparator": "OR",
+    "displayNameLabel": "Full Name",
+    "passwordConfirmLabel": "Confirm Password",
+    "passwordMismatch": "Passwords do not match",
+    "signupSuccess": "Signup successful! Redirecting...",
+    "loginSuccess": "Login successful! Redirecting...",
+    "logoutSuccess": "Logged out successfully.",
+    "error": "Authentication Error: {message}",
+    "signIn": "Sign In",
+    "signOut": "Sign Out"
+  },
+  "dashboard": {
+    "title": "Dashboard",
+    "description": "Your personal astrology dashboard on Valluvar Vaasal.",
+    "welcome": "Welcome, {name}!",
+    "bookReading": "Book a New Reading",
+    "viewAstrologers": "View Astrologers",
+    "recentReadings": "Recent Readings",
+    "noReadings": "No recent readings found.",
+    "viewAllReadings": "View All Readings",
+    "exploreServices": "Explore Our Services"
+  },
+  "language": {
+    "switch": "Switch Language",
+    "code": "en"
+  },
+  "testimonials": {
+    "title": "Testimonials",
+    "description": "Hear from our valued clients about their experiences with Valluvar Vaasal.",
+    "heading": "Journeys Illuminated by Cosmic Insight",
+    "voicesHeading": "Voices of Transformation",
+    "voicesDescription": "Discover how our cosmic guidance has illuminated paths and transformed lives. These are the experiences shared by those who have journeyed with us.",
+    "shareExperience": "Share Your Experience",
+    "testimonial": "Your Testimonial",
+    "name": "Your Name",
+    "service": "Service Used",
+    "rating": "Your Rating",
+    "anonymous": "Submit Anonymously",
+    "review": "Your testimonial will be reviewed before being published.",
+    "submit": "Submit Testimonial",
+    "submitting": "Submitting...",
+    "submitError": "Failed to submit testimonial. Please try again.",
+    "thankYou": "Thank you for sharing your experience!",
+    "noTestimonials": "No testimonials available yet. Be the first to share your experience!"
+  },
+  "bookings": {
+    "title": "My Bookings",
+    "description": "View your past and upcoming astrology bookings.",
+    "astrologer": "Astrologer",
+    "client": "Client",
+    "service": "Service",
+    "date": "Date",
+    "status": "Status",
+    "actions": "Actions",
+    "invoice": "Invoice",
+    "chat": "Chat",
+    "noBookings": "No Bookings Yet",
+    "clientNoBookings": "You haven't booked any readings yet. Explore our services to connect with an astrologer.",
+    "astrologerNoBookings": "You don't have any client bookings yet.",
+    "exploreServices": "Explore Services",
+    "clientBookings": "Your Bookings",
+    "astrologerBookings": "Client Bookings",
+    "bookingDate": "Booking Date",
+    "total": "Total Amount",
+    "close": "Close"
+  },
+  "messages": {
+    "title": "My Readings",
+    "description": "Access your chat history and readings with astrologers.",
+    "fetchError": "Failed to fetch chat history.",
+    "yourReadings": "Your Readings",
+    "noReadings": "No Readings Found",
+    "startReading": "Start your first reading by selecting a service and an astrologer.",
+    "browseServices": "Browse Services",
+    "selectConversation": "Select a Conversation",
+    "conversationPrompt": "Choose a chat from the list to view the messages.",
+    "noMessages": "No messages yet"
+  },
+  "services": {
+    "ourServices": "Our Services",
+    "servicesDescription": "Discover our range of traditional Tamil astrological services, crafted with ancient wisdom to guide your life's journey.",
+    "marriageMatching": {
+      "title": "Marriage Matching",
+      "description": "Our expert astrologers analyze birth charts to determine compatibility between potential life partners, ensuring a harmonious and prosperous union based on ancient Tamil astrological principles."
+    },
+    "jathakPrediction": {
+      "title": "Jathak Prediction",
+      "description": "Discover your life's path through our detailed Jathak predictions. We interpret celestial positions at your birth to reveal insights about career, relationships, health, and spiritual growth."
+    },
+    "jathakWriting": {
+      "title": "Jathak Writing",
+      "description": "Preserve your astrological blueprint with our meticulously crafted Jathak writing service. Our scholars document your birth chart with traditional methods, creating a valuable heirloom for generations."
+    }
+  },
+  "hero": {
+    "title": "Discover Your Cosmic Path Through Ancient Wisdom",
+    "subtitle": "Explore the ancient Tamil art of astrology and spiritual guidance. Our personalized readings connect you with cosmic energies that have guided souls for millennia.",
+    "ctaPrimary": "Explore Our Services",
+    "ctaSecondary": "Discover Our Story",
+    "imageAlt": "Astrology Illustration"
+  },
+  "personalizedHero": {
+    "greeting": "Namaste",
+    "titleGuest": "Discover Your Celestial Path",
+    "subtitleUser": "Connect with our expert astrologers and discover profound insights about your destiny, relationships, and life path.",
+    "subtitleGuest": "Explore authentic Vedic astrology readings, personalized horoscopes, and spiritual guidance from expert astrologers.",
+    "ctaGuest": "Begin Your Journey",
+    "readingsTitle": "Your Readings",
+    "testimonialsTitle": "Client Testimonials",
+    "defaultReadingTitle": "Astrology Reading",
+    "defaultAstrologerName": "Astrologer",
+    "viewReadingPrompt": "Click to view your reading...",
+    "noReadings": "You haven't had any readings yet.",
+    "startReadingButton": "Start Your First Reading",
+    "newReadingButton": "New Reading",
+    "seeAllChatsButton": "See All Chats",
+    "guestPlaceholder": "See what others are saying about their journey."
+  },
+  "date": {
+    "today": "Today",
+    "yesterday": "Yesterday",
+    "daysAgo": "{{count}} days ago"
+  }
+}

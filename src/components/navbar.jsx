@@ -7,8 +7,6 @@ import {
   IconButton,
   Box,
   Container,
-  useTheme,
-  useMediaQuery,
   Avatar,
   Menu,
   MenuItem,
@@ -28,8 +26,13 @@ import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/router';
+import LanguageSwitcher from './LanguageSwitcher';
+import { useTranslation } from 'react-i18next';
+import { useTheme } from '@mui/material/styles';
+import useMediaQuery from '@mui/material/useMediaQuery';
 
 const Navbar = () => {
+  const { t } = useTranslation('common');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const router = useRouter();
@@ -106,7 +109,6 @@ const Navbar = () => {
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
   };
 
-
   return (
     <>
       <Head>
@@ -126,222 +128,214 @@ const Navbar = () => {
         }}
       >
         <Container maxWidth="lg">
-          <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-            {/* Menu Icon for Mobile */}
-            {/* <Box sx={{ display: { xs: 'flex', md: 'none' } }}>
-              <IconButton
-                size="large"
-                aria-label="navigation menu"
-                aria-controls="menu-appbar"
-                aria-haspopup="true"
-                onClick={toggleDrawer(true)}
-                color="inherit"
-              >
-                <MenuIcon />
-              </IconButton>
-            </Box> */}
-
-
-
-            {/* Logo/Brand - Centered */}
-            <Box sx={{
-              display: 'flex',
-              justifyContent: 'center',
-              flexGrow: 1
-            }}>
-              <Link href="/" passHref legacyBehavior>
-                <Typography
-                  variant="h6"
-                  component="a"
-                  sx={{
-                    fontFamily: '"Cinzel", serif',
-                    fontWeight: 600,
-                    letterSpacing: '1px',
-                    color: 'inherit',
-                    textDecoration: 'none',
-                    fontSize: { xs: '1.5rem', md: '1.75rem' }
-                  }}
-                >
-                  Valluvar Vaasal
-                </Typography>
-              </Link>
-            </Box>
-            
-            {/* Auth Button or Profile - Right aligned */}
-            <Box>
-              {currentUser ? (
-                <>
+          {isMobile ? (
+            <>
+              <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', py: 1 }}>
+                <Link href="/" passHref legacyBehavior>
+                  <Typography component="a" variant="h3" sx={{ fontFamily: '"Cinzel", serif', fontWeight: 600, letterSpacing: '1px', textDecoration: 'none', color: 'inherit' }}>
+                    {t('brand')}
+                  </Typography>
+                </Link>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', py: 1 }}>
+                <LanguageSwitcher />
+                {currentUser ? (
                   <IconButton
                     onClick={handleProfileClick}
-                    size="small"
-                    aria-controls={open ? 'profile-menu' : undefined}
-                    aria-haspopup="true"
-                    aria-expanded={open ? 'true' : undefined}
-                    sx={{
-                      ml: 2,
-                      border: `2px solid ${theme.palette.primary.main}`,
-                      padding: '4px'
-                    }}
+                    size='small'
+                    sx={{ border: `2px solid ${theme.palette.primary.main}`, p: '4px' }}
                   >
                     {currentUser.photoURL ? (
-                      <Avatar
-                        src={currentUser.photoURL}
-                        alt={currentUser.displayName || 'User'}
-                        sx={{ width: 32, height: 32 }}
-                      />
+                      <Avatar src={currentUser.photoURL} sx={{ width: 32, height: 32 }} />
                     ) : (
-                      <Avatar
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          bgcolor: theme.palette.primary.main,
-                          color: theme.palette.primary.contrastText,
-                          fontFamily: '"Cinzel", serif',
-                          fontWeight: 500,
-                          fontSize: '0.9rem'
-                        }}
-                      >
+                      <Avatar sx={{ width: 32, height: 32, bgcolor: theme.palette.primary.main, color: theme.palette.primary.contrastText, fontFamily: '"Cinzel", serif', fontWeight: 500, fontSize: '0.9rem' }}>
                         {getUserInitials()}
                       </Avatar>
                     )}
                   </IconButton>
-
-                  {/* Desktop Profile Menu */}
-                  {!isMobile && (
-                    <Menu
-                      id="profile-menu"
-                      anchorEl={anchorEl}
-                      open={open}
-                      onClose={handleClose}
-                      MenuListProps={{
-                        'aria-labelledby': 'profile-button',
-                      }}
-                      PaperProps={{
-                        elevation: 3,
-                        sx: {
-                          mt: 1.5,
-                          borderRadius: '8px',
-                          minWidth: '180px',
-                          overflow: 'visible',
-                          filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))',
-                          '&:before': {
-                            content: '""',
-                            display: 'block',
-                            position: 'absolute',
-                            top: 0,
-                            right: 14,
-                            width: 10,
-                            height: 10,
-                            bgcolor: 'background.paper',
-                            transform: 'translateY(-50%) rotate(45deg)',
-                            zIndex: 0,
-                          },
-                        },
-                      }}
-                      transformOrigin={{ horizontal: 'right', vertical: 'top' }}
-                      anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
-                    >
-                      <Box sx={{ px: 2, py: 1 }}>
-                        <Typography
-                          variant="subtitle1"
-                          sx={{
-                            fontFamily: '"Cinzel", serif',
-                            fontWeight: 500
-                          }}
-                        >
-                          {currentUser.displayName || 'User'}
-                        </Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            color: 'text.secondary',
-                            fontSize: '0.8rem',
-                            mb: 1
-                          }}
-                        >
-                          {currentUser.email}
-                        </Typography>
-                      </Box>
-                      <Divider />
-                      <MenuItem
-                        onClick={() => {
-                          handleClose();
-                          router.push(isAdmin ? '/admin/dashboard' : isAstrologer ? '/dashboard/astrologer' : '/dashboard');
-                        }}
-                        sx={{
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1rem',
-                          py: 1.5
-                        }}
-                      >
-                        Dashboard
-                      </MenuItem>
-                      {/* <MenuItem
-                        onClick={() => {
-                          handleClose();
-                          router.push('/profile');
-                        }}
-                        sx={{
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1rem',
-                          py: 1.5
-                        }}
-                      >
-                        My Profile
-                      </MenuItem> */}
-                      <MenuItem
-                        onClick={() => {
-                          handleClose();
-                          router.push('/bookings');
-                        }}
-                        sx={{
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1rem',
-                          py: 1.5
-                        }}
-                      >
-                        My Bookings
-                      </MenuItem>
-                      <Divider />
-                      <MenuItem
-                        onClick={handleLogout}
-                        sx={{
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1rem',
-                          color: theme.palette.error.main,
-                          py: 1.5
-                        }}
-                      >
-                        Sign Out
-                      </MenuItem>
-                    </Menu>
-                  )}
-                </>
-              ) : (
-                <Link href="/login" passHref legacyBehavior>
-                  <Button
-                    component="a"
-                    variant="contained"
-                    color="primary"
-                    sx={{
-                      py: 1,
-                      px: 3,
-                      fontFamily: '"Cinzel", serif',
-                      fontWeight: 500,
-                      boxShadow: 'none',
-                      letterSpacing: '0.8px',
-                      textTransform: 'none',
-                      '&:hover': {
-                        boxShadow: '0px 2px 4px rgba(0,0,0,0.2)',
-                      }
-                    }}
-                  >
-                    Sign In
-                  </Button>
+                ) : (
+                  <Link href="/login" passHref legacyBehavior>
+                    <Button component="a" variant="contained" color="primary" sx={{ textTransform: 'none', fontFamily: '"Cinzel", serif', fontWeight: 500, px: 3, py: 1 }}>
+                      {t('auth.signIn')}
+                    </Button>
+                  </Link>
+                )}
+              </Box>
+            </>
+          ) : (
+            <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
+              {/* Logo/Brand - Centered */}
+              <Box sx={{ display: 'flex', justifyContent: 'center', flexGrow: 1 }}>
+                <Link href="/" passHref legacyBehavior>
+                  <Typography component="a" variant="h6" sx={{ fontFamily: '"Cinzel", serif', fontWeight: 600, letterSpacing: '1px', color: 'inherit', textDecoration: 'none', fontSize: { xs: '1.5rem', md: '1.75rem' } }}>
+                    {t('brand')}
+                  </Typography>
                 </Link>
-              )}
-            </Box>
-          </Toolbar>
+              </Box>
+              {/* Auth / Profile menu */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                <LanguageSwitcher />
+                {currentUser ? (
+                  <>
+                    <IconButton
+                      onClick={handleProfileClick}
+                      size="small"
+                      aria-controls={open ? 'profile-menu' : undefined}
+                      aria-haspopup="true"
+                      aria-expanded={open ? 'true' : undefined}
+                      sx={{
+                        ml: 2,
+                        border: `2px solid ${theme.palette.primary.main}`,
+                        padding: '4px'
+                      }}
+                    >
+                      {currentUser.photoURL ? (
+                        <Avatar
+                          src={currentUser.photoURL}
+                          alt={currentUser.displayName || 'User'}
+                          sx={{ width: 32, height: 32 }}
+                        />
+                      ) : (
+                        <Avatar
+                          sx={{
+                            width: 32,
+                            height: 32,
+                            bgcolor: theme.palette.primary.main,
+                            color: theme.palette.primary.contrastText,
+                            fontFamily: '"Cinzel", serif',
+                            fontWeight: 500,
+                            fontSize: '0.9rem'
+                          }}
+                        >
+                          {getUserInitials()}
+                        </Avatar>
+                      )}
+                    </IconButton>
+
+                    {/* Desktop Profile Menu */}
+                    {!isMobile && (
+                      <Menu
+                        id="profile-menu"
+                        anchorEl={anchorEl}
+                        open={open}
+                        onClose={handleClose}
+                        MenuListProps={{
+                          'aria-labelledby': 'profile-button',
+                        }}
+                        PaperProps={{
+                          elevation: 3,
+                          sx: {
+                            mt: 1.5,
+                            borderRadius: '8px',
+                            minWidth: '180px',
+                            overflow: 'visible',
+                            filter: 'drop-shadow(0px 2px 8px rgba(0,0,0,0.1))',
+                            '&:before': {
+                              content: '""',
+                              display: 'block',
+                              position: 'absolute',
+                              top: 0,
+                              right: 14,
+                              width: 10,
+                              height: 10,
+                              bgcolor: 'background.paper',
+                              transform: 'translateY(-50%) rotate(45deg)',
+                              zIndex: 0,
+                            },
+                          },
+                        }}
+                        transformOrigin={{ horizontal: 'right', vertical: 'top' }}
+                        anchorOrigin={{ horizontal: 'right', vertical: 'bottom' }}
+                      >
+                        <Box sx={{ px: 2, py: 1 }}>
+                          <Typography
+                            variant="subtitle1"
+                            sx={{
+                              fontFamily: '"Cinzel", serif',
+                              fontWeight: 500
+                            }}
+                          >
+                            {currentUser.displayName || 'User'}
+                          </Typography>
+                          <Typography
+                            variant="body2"
+                            sx={{
+                              color: 'text.secondary',
+                              fontSize: '0.8rem',
+                              mb: 1
+                            }}
+                          >
+                            {currentUser.email}
+                          </Typography>
+                        </Box>
+                        <Divider />
+                        <MenuItem
+                          onClick={() => {
+                            handleClose();
+                            router.push(isAdmin ? '/admin/dashboard' : isAstrologer ? '/dashboard/astrologer' : '/dashboard');
+                          }}
+                          sx={{
+                            fontFamily: '"Cormorant Garamond", serif',
+                            fontSize: '1rem',
+                            py: 1.5
+                          }}
+                        >
+                          {t('navbar.dashboard')}
+                        </MenuItem>
+                        <MenuItem
+                          onClick={() => {
+                            handleClose();
+                            router.push('/bookings');
+                          }}
+                          sx={{
+                            fontFamily: '"Cormorant Garamond", serif',
+                            fontSize: '1rem',
+                            py: 1.5
+                          }}
+                        >
+                          {t('navbar.bookings')}
+                        </MenuItem>
+                        <Divider />
+                        <MenuItem
+                          onClick={handleLogout}
+                          sx={{
+                            fontFamily: '"Cormorant Garamond", serif',
+                            fontSize: '1rem',
+                            color: theme.palette.error.main,
+                            py: 1.5
+                          }}
+                        >
+                          {t('auth.signOut')}
+                        </MenuItem>
+                      </Menu>
+                    )}
+                  </>
+                ) : (
+                  <Link href="/login" passHref legacyBehavior>
+                    <Button
+                      component="a"
+                      variant="contained"
+                      color="primary"
+                      sx={{
+                        py: 1,
+                        px: 3,
+                        fontFamily: '"Cinzel", serif',
+                        fontWeight: 500,
+                        boxShadow: 'none',
+                        letterSpacing: '0.8px',
+                        textTransform: 'none',
+                        '&:hover': {
+                          boxShadow: '0px 2px 4px rgba(0,0,0,0.2)',
+                        }
+                      }}
+                    >
+                      {t('auth.signIn')}
+                    </Button>
+                  </Link>
+                )}
+              </Box>
+            </Toolbar>
+          )}
         </Container>
       </AppBar>
 
@@ -367,7 +361,7 @@ const Navbar = () => {
               fontWeight: 600,
             }}
           >
-            Menu
+            {t('footer.quickLinks')}
           </Typography>
           <IconButton onClick={toggleDrawer(false)}>
             <CloseIcon />
@@ -429,7 +423,7 @@ const Navbar = () => {
               }}>
                 <ListItemIcon><PersonIcon /></ListItemIcon>
                 <ListItemText
-                  primary="My Profile"
+                  primary={t('navbar.profile')}
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem'
@@ -442,7 +436,7 @@ const Navbar = () => {
               }}>
                 <ListItemIcon><AssignmentIcon /></ListItemIcon>
                 <ListItemText
-                  primary="My Bookings"
+                  primary={t('navbar.bookings')}
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem'
@@ -452,7 +446,7 @@ const Navbar = () => {
               <ListItem button onClick={handleLogout}>
                 <ListItemIcon><LogoutIcon /></ListItemIcon>
                 <ListItemText
-                  primary="Sign Out"
+                  primary={t('auth.signOut')}
                   primaryTypographyProps={{
                     fontFamily: '"Cinzel", serif',
                     fontSize: '1.1rem',

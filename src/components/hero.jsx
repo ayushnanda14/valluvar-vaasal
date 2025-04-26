@@ -11,6 +11,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import ExploreIcon from '@mui/icons-material/Explore';
 import StarIcon from '@mui/icons-material/Star';
+import { useTranslation } from 'react-i18next';
 
 // Wrap MUI components with motion
 const MotionBox = motion(Box);
@@ -20,6 +21,7 @@ const MotionButton = motion(Button);
 const Hero = () => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const { t } = useTranslation('common');
   
   // Function to handle smooth scroll to services section
   const scrollToServices = () => {
@@ -69,7 +71,7 @@ const Hero = () => {
                   lineHeight: 1.2
                 }}
               >
-                Discover Your Cosmic Path Through Ancient Wisdom
+                {t('hero.title')}
               </MotionTypography>
               
               <MotionTypography 
@@ -83,9 +85,7 @@ const Hero = () => {
                   maxWidth: '90%'
                 }}
               >
-                Explore the ancient Tamil art of astrology and spiritual guidance. 
-                Our personalized readings connect you with cosmic energies that 
-                have guided souls for millennia.
+                {t('hero.subtitle')}
               </MotionTypography>
               
               <Box sx={{ display: 'flex', gap: 2, flexWrap: { xs: 'wrap', sm: 'nowrap' } }}>
@@ -112,7 +112,7 @@ const Hero = () => {
                     }
                   }}
                 >
-                  Explore Our Services
+                  {t('hero.ctaPrimary')}
                 </MotionButton>
                 
                 <Link href="/about" passHref legacyBehavior>
@@ -135,7 +135,7 @@ const Hero = () => {
                       textTransform: 'none'
                     }}
                   >
-                    Discover Our Story
+                    {t('hero.ctaSecondary')}
                   </MotionButton>
                 </Link>
               </Box>
@@ -159,7 +159,7 @@ const Hero = () => {
               <Box
                 component="img"
                 src="/images/astrology-illustration.png" 
-                alt="Astrology Illustration"
+                alt={t('hero.imageAlt')}
                 sx={{
                   maxWidth: '100%',
                   maxHeight: '100%',
@@ -170,7 +170,7 @@ const Hero = () => {
             </MotionBox>
           </Box>
         </Box>
-      </Container>
+          </Container>
     </Box>
   );
 };

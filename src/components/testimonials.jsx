@@ -15,6 +15,7 @@ import { motion } from 'framer-motion';
 import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
+import { useTranslation } from 'react-i18next';
 
 // Wrap MUI components with motion
 const MotionBox = motion(Box);
@@ -25,6 +26,7 @@ const Testimonials = () => {
   const theme = useTheme();
   const [testimonials, setTestimonials] = useState([]);
   const [loading, setLoading] = useState(true);
+  const { t } = useTranslation('common');
   
   useEffect(() => {
     let unsubscribe;
@@ -106,6 +108,7 @@ const Testimonials = () => {
     <Box 
       id="testimonials-section"
       sx={{
+        cursor: 'pointer',
         py: { xs: 6, md: 10 },
         background: 'linear-gradient(180deg, rgba(255,248,225,0.5) 0%, rgba(255,255,255,1) 100%)'
       }}
@@ -129,7 +132,7 @@ const Testimonials = () => {
               color: theme.palette.secondary.dark
             }}
           >
-            Voices of Transformation
+            {t('testimonials.voicesHeading')}
           </MotionTypography>
           
           <MotionTypography 
@@ -142,8 +145,7 @@ const Testimonials = () => {
               mx: 'auto'
             }}
           >
-            Discover how our cosmic guidance has illuminated paths and transformed lives.
-            These are the experiences shared by those who have journeyed with us.
+            {t('testimonials.voicesDescription')}
           </MotionTypography>
         </MotionBox>
         
@@ -301,17 +303,17 @@ const Testimonials = () => {
           ) : (
             // No testimonials yet
             <Box sx={{ textAlign: 'center', py: 4, width: '100%' }}>
-              <Typography 
-                variant="body1"
-                sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  color: theme.palette.text.secondary,
-                  fontSize: '1.1rem'
-                }}
-              >
-                No testimonials available yet. Be the first to share your experience!
-              </Typography>
-            </Box>
+                <Typography 
+                  variant="body1"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    color: theme.palette.text.secondary,
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  {t('testimonials.noTestimonials')}
+                </Typography>
+              </Box>
           )}
         </Box>
       </Container>

@@ -22,10 +22,12 @@ import Testimonials from '../src/components/testimonials';
 import { useAuth } from '../src/context/AuthContext';
 import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
 import { db } from '../src/firebase/firebaseConfig';
+import { useTranslation } from 'react-i18next';
 
 export default function TestimonialsPage() {
     const theme = useTheme();
     const { currentUser } = useAuth();
+    const { t } = useTranslation('common');
 
     const [testimonialText, setTestimonialText] = useState('');
     const [name, setName] = useState('');
@@ -43,52 +45,31 @@ export default function TestimonialsPage() {
         'Jathak Writing',
     ];
 
-    const handleSubmitTestimonial = async (e) => {
+    const handleSubmit = async (e) => {
         e.preventDefault();
-
-        // if (!currentUser) {
-        //   setError('You must be logged in to submit a testimonial');
-        //   return;
-        // }
-
-        if (!name.trim()) {
-            setError('Please enter your name');
-            return;
-        }
-
-        if (!testimonialText.trim()) {
-            setError('Please enter your testimonial');
-            return;
-        }
-
-        if (!service) {
-            setError('Please select the service you received');
-            return;
-        }
+        setSubmitting(true);
+        setError('');
 
         try {
-            setSubmitting(true);
-            setError('');
-
-            await addDoc(collection(db, 'testimonials'), {
-                userId: currentUser ? currentUser.uid : 'anonymous',
-                name: isAnonymous ? 'Anonymous' : name,
-                text: testimonialText.trim(),
-                service: service,
+            const testimonialData = {
+                text: testimonialText,
+                name: isAnonymous ? 'Anonymous' : (name || currentUser?.displayName),
+                service,
                 rating,
-                isAnonymous,
-                approved: false, // Testimonials need approval before being displayed
-                createdAt: serverTimestamp()
-            });
+                timestamp: serverTimestamp(),
+                userId: currentUser?.uid || null
+            };
 
+            await addDoc(collection(db, 'testimonials'), testimonialData);
+            setSuccess(true);
             setTestimonialText('');
+            setName('');
             setService('');
             setRating(5);
             setIsAnonymous(false);
-            setSuccess(true);
         } catch (err) {
             console.error('Error submitting testimonial:', err);
-            setError('Failed to submit testimonial. Please try again later.');
+            setError(t('testimonials.submitError'));
         } finally {
             setSubmitting(false);
         }
@@ -97,8 +78,8 @@ export default function TestimonialsPage() {
     return (
         <>
             <Head>
-                <title>Testimonials | Valluvar Vaasal</title>
-                <meta name="description" content="Read testimonials from clients who have experienced our cosmic guidance and spiritual services. Share your own journey with us." />
+                <title>{t('brand')} - {t('testimonials.title')}</title>
+                <meta name="description" content={t('testimonials.description')} />
             </Head>
 
             <Box sx={{
@@ -126,7 +107,7 @@ export default function TestimonialsPage() {
                                 textAlign: 'center'
                             }}
                         >
-                            Client Testimonials
+                            {t('testimonials.heading')}
                         </Typography>
 
                         <Typography
@@ -170,7 +151,7 @@ export default function TestimonialsPage() {
                                 textAlign: 'center'
                             }}
                         >
-                            Share Your Experience
+                            {t('testimonials.shareExperience')}
                         </Typography>
 
                         <Paper
@@ -178,41 +159,31 @@ export default function TestimonialsPage() {
                             sx={{
                                 p: { xs: 3, md: 4 },
                                 borderRadius: 2,
-                                boxShadow: '0px 4px 20px rgba(0,0,0,0.05)',
-                                backgroundColor: 'rgba(255, 255, 255, 0.9)'
+                                background: 'rgba(255, 255, 255, 0.9)',
+                                backdropFilter: 'blur(10px)'
                             }}
                         >
-                            <form onSubmit={handleSubmitTestimonial}>
-                                {error && (
-                                    <Alert severity="error" sx={{ mb: 3 }}>
-                                        {error}
-                                    </Alert>
-                                )}
-
-                                <Box sx={{ mb: 3 }}>
-                                    <Typography
-                                        variant="body1"
-                                        sx={{
-                                            fontFamily: '"Cormorant Garamond", serif',
-                                            fontWeight: 600,
-                                            mb: 1
-                                        }}
-                                    >
-                                        Your Rating
-                                    </Typography>
-                                    <Rating
-                                        name="testimonial-rating"
-                                        value={rating}
-                                        onChange={(event, newValue) => {
-                                            setRating(newValue);
-                                        }}
-                                        size="large"
-                                        sx={{ color: theme.palette.primary.main }}
-                                    />
-                                </Box>
+                            <form onSubmit={handleSubmit}>
+                                <TextField
+                                    label={t('testimonials.testimonial')}
+                                    variant="outlined"
+                                    fullWidth
+                                    multiline
+                                    rows={4}
+                                    value={testimonialText}
+                                    onChange={(e) => setTestimonialText(e.target.value)}
+                                    sx={{ mb: 3 }}
+                                    InputProps={{
+                                        sx: { fontFamily: '"Cormorant Garamond", serif' }
+                                    }}
+                                    InputLabelProps={{
+                                        sx: { fontFamily: '"Cormorant Garamond", serif' }
+                                    }}
+                                    required
+                                />
 
                                 {!currentUser && <TextField
-                                    label="Enter your name"
+                                    label={t('testimonials.name')}
                                     variant="outlined"
                                     fullWidth
                                     value={name}
@@ -237,14 +208,14 @@ export default function TestimonialsPage() {
                                         id="service-select-label"
                                         sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                     >
-                                        Which service did you receive?
+                                        {t('testimonials.service')}
                                     </InputLabel>
                                     <Select
                                         labelId="service-select-label"
                                         id="service-select"
                                         value={service}
                                         onChange={(e) => setService(e.target.value)}
-                                        label="Which service did you receive?"
+                                        label={t('testimonials.service')}
                                         sx={{
                                             fontFamily: '"Cormorant Garamond", serif',
                                             '& .MuiSelect-select': {
@@ -264,23 +235,23 @@ export default function TestimonialsPage() {
                                     </Select>
                                 </FormControl>
 
-                                <TextField
-                                    label="Share your experience"
-                                    variant="outlined"
-                                    fullWidth
-                                    multiline
-                                    rows={4}
-                                    value={testimonialText}
-                                    onChange={(e) => setTestimonialText(e.target.value)}
-                                    sx={{ mb: 3 }}
-                                    InputProps={{
-                                        sx: { fontFamily: '"Cormorant Garamond", serif' }
-                                    }}
-                                    InputLabelProps={{
-                                        sx: { fontFamily: '"Cormorant Garamond", serif' }
-                                    }}
-                                    required
-                                />
+                                <Box sx={{ mb: 3 }}>
+                                    <Typography
+                                        variant="body2"
+                                        sx={{
+                                            fontFamily: '"Cormorant Garamond", serif',
+                                            mb: 1
+                                        }}
+                                    >
+                                        {t('testimonials.rating')}
+                                    </Typography>
+                                    <Rating
+                                        value={rating}
+                                        onChange={(e, newValue) => setRating(newValue)}
+                                        precision={0.5}
+                                        size="large"
+                                    />
+                                </Box>
 
                                 {currentUser && <FormControlLabel
                                     control={
@@ -298,7 +269,7 @@ export default function TestimonialsPage() {
                                                 fontSize: '1rem'
                                             }}
                                         >
-                                            Submit anonymously (your name will not be displayed)
+                                            {t('testimonials.anonymous')}
                                         </Typography>
                                     }
                                     sx={{ mb: 3 }}
@@ -313,7 +284,7 @@ export default function TestimonialsPage() {
                                         fontSize: '0.9rem'
                                     }}
                                 >
-                                    Your testimonial will be reviewed before being published. We appreciate your honest feedback!
+                                    {t('testimonials.review')}
                                 </Typography>
 
                                 <Button
@@ -332,7 +303,7 @@ export default function TestimonialsPage() {
                                         color: '#FFF8E1',
                                     }}
                                 >
-                                    {submitting ? 'Submitting...' : 'Submit Testimonial'}
+                                    {submitting ? t('testimonials.submitting') : t('testimonials.submit')}
                                 </Button>
                             </form>
                         </Paper>
@@ -350,7 +321,7 @@ export default function TestimonialsPage() {
                     severity="success"
                     sx={{ width: '100%' }}
                 >
-                    Thank you for sharing your experience! Your testimonial has been submitted for review.
+                    {t('testimonials.thankYou')}
                 </Alert>
             </Snackbar>
         </>
