@@ -5,11 +5,11 @@ import {
   Button, 
   Paper, 
   Divider, 
-  FormControlLabel, 
-  Radio, 
-  RadioGroup, 
-  FormControl, 
-  CircularProgress, 
+  FormControlLabel,
+  Radio,
+  RadioGroup,
+  FormControl,
+  CircularProgress,
   Alert
 } from '@mui/material';
 import CreditCardIcon from '@mui/icons-material/CreditCard';
@@ -56,72 +56,72 @@ export default function PaymentSummary({
           {error}
         </Alert>
       )}
-      
-      <Paper elevation={1} sx={{ p: 2 }}>
-        <FormControl component="fieldset" sx={{ width: '100%' }}>
-          <RadioGroup
-            aria-label="payment-method"
-            name="payment-method"
-            value={paymentMethod}
-            onChange={handlePaymentMethodChange}
-          >
-            <FormControlLabel 
-              value="card" 
-              control={<Radio />} 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CreditCardIcon sx={{ mr: 1 }} />
-                  <Typography>Credit/Debit Card</Typography>
-                </Box>
-              } 
-            />
+          
+          <Paper elevation={1} sx={{ p: 2 }}>
+            <FormControl component="fieldset" sx={{ width: '100%' }}>
+              <RadioGroup
+                aria-label="payment-method"
+                name="payment-method"
+                value={paymentMethod}
+                onChange={handlePaymentMethodChange}
+              >
+                <FormControlLabel 
+                  value="card" 
+                  control={<Radio />} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CreditCardIcon sx={{ mr: 1 }} />
+                      <Typography>Credit/Debit Card</Typography>
+                    </Box>
+                  } 
+                />
+                
+                <Divider sx={{ my: 1 }} />
+                
+                <FormControlLabel 
+                  value="upi" 
+                  control={<Radio />} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <PhoneAndroidIcon sx={{ mr: 1 }} />
+                      <Typography>UPI Payment</Typography>
+                    </Box>
+                  } 
+                />
+                
+                <Divider sx={{ my: 1 }} />
+                
+                <FormControlLabel 
+                  value="netbanking" 
+                  control={<Radio />} 
+                  label={
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <AccountBalanceIcon sx={{ mr: 1 }} />
+                      <Typography>Net Banking</Typography>
+                    </Box>
+                  } 
+                />
+              </RadioGroup>
+            </FormControl>
             
-            <Divider sx={{ my: 1 }} />
-            
-            <FormControlLabel 
-              value="upi" 
-              control={<Radio />} 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <PhoneAndroidIcon sx={{ mr: 1 }} />
-                  <Typography>UPI Payment</Typography>
-                </Box>
-              } 
-            />
-            
-            <Divider sx={{ my: 1 }} />
-            
-            <FormControlLabel 
-              value="netbanking" 
-              control={<Radio />} 
-              label={
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <AccountBalanceIcon sx={{ mr: 1 }} />
-                  <Typography>Net Banking</Typography>
-                </Box>
-              } 
-            />
-          </RadioGroup>
-        </FormControl>
-        
-        <Box sx={{ mt: 3 }}>
-          <Button
-            variant="contained"
-            color="primary"
-            size="large"
-            fullWidth
-            onClick={handlePayment}
-            disabled={loading}
-            sx={{ 
-              py: 1.5,
-              fontFamily: '"Cormorant Garamond", serif',
-              fontSize: '1.1rem'
-            }}
-          >
+            <Box sx={{ mt: 3 }}>
+              <Button
+                variant="contained"
+                color="primary"
+                size="large"
+                fullWidth
+                onClick={handlePayment}
+                disabled={loading}
+                sx={{ 
+                  py: 1.5,
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontSize: '1.1rem'
+                }}
+              >
             {loading ? <CircularProgress size={24} /> : `Pay ₹${totalWithGST}`}
-          </Button>
-        </Box>
-      </Paper>
+              </Button>
+            </Box>
+          </Paper>
     </Box>
   );
 } 

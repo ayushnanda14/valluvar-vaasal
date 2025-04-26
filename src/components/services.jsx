@@ -14,6 +14,7 @@ import {
 import { motion } from 'framer-motion';
 import Link from 'next/link';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { useTranslation } from 'react-i18next';
 
 // Wrap MUI components with motion
 const MotionCard = motion(Card);
@@ -25,6 +26,7 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
+  const { t } = useTranslation('common');
 
   // Determine the optimal object position based on screen size
   let imagePosition;
@@ -160,6 +162,7 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                 <Link href={destinationUrl || '/'} passHref legacyBehavior>
                   <Button
                     endIcon={<ArrowForwardIcon />}
+                    component="span"
                     sx={{
                       textTransform: 'none',
                       fontFamily: '"Cormorant Garamond", serif',
@@ -172,7 +175,7 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                       }
                     }}
                   >
-                    Check out
+                    {t('services.checkOut')}
                   </Button>
                 </Link>
               </Box>
@@ -186,25 +189,26 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
 
 const Services = () => {
   const theme = useTheme();
+  const { t } = useTranslation('common');
 
-  const services = [
+  const servicesList = [
     {
-      title: "Marriage Matching",
-      description: "Our expert astrologers analyze birth charts to determine compatibility between potential life partners, ensuring a harmonious and prosperous union based on ancient Tamil astrological principles.",
+      title: t('services.marriageMatching.title'),
+      description: t('services.marriageMatching.description'),
       destinationUrl: "/services/marriage-matching",
       imageSrc: "/images/marriage-matching.png",
       delay: 0
     },
     {
-      title: "Jathak Prediction",
-      description: "Discover your life's path through our detailed Jathak predictions. We interpret celestial positions at your birth to reveal insights about career, relationships, health, and spiritual growth.",
+      title: t('services.jathakPrediction.title'),
+      description: t('services.jathakPrediction.description'),
       destinationUrl: "/services/jathak-prediction",
       imageSrc: "/images/jathak-prediction.png",
       delay: 0.2
     },
     {
-      title: "Jathak Writing",
-      description: "Preserve your astrological blueprint with our meticulously crafted Jathak writing service. Our scholars document your birth chart with traditional methods, creating a valuable heirloom for generations.",
+      title: t('services.jathakWriting.title'),
+      description: t('services.jathakWriting.description'),
       destinationUrl: "/services/jathak-writing",
       imageSrc: "/images/jathak-writing.png",
       delay: 0.4
@@ -238,7 +242,7 @@ const Services = () => {
               mb: 2
             }}
           >
-            Our Services
+            {t('services.ourServices')}
           </MotionTypography>
 
           <MotionTypography
@@ -251,13 +255,12 @@ const Services = () => {
               mx: 'auto'
             }}
           >
-            Discover our range of traditional Tamil astrological services,
-            crafted with ancient wisdom to guide your life's journey
+            {t('services.servicesDescription')}
           </MotionTypography>
         </MotionBox>
 
         <Grid container spacing={2} direction={{ xs: "column", md: "row" }} sx={{ flexWrap: 'nowrap' }}>
-          {services.map((service, index) => (
+          {servicesList.map((service, index) => (
             <ServiceCard
               key={index}
               title={service.title}

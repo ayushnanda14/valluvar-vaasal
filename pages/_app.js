@@ -12,6 +12,9 @@ import { useEffect } from 'react';
 import { useAppCheck } from '../src/hooks/useAppCheck';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
+import '../src/i18n';
+import { I18nextProvider } from 'react-i18next';
+import i18nInstance from '../src/i18n'; // Import the configured i18n instance
 
 // Safe polyfill for crypto.randomUUID()
 if (typeof window !== 'undefined') {
@@ -45,7 +48,7 @@ if (typeof window !== 'undefined') {
 
 const clientSideEmotionCache = createEmotionCache();
 
-export default function MyApp(props) {
+function MyApp(props) {
   const { Component, emotionCache = clientSideEmotionCache, pageProps } = props;
 
   // Initialize App Check
@@ -67,9 +70,11 @@ export default function MyApp(props) {
       <ThemeProvider theme={theme}>
         <CssBaseline />
         <AuthProvider>
-          <Navbar />
-          <Component {...pageProps} />
-          <Footer />
+          <I18nextProvider i18n={i18nInstance}>
+            <Navbar />
+            <Component {...pageProps} />
+            <Footer />
+          </I18nextProvider>
         </AuthProvider>
       </ThemeProvider>
     </CacheProvider>
@@ -81,3 +86,5 @@ MyApp.propTypes = {
   emotionCache: PropTypes.object,
   pageProps: PropTypes.object.isRequired,
 };
+
+export default MyApp;

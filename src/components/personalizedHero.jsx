@@ -23,6 +23,7 @@ import { collection, query, where, orderBy, limit, getDocs, getDoc, doc, onSnaps
 import { db } from '../firebase/firebaseConfig';
 import FilePreviewModal from './FilePreviewModal';
 import { SERVICE_TYPES } from '@/utils/constants';
+import { useTranslation } from 'react-i18next';
 
 // Wrap MUI components with motion
 const MotionBox = motion(Box);
@@ -34,6 +35,7 @@ const PersonalizedHero = () => {
   const theme = useTheme();
   const router = useRouter();
   const { currentUser } = useAuth();
+  const { t } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [recentChats, setRecentChats] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -67,13 +69,13 @@ const PersonalizedHero = () => {
     const diffDays = Math.floor(diffTime / (1000 * 60 * 60 * 24));
 
     if (diffDays === 0) {
-      return 'Today';
+      return t('date.today');
     } else if (diffDays === 1) {
-      return 'Yesterday';
+      return t('date.yesterday');
     } else if (diffDays < 7) {
-      return `${diffDays} days ago`;
+      return t('date.daysAgo', { count: diffDays });
     } else {
-      return date.toLocaleDateString('en-US', {
+      return date.toLocaleDateString(router.locale || 'en', {
         month: 'short',
         day: 'numeric'
       });
@@ -217,10 +219,10 @@ const PersonalizedHero = () => {
               >
                 {currentUser ? (
                   <>
-                    Namaste, <span style={{ color: theme.palette.primary.main }}>{getFirstName()}</span>
+                    {t('personalizedHero.greeting')}, <span style={{ color: theme.palette.primary.main }}>{getFirstName()}</span>
                   </>
                 ) : (
-                  'Discover Your Celestial Path'
+                  t('personalizedHero.titleGuest')
                 )}
               </MotionTypography>
 
@@ -236,8 +238,8 @@ const PersonalizedHero = () => {
                 }}
               >
                 {currentUser
-                  ? 'Connect with our expert astrologers and discover profound insights about your destiny, relationships, and life path.'
-                  : 'Explore authentic Vedic astrology readings, personalized horoscopes, and spiritual guidance from expert astrologers.'}
+                  ? t('personalizedHero.subtitleUser')
+                  : t('personalizedHero.subtitleGuest')}
               </MotionTypography>
 
               {!currentUser && (
@@ -256,7 +258,7 @@ const PersonalizedHero = () => {
                     boxShadow: '0px 8px 24px rgba(149, 157, 165, 0.2)'
                   }}
                 >
-                  Begin Your Journey
+                  {t('personalizedHero.ctaGuest')}
                 </MotionButton>
               )}
             </MotionBox>
@@ -291,7 +293,7 @@ const PersonalizedHero = () => {
                   fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.5rem' }
                 }}
               >
-                {currentUser ? 'Your Readings' : 'Client Testimonials'}
+                {currentUser ? t('personalizedHero.readingsTitle') : t('personalizedHero.testimonialsTitle')}
               </Typography>
 
               <Divider sx={{ mb: 2 }} />
@@ -339,7 +341,7 @@ const PersonalizedHero = () => {
                               color: theme.palette.secondary.dark
                             }}
                           >
-                            {SERVICE_TYPES[chat.serviceType] || 'Astrology Reading'}
+                            {SERVICE_TYPES[chat.serviceType] || t('personalizedHero.defaultReadingTitle')}
                           </Typography>
 
                           <Typography
@@ -352,7 +354,7 @@ const PersonalizedHero = () => {
                               textAlign: 'right'
                             }}
                           >
-                            {chat.astrologerName || chat.otherParticipant.displayName || 'Astrologer'}
+                            {chat.astrologerName || chat.otherParticipant.displayName || t('personalizedHero.defaultAstrologerName')}
                           </Typography>
                         </Box>
 
@@ -384,7 +386,7 @@ const PersonalizedHero = () => {
                             fontSize: { xs: '0.75rem', md: '0.875rem' }
                           }}
                         >
-                          {chat.lastMessage?.text || 'Click to view your reading...'}
+                          {chat.lastMessage?.text || t('personalizedHero.viewReadingPrompt')}
                         </Typography>
                       </CardContent>
                     </CardActionArea>
@@ -403,7 +405,7 @@ const PersonalizedHero = () => {
                         fontSize: { xs: '0.875rem', md: '1rem' }
                       }}
                     >
-                      You haven't had any readings yet.
+                      {t('personalizedHero.noReadings')}
                     </Typography>
                     <Button
                       variant="contained"
@@ -417,10 +419,19 @@ const PersonalizedHero = () => {
                         fontSize: { xs: '0.75rem', md: '0.875rem' }
                       }}
                     >
-                      Start Your First Reading
+                      {t('personalizedHero.startReadingButton')}
                     </Button>
                   </Box>
                 )
+              )}
+
+              {/* Placeholder for guest content if needed */}
+              {!loading && !currentUser && (
+                <Box sx={{ textAlign: 'center', py: { xs: 2, md: 4 } }}>
+                   <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif', color: theme.palette.text.secondary }}>
+                     {t('personalizedHero.guestPlaceholder')}
+                   </Typography>
+                 </Box>
               )}
 
               {!loading && currentUser && recentChats.length > 0 && (
@@ -436,7 +447,7 @@ const PersonalizedHero = () => {
                       fontSize: { xs: '0.75rem', md: '0.875rem' }
                     }}
                   >
-                    New Reading
+                    {t('personalizedHero.newReadingButton')}
                   </Button>
                   <Box sx={{ mt: 1 }}>
                     <Button
@@ -450,7 +461,7 @@ const PersonalizedHero = () => {
                         fontSize: { xs: '0.75rem', md: '0.875rem' }
                       }}
                     >
-                      See All Chats
+                      {t('personalizedHero.seeAllChatsButton')}
                     </Button>
                   </Box>
                 </Box>

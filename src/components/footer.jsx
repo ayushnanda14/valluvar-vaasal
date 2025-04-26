@@ -13,9 +13,11 @@ import {
   ListItemText
 } from '@mui/material';
 import Link from 'next/link';
+import { useTranslation } from 'react-i18next';
 
 const Footer = () => {
   const theme = useTheme();
+  const { t } = useTranslation('common');
   const currentYear = new Date().getFullYear();
 
   // Function to handle smooth scroll to services section
@@ -40,10 +42,21 @@ const Footer = () => {
         pb: 4
       }}
     >
-      <Container maxWidth="lg">
-        <Grid container spacing={4}>
+      <Container maxWidth="lg" >
+        <Grid container spacing={4} sx={{
+          display: 'flex',
+          flexDirection: { xs: 'column', md: 'row' },
+          alignItems: 'flex-start',
+          width: '100%',
+          textAlign: { xs: 'center', md: 'left' },
+          justifyContent: { xs: 'center', md: 'space-between' }
+        }}>
           {/* Brand/Logo Section */}
-          <Grid item xs={12} md={6}>
+          <Grid item xs={12} md={6} sx={{ 
+            display: 'flex', 
+            flexDirection: 'column',
+            alignItems: { xs: 'center', md: 'flex-start' }
+          }}>
             <Typography
               variant="h6"
               sx={{
@@ -54,7 +67,7 @@ const Footer = () => {
                 color: theme.palette.primary.dark
               }}
             >
-              Valluvar Vaasal
+              {t('brand')}
             </Typography>
             <Typography
               variant="body2"
@@ -62,154 +75,188 @@ const Footer = () => {
                 mb: 3,
                 fontFamily: '"Cormorant Garamond", serif',
                 fontSize: '1rem',
-                maxWidth: '90%'
+                maxWidth: { xs: '100%', md: '90%' }
               }}
             >
-              Guiding souls through the cosmic wisdom of ancient Tamil astrology.
-              Discover your path written in the stars.
+              {t('footer.description')}
             </Typography>
           </Grid>
 
-          {/* Quick Links */}
-          <Grid item xs={12} sm={4}>
-            <Typography 
-              variant="h6" 
-              sx={{
-                fontFamily: '"Cinzel", serif',
-                fontSize: '1.1rem',
-                mb: 2,
-                color: theme.palette.secondary.dark
-              }}
-            >
-              Quick Links
-            </Typography>
-            <List>
-              <ListItem disablePadding>
-                <ListItemButton 
-                  component={Link} 
-                  href="/about" 
-                  sx={{ 
-                    color: theme.palette.secondary.main,
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '0.7rem',
-                    textDecoration: 'underline',
-                    '&:hover': { 
-                      color: theme.palette.primary.main,
-                      backgroundColor: 'transparent'
-                    },
-                    '&:visited': { 
-                      color: theme.palette.secondary.main 
-                    },
-                    padding: '0px'
-                  }}
-                >
-                  <ListItemText primary="About Us" />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton 
-                  component={MuiLink} 
-                  onClick={scrollToServices} 
-                  sx={{ 
-                    color: theme.palette.secondary.main,
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '0.7rem',
-                    textDecoration: 'underline',
-                    '&:hover': { 
-                      color: theme.palette.primary.main,
-                      backgroundColor: 'transparent'
-                    },
-                    '&:visited': { 
-                      color: theme.palette.secondary.main 
-                    },
-                    padding: '0px'
-                  }}
-                >
-                  <ListItemText primary="Services" />
-                </ListItemButton>
-              </ListItem>
-              <ListItem disablePadding>
-                <ListItemButton 
-                  component={Link} 
-                  href="/feedback" 
-                  sx={{ 
-                    color: theme.palette.secondary.main,
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '0.7rem',
-                    textDecoration: 'underline',
-                    '&:hover': { 
-                      color: theme.palette.primary.main,
-                      backgroundColor: 'transparent'
-                    },
-                    '&:visited': { 
-                      color: theme.palette.secondary.main 
-                    },
-                    padding: '0px'
-                  }}
-                >
-                  <ListItemText primary="Leave a Feedback" />
-                </ListItemButton>
-              </ListItem>
-            </List>
-          </Grid>
+          <Grid item xs={12} md={6} sx={{
+            display: 'flex',
+            flexDirection: { xs: 'column', sm: 'row' },
+            justifyContent: { xs: 'center', sm: 'space-between' },
+            alignItems: { xs: 'center', sm: 'flex-start' },
+            width: { xs: '100%', md: 'auto' },
+            gap: 4
+          }}>
+            {/* Quick Links */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: { xs: 'center', md: 'flex-start' }
+            }}>
+              <Typography 
+                variant="h6" 
+                sx={{
+                  fontFamily: '"Cinzel", serif',
+                  fontSize: '1.1rem',
+                  mb: 2,
+                  color: theme.palette.secondary.dark
+                }}
+              >
+                {t('footer.quickLinks')}
+              </Typography>
+              <List sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                alignItems: { xs: 'center', md: 'flex-start' } 
+              }}>
+                <ListItem disablePadding>
+                  <ListItemButton 
+                    component={Link} 
+                    href="/about" 
+                    sx={{ 
+                      color: theme.palette.secondary.main,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '0.7rem',
+                      textDecoration: 'underline',
+                      '&:hover': { 
+                        color: theme.palette.primary.main,
+                        backgroundColor: 'transparent'
+                      },
+                      '&:visited': { 
+                        color: theme.palette.secondary.main 
+                      },
+                      padding: '0px'
+                    }}
+                  >
+                    <ListItemText primary={t('navbar.about')} />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemButton 
+                    component={MuiLink} 
+                    onClick={scrollToServices} 
+                    sx={{ 
+                      color: theme.palette.secondary.main,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '0.7rem',
+                      textDecoration: 'underline',
+                      '&:hover': { 
+                        color: theme.palette.primary.main,
+                        backgroundColor: 'transparent'
+                      },
+                      '&:visited': { 
+                        color: theme.palette.secondary.main 
+                      },
+                      padding: '0px'
+                    }}
+                  >
+                    <ListItemText primary={t('navbar.services')} />
+                  </ListItemButton>
+                </ListItem>
+                <ListItem disablePadding>
+                  <ListItemButton 
+                    component={Link} 
+                    href="/feedback" 
+                    sx={{ 
+                      color: theme.palette.secondary.main,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '0.7rem',
+                      textDecoration: 'underline',
+                      '&:hover': { 
+                        color: theme.palette.primary.main,
+                        backgroundColor: 'transparent'
+                      },
+                      '&:visited': { 
+                        color: theme.palette.secondary.main 
+                      },
+                      padding: '0px'
+                    }}
+                  >
+                    <ListItemText primary={t('footer.feedback')} />
+                  </ListItemButton>
+                </ListItem>
+              </List>
+            </Box>
 
-          {/* Contact */}
-          <Grid item xs={12} md={4}>
-            <Typography
-              variant="h6"
-              sx={{
-                fontFamily: '"Cinzel", serif',
-                fontSize: '1.1rem',
-                mb: 2,
-                color: theme.palette.secondary.dark
-              }}
-            >
-              Contact Us
-            </Typography>
-            <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+            {/* Contact */}
+            <Box sx={{ 
+              display: 'flex', 
+              flexDirection: 'column',
+              alignItems: { xs: 'center', md: 'flex-start' }
+            }}>
               <Typography
-                variant="body2"
+                variant="h6"
                 sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1rem'
+                  fontFamily: '"Cinzel", serif',
+                  fontSize: '1.1rem',
+                  mb: 2,
+                  color: theme.palette.secondary.dark
                 }}
               >
-                123 Cosmic Avenue
+                {t('footer.contact')}
               </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1rem'
-                }}
-              >
-                Chennai, Tamil Nadu 600001
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1rem'
-                }}
-              >
-                Email: info@valluvarvaasal.com
-              </Typography>
-              <Typography
-                variant="body2"
-                sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1rem'
-                }}
-              >
-                Phone: +91 98765 43210
-              </Typography>
+              <Box sx={{ 
+                display: 'flex', 
+                flexDirection: 'column', 
+                gap: 1,
+                alignItems: { xs: 'center', md: 'flex-start' }
+              }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem'
+                  }}
+                >
+                  123 Cosmic Avenue
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Chennai, Tamil Nadu 600001
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Email: info@valluvarvaasal.com
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Phone: +91 98765 43210
+                </Typography>
+              </Box>
             </Box>
           </Grid>
         </Grid>
 
         <Divider sx={{ mt: 4, mb: 3, borderColor: 'rgba(139, 69, 19, 0.2)' }} />
 
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', flexWrap: 'wrap', gap: 2 }}>
+        <Box
+          sx={{
+            display: 'flex',
+            justifyContent: { xs: 'center', md: 'space-between' },
+            alignItems: 'center',
+            flexWrap: 'wrap',
+            gap: 2,
+            width: '100%'
+          }}
+        >
           <Typography
             variant="body2"
             sx={{
@@ -218,7 +265,7 @@ const Footer = () => {
               color: theme.palette.secondary.main
             }}
           >
-            © {currentYear} Valluvar Vaasal. All rights reserved.
+            {t('footer.copyright')}
           </Typography>
           <Box sx={{ display: 'flex', gap: 3 }}>
             <Link href="/privacy" passHref legacyBehavior>
@@ -231,7 +278,7 @@ const Footer = () => {
                   '&:hover': { color: theme.palette.primary.main }
                 }}
               >
-                Privacy Policy
+                {t('footer.privacy')}
               </MuiLink>
             </Link>
             <Link href="/terms" passHref legacyBehavior>
@@ -244,7 +291,7 @@ const Footer = () => {
                   '&:hover': { color: theme.palette.primary.main }
                 }}
               >
-                Terms of Service
+                {t('footer.terms')}
               </MuiLink>
             </Link>
           </Box>

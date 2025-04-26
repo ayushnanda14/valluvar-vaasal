@@ -27,32 +27,35 @@ import AccessTimeIcon from '@mui/icons-material/AccessTime';
 import ProtectedRoute from '../src/components/ProtectedRoute';
 import { getUserChats } from '../src/services/chatService';
 import { formatDistanceToNow } from 'date-fns';
+import { ta, enIN } from 'date-fns/locale';
 import { SERVICE_TYPES } from '@/utils/constants';
+import { useTranslation } from 'react-i18next';
 
 export default function Messages() {
+  const { t } = useTranslation('common');
   const theme = useTheme();
   const router = useRouter();
   const { currentUser } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  
+
   useEffect(() => {
     let unsubscribe;
-    
+
     const fetchChats = async () => {
       if (!currentUser) return;
-      
+
       try {
         setLoading(true);
-        
+
         // Use the real-time listener
         unsubscribe = getUserChats(currentUser.uid, (userChats) => {
           setChats(userChats);
-          
+
           // If chatId is specified in the URL, select that chat
           if (router.query.chatId) {
             const chat = userChats.find(c => c.id === router.query.chatId);
@@ -63,78 +66,78 @@ export default function Messages() {
             // Auto-select the first chat on desktop
             setSelectedChat(userChats[0]);
           }
-          
+
           setLoading(false);
         });
       } catch (err) {
         console.error('Error setting up chats listener:', err);
-        setError('Failed to load chats. Please try again later.');
+        setError(t('messages.fetchError'));
         setLoading(false);
       }
     };
-    
+
     fetchChats();
-    
+
     // Clean up listener when component unmounts
     return () => {
       if (unsubscribe) {
         unsubscribe();
       }
     };
-  }, [currentUser, router.query.chatId]);
-  
+  }, [currentUser]);
+
   const handleSelectChat = (chat) => {
     setSelectedChat(chat);
-    
+
     // Update URL with the selected chat ID for direct linking
     router.push({
       pathname: '/messages',
       query: { chatId: chat.id }
     }, undefined, { shallow: true });
-    
+
     // On mobile, we might want to hide the chat list
     // This is handled by the UI rendering logic
   };
-  
+
   const handleBackToList = () => {
     setSelectedChat(null);
-    
+
     // Remove chatId from URL
     router.push('/messages', undefined, { shallow: true });
   };
-  
+
   const formatChatDate = (timestamp) => {
     if (!timestamp) return '';
-    
+
     try {
       const date = timestamp.toDate();
-      return formatDistanceToNow(date, { addSuffix: true });
+      return formatDistanceToNow(date, { addSuffix: true, locale: t('language.code') === 'ta' ? ta : enIN });
     } catch (error) {
       return '';
     }
   };
-  
+
   return (
     <ProtectedRoute>
       <Head>
-        <title>Your Messages | AstroGuru</title>
-        <meta name="description" content="View and manage your astrology reading conversations" />
+        <title>{t('brand')} - {t('messages.title')}</title>
+        <meta name="description" content={t('messages.description')} />
       </Head>
-      
+
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pt: { xs: 2, md: 4 }, pb: 6 }}>
         <Container maxWidth="xl">
           <Typography
             variant="h4"
             component="h1"
-            sx={{ 
-              mb: 4, 
+            sx={{
+              mb: 4,
               fontFamily: '"Cormorant Garamond", serif',
               textAlign: { xs: 'center', md: 'left' }
             }}
           >
-            Your Readings
+            {t('messages.yourReadings')}
           </Typography>
-          
+
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
               <CircularProgress />
@@ -147,29 +150,29 @@ export default function Messages() {
             <Paper sx={{ p: 4, textAlign: 'center' }}>
               <ChatIcon sx={{ fontSize: 60, color: 'text.secondary', opacity: 0.3, mb: 2 }} />
               <Typography variant="h6" sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}>
-                No readings yet
+                {t('messages.noReadings')}
               </Typography>
               <Typography variant="body1" sx={{ mb: 3, color: 'text.secondary' }}>
-                You haven't started any readings with our astrologers
+                {t('messages.startReading')}
               </Typography>
               <Box sx={{ mt: 2 }}>
-                <Typography 
-                  variant="body2" 
+                <Typography
+                  variant="body2"
                   color="primary"
-                  sx={{ 
+                  sx={{
                     cursor: 'pointer',
                     fontFamily: '"Cormorant Garamond", serif',
                     fontSize: '1.1rem'
                   }}
                   onClick={() => router.push('/#services-section')}
                 >
-                  Browse our services to get started
+                  {t('messages.browseServices')}
                 </Typography>
               </Box>
             </Paper>
           ) : (
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               justifyContent: 'center',
               alignItems: 'flex-start',
               gap: 3,
@@ -177,11 +180,11 @@ export default function Messages() {
             }}>
               {/* Chat List */}
               {(!isMobile || !selectedChat) && (
-                <Paper 
-                  elevation={1} 
-                  sx={{ 
-                    width: { xs: '100%', md: '300px' },
-                    height: { xs: '300px', md: '70vh' },
+                <Paper
+                  elevation={1}
+                  sx={{
+                    width: { xs: '100%', md: '360px' },
+                    height: '70vh',
                     overflow: 'auto',
                     borderRadius: 2,
                     order: { xs: 2, md: 1 }
@@ -190,12 +193,12 @@ export default function Messages() {
                   <List sx={{ p: 0 }}>
                     {chats.map((chat, index) => (
                       <React.Fragment key={chat.id}>
-                        <ListItem 
-                          button 
+                        <ListItem
+                          button
                           selected={selectedChat?.id === chat.id}
                           onClick={() => handleSelectChat(chat)}
-                          sx={{ 
-                            px: 2, 
+                          sx={{
+                            px: 2,
                             py: 2,
                             bgcolor: selectedChat?.id === chat.id ? 'rgba(25, 118, 210, 0.08)' : 'transparent',
                             '&:hover': {
@@ -214,8 +217,8 @@ export default function Messages() {
                                 horizontal: 'right',
                               }}
                             >
-                              <Avatar 
-                                src={chat.otherParticipant?.photoURL} 
+                              <Avatar
+                                src={chat.otherParticipant?.photoURL}
                                 alt={chat.otherParticipant?.displayName}
                               >
                                 {chat.otherParticipant?.displayName?.[0] || 'A'}
@@ -226,7 +229,7 @@ export default function Messages() {
                             primary={
                               <Typography
                                 variant="body1"
-                                sx={{ 
+                                sx={{
                                   fontWeight: chat.hasUnread ? 600 : 400,
                                   fontFamily: '"Cormorant Garamond", serif',
                                   fontSize: '1.05rem',
@@ -241,22 +244,22 @@ export default function Messages() {
                                 <Typography
                                   variant="caption"
                                   component="span"
-                                  sx={{ 
+                                  sx={{
                                     display: 'block',
                                     fontSize: '0.8rem',
                                     color: 'primary.main',
                                     mb: 0.5
                                   }}
                                 >
-                                  {SERVICE_TYPES[chat.serviceType] || 'Consultation'}
+                                  {t(`services.${chat.serviceType}.title`) || 'Consultation'}
                                 </Typography>
-                                
+
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                                   <Typography
                                     noWrap
                                     variant="body2"
                                     component="span"
-                                    sx={{ 
+                                    sx={{
                                       maxWidth: '140px',
                                       overflow: 'hidden',
                                       textOverflow: 'ellipsis',
@@ -265,12 +268,12 @@ export default function Messages() {
                                       fontWeight: chat.hasUnread ? 500 : 400
                                     }}
                                   >
-                                    {chat.lastMessage?.text || 'No messages yet'}
+                                    {chat.lastMessage?.text || t('messages.noMessages')}
                                   </Typography>
-                                  
+
                                   <Typography
                                     variant="caption"
-                                    sx={{ 
+                                    sx={{
                                       fontSize: '0.75rem',
                                       color: 'text.secondary'
                                     }}
@@ -288,9 +291,9 @@ export default function Messages() {
                   </List>
                 </Paper>
               )}
-              
+
               {/* Chat View Area */}
-              <Box sx={{ 
+              <Box sx={{
                 flex: 1,
                 width: { xs: '100%', md: '600px' },
                 order: { xs: 1, md: 2 }
@@ -300,9 +303,9 @@ export default function Messages() {
                     {/* Mobile Back Button */}
                     {isMobile && (
                       <Box sx={{ mb: 2 }}>
-                        <IconButton 
+                        <IconButton
                           onClick={handleBackToList}
-                          sx={{ 
+                          sx={{
                             mr: 1,
                             bgcolor: 'background.paper',
                             boxShadow: 1,
@@ -314,21 +317,21 @@ export default function Messages() {
                         </IconButton>
                       </Box>
                     )}
-                    
+
                     {/* Chat Header */}
                     <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
                       <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar 
-                          src={selectedChat.otherParticipant?.photoURL} 
+                        <Avatar
+                          src={selectedChat.otherParticipant?.photoURL}
                           alt={selectedChat.otherParticipant?.displayName}
                           sx={{ width: 40, height: 40, mr: 2 }}
                         >
                           {selectedChat.otherParticipant?.displayName?.[0] || 'A'}
                         </Avatar>
                         <Box>
-                          <Typography 
+                          <Typography
                             variant="h6"
-                            sx={{ 
+                            sx={{
                               fontFamily: '"Cormorant Garamond", serif',
                               fontWeight: 600
                             }}
@@ -341,7 +344,7 @@ export default function Messages() {
                         </Box>
                       </Box>
                     </Paper>
-                    
+
                     {/* Chat Messages */}
                     <ChatBox
                       chatId={selectedChat.id}
@@ -351,8 +354,8 @@ export default function Messages() {
                 ) : (
                   // Show this on larger screens when no chat is selected
                   !isMobile && (
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         height: '70vh',
                         display: 'flex',
                         flexDirection: 'column',

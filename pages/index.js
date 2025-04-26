@@ -5,10 +5,12 @@ import { Box } from '@mui/material';
 import { useAuth } from '../src/context/AuthContext';
 import { useRouter } from 'next/router';
 import HomePage from '../src/components/HomePage';
+import { useTranslation } from 'react-i18next';
 
 export default function Home() {
   const router = useRouter();
   const { currentUser, hasRole } = useAuth();
+  const { t } = useTranslation('common');
 
   useEffect(() => {
     const redirectToDashboard = async () => {
@@ -45,8 +47,8 @@ export default function Home() {
   return (
     <>
       <Head>
-        <title>Valluvar Vaasal | Tamil Astrology & Spiritual Guidance</title>
-        <meta name="description" content="Discover your cosmic path through ancient Tamil astrology and spiritual guidance. Get personalized readings that connect you with cosmic energies." />
+        <title>{t('brand')} | {t('meta.title')}</title>
+        <meta name="description" content={t('meta.description')} />
         <link rel="icon" href="/favicon.ico" />
       </Head>
 

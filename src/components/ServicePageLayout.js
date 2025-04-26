@@ -190,82 +190,82 @@ export default function ServicePageLayout({
         const fileReferences = [];
 
         try {
-          // Process main files
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            
-            // Generate appropriate file name based on service type
-            let newFileName;
-            if (serviceType === 'marriageMatching') {
+        // Process main files
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          // Generate appropriate file name based on service type
+          let newFileName;
+          if (serviceType === 'marriageMatching') {
               newFileName = `Bride_Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            } else {
+          } else {
               newFileName = `Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            }
-            
+          }
+          
             // Create a storage reference with the user's UID in the path for better security
             const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+          
+          // Upload the file to Firebase Storage
+          const uploadTask = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(uploadTask.ref);
+          
+          // Add file metadata to the array
+          fileReferences.push({
+            name: newFileName,
+            originalName: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+            uploadedBy: currentUser.uid,
+            uploadedAt: serverTimestamp()
+          });
+        }
+
+        // Process secondary files if dual upload is enabled
+        if (dualUpload && secondFiles.length > 0) {
+          for (let i = 0; i < secondFiles.length; i++) {
+            const file = secondFiles[i];
             
-            // Upload the file to Firebase Storage
+            // For marriage matching, second set is for Groom
+              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            
+              // Create a storage reference with the user's UID in the path for better security
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+            
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
             
-            // Add file metadata to the array
             fileReferences.push({
               name: newFileName,
               originalName: file.name,
               type: file.type,
               size: file.size,
               url: downloadURL,
+              category: dualUploadLabels[1], // Add category to distinguish second set of files
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
+        }
 
-          // Process secondary files if dual upload is enabled
-          if (dualUpload && secondFiles.length > 0) {
-            for (let i = 0; i < secondFiles.length; i++) {
-              const file = secondFiles[i];
-              
-              // For marriage matching, second set is for Groom
-              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-              
-              // Create a storage reference with the user's UID in the path for better security
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-              
-              const uploadTask = await uploadBytes(storageRef, file);
-              const downloadURL = await getDownloadURL(uploadTask.ref);
-              
-              fileReferences.push({
-                name: newFileName,
-                originalName: file.name,
-                type: file.type,
-                size: file.size,
-                url: downloadURL,
-                category: dualUploadLabels[1], // Add category to distinguish second set of files
-                uploadedBy: currentUser.uid,
-                uploadedAt: serverTimestamp()
-              });
-            }
-          }
+        // Store file references in a subcollection of the chat
+        // This allows for easy querying of files associated with a chat
+        for (const fileRef of fileReferences) {
+          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+        }
 
-          // Store file references in a subcollection of the chat
-          // This allows for easy querying of files associated with a chat
-          for (const fileRef of fileReferences) {
-            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-          }
-
-          // Add a system message about the uploaded files
-          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-            senderId: 'system',
-            text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
-            timestamp: serverTimestamp(),
-            read: false,
-            fileReferences: fileReferences.map(f => ({ 
-              name: f.name, 
-              url: f.url,
-              type: f.type
-            }))
-          });
+        // Add a system message about the uploaded files
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
+          timestamp: serverTimestamp(),
+          read: false,
+          fileReferences: fileReferences.map(f => ({ 
+            name: f.name, 
+            url: f.url,
+            type: f.type
+          }))
+        });
         } catch (err) {
           console.error('Error uploading files:', err);
           setError('There was an error uploading your files. Please try again.');
@@ -514,7 +514,7 @@ export default function ServicePageLayout({
                               },
                             }}
                           >
-                            {astrologers.map(astrologer => (
+                          {astrologers.map(astrologer => (
                               <Box
                                 key={astrologer.id}
                                 sx={{
@@ -525,18 +525,18 @@ export default function ServicePageLayout({
                                 <Card
                                   sx={{
                                     height: '100%',
-                                    border: selectedAstrologers.some(a => a.id === astrologer.id)
-                                      ? `2px solid ${theme.palette.primary.main}`
+                                  border: selectedAstrologers.some(a => a.id === astrologer.id)
+                                    ? `2px solid ${theme.palette.primary.main}`
                                       : 'none',
                                     transition: 'all 0.3s ease',
                                     '&:hover': {
                                       transform: 'translateY(-4px)',
                                       boxShadow: theme.shadows[4],
                                     }
-                                  }}
-                                >
-                                  <CardActionArea
-                                    onClick={() => handleAstrologerSelect(astrologer)}
+                                }}
+                              >
+                                <CardActionArea
+                                  onClick={() => handleAstrologerSelect(astrologer)}
                                     sx={{ 
                                       display: 'flex', 
                                       flexDirection: 'column', 
@@ -545,18 +545,18 @@ export default function ServicePageLayout({
                                       padding: 0,
                                       overflow: 'hidden'
                                     }}
-                                  >
-                                    <CardMedia
-                                      component="img"
+                                >
+                                  <CardMedia
+                                    component="img"
                                       height="200px"
-                                      image={astrologer.photoURL || '/images/default-avatar.png'}
-                                      alt={astrologer.displayName}
+                                    image={astrologer.photoURL || '/images/default-avatar.png'}
+                                    alt={astrologer.displayName}
                                       sx={{ 
                                         objectFit: 'cover',
                                         margin: 0,
                                         display: 'block'
                                       }}
-                                    />
+                                  />
                                     <CardContent 
                                       sx={{ 
                                         padding: 2, 
@@ -565,27 +565,27 @@ export default function ServicePageLayout({
                                         flexDirection: 'column'
                                       }}
                                     >
-                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography
                                           gutterBottom
                                           variant="h6"
                                           component="div"
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                          {astrologer.displayName}
-                                        </Typography>
-                                        <Checkbox
-                                          checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                          color="primary"
-                                        />
-                                      </Box>
+                                        {astrologer.displayName}
+                                      </Typography>
+                                      <Checkbox
+                                        checked={selectedAstrologers.some(a => a.id === astrologer.id)}
+                                        color="primary"
+                                      />
+                                    </Box>
                                       <Typography
                                         variant="body2"
                                         color="text.secondary"
                                         sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                       >
                                         {astrologer.services.map(service => service.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')).join(', ') || 'General Astrology'}
-                                      </Typography>
+                                    </Typography>
                                       <Typography
                                         variant="body2"
                                         color="text.primary"
@@ -595,13 +595,13 @@ export default function ServicePageLayout({
                                           fontFamily: '"Cormorant Garamond", serif'
                                         }}
                                       >
-                                        ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                      </Typography>
-                                    </CardContent>
-                                  </CardActionArea>
-                                </Card>
+                                      ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                    </Typography>
+                                  </CardContent>
+                                </CardActionArea>
+                              </Card>
                               </Box>
-                            ))}
+                          ))}
                           </Box>
                         </Paper>
                       </Box>
@@ -653,8 +653,8 @@ export default function ServicePageLayout({
                           ) : (
                             <>
                               <Box sx={{ flex: '1', overflowY: 'auto' }}>
-                                <List>
-                                  {selectedAstrologers.map(astrologer => (
+                              <List>
+                                {selectedAstrologers.map(astrologer => (
                                     <ListItem
                                       key={astrologer.id}
                                       disablePadding
@@ -665,13 +665,13 @@ export default function ServicePageLayout({
                                         backgroundColor: theme.palette.background.default
                                       }}
                                     >
-                                      <ListItemAvatar>
-                                        <Avatar
-                                          src={astrologer.photoURL || '/images/default-avatar.png'}
-                                          alt={astrologer.displayName}
-                                        />
-                                      </ListItemAvatar>
-                                      <ListItemText
+                                    <ListItemAvatar>
+                                      <Avatar
+                                        src={astrologer.photoURL || '/images/default-avatar.png'}
+                                        alt={astrologer.displayName}
+                                      />
+                                    </ListItemAvatar>
+                                    <ListItemText
                                         primary={
                                           <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
                                             {astrologer.displayName}
@@ -687,10 +687,10 @@ export default function ServicePageLayout({
                                             ₹{astrologer.serviceCharges?.[serviceType] || 0}
                                           </Typography>
                                         }
-                                      />
-                                    </ListItem>
-                                  ))}
-                                </List>
+                                    />
+                                  </ListItem>
+                                ))}
+                              </List>
                               </Box>
 
                               <Divider sx={{ my: 2 }} />
@@ -800,10 +800,10 @@ export default function ServicePageLayout({
                         >
                           Payment Method
                         </Typography>
-                        <PaymentSummary
-                          total={calculateTotal()}
-                          onPaymentComplete={handlePayment}
-                        />
+                  <PaymentSummary
+                    total={calculateTotal()}
+                    onPaymentComplete={handlePayment}
+                  />
                       </Paper>
                     </Box>
 
