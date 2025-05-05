@@ -4,6 +4,7 @@ import { createOrder } from '../services/paymentService';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const PaymentButton = ({ amount, description, onSuccess, onError }) => {
   const { t } = useTranslation('common');
@@ -22,10 +23,8 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
       setLoading(true);
       setError('');
 
-      // Create order
       const order = await createOrder(amount);
 
-      // Initialize Razorpay
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
         amount: order.amount,
@@ -35,29 +34,26 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
         order_id: order.id,
         handler: async (response) => {
           try {
-            // Verify payment on your server
-            const verifyResponse = await fetch('/api/verify-payment', {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-              },
-              body: JSON.stringify({
-                razorpay_order_id: response.razorpay_order_id,
-                razorpay_payment_id: response.razorpay_payment_id,
-                razorpay_signature: response.razorpay_signature,
-              }),
+            const functions = getFunctions();
+            const verifyPaymentFunc = httpsCallable(functions, 'verifyRazorpayPayment');
+            
+            const verificationResult = await verifyPaymentFunc({
+              razorpay_order_id: response.razorpay_order_id,
+              razorpay_payment_id: response.razorpay_payment_id,
+              razorpay_signature: response.razorpay_signature,
             });
 
-            const data = await verifyResponse.json();
-
-            if (data.success) {
+            if (verificationResult.data.success) {
               onSuccess?.(response);
             } else {
-              onError?.('Payment verification failed');
+              console.error('Payment verification failed:', verificationResult.data.message);
+              onError?.(verificationResult.data.message || 'Payment verification failed');
             }
-          } catch (error) {
-            console.error('Payment verification error:', error);
-            onError?.('Payment verification failed');
+          } catch (funcError) {
+            console.error('Payment verification function error:', funcError);
+            const errorMessage = funcError.message || 'Payment verification failed on server.';
+            setError(errorMessage);
+            onError?.(errorMessage);
           }
         },
         prefill: {
@@ -70,10 +66,17 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
         },
       };
 
-      const razorpay = new window.Razorpay(options);
-      razorpay.open();
+      if (typeof window !== 'undefined' && window.Razorpay) {
+          const razorpay = new window.Razorpay(options);
+          razorpay.open();
+      } else {
+          console.error('Razorpay SDK not loaded');
+          setError('Payment gateway is not available. Please refresh.');
+          onError?.('Razorpay SDK not loaded');
+      }
+
     } catch (error) {
-      console.error('Payment error:', error);
+      console.error('Payment initiation error:', error);
       setError(t('payment.error'));
       onError?.(error.message);
     } finally {
