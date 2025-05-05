@@ -66,6 +66,10 @@ function MyApp(props) {
       <Head>
         <title>Next.js + Firebase + MUI Boilerplate</title>
         <meta name="viewport" content="initial-scale=1, width=device-width" />
+        <script
+          src="https://checkout.razorpay.com/v1/checkout.js"
+          async
+        />
       </Head>
       <ThemeProvider theme={theme}>
         <CssBaseline />

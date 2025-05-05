@@ -50,29 +50,6 @@ export default function Signup() {
   // Ref for reCAPTCHA container
   const recaptchaContainerRef = useRef(null);
 
-  // Make sure the reCAPTCHA container is always in the DOM
-  useEffect(() => {
-    // Create the reCAPTCHA container if it doesn't exist
-    if (!document.getElementById('recaptcha-container')) {
-      const recaptchaContainer = document.createElement('div');
-      recaptchaContainer.id = 'recaptcha-container';
-      document.body.appendChild(recaptchaContainer);
-    }
-
-    // Cleanup function
-    return () => {
-      // Don't remove the container on component unmount
-      // Just clear the reCAPTCHA if it exists
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-    };
-  }, []);
-
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
     setError('');
@@ -167,6 +144,7 @@ export default function Signup() {
       // Format to E.164 format with Indian country code
       const formattedPhoneNumber = formatIndianPhoneNumber(phoneNumber);
 
+      // Explicitly pass the correct ID for this page
       const result = await sendVerificationCode(formattedPhoneNumber, 'recaptcha-container');
       setConfirmationResult(result);
       setPhoneStep(1);
@@ -570,16 +548,6 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
           </Container>
         </Box>
       </Box>
-
-      {/* Add a visible reCAPTCHA container */}
-      <Box
-        id="recaptcha-container"
-        sx={{
-          mt: 2,
-          display: authMethod === 'phone' && phoneStep === 0 ? 'block' : 'none',
-          '& div': { margin: '0 auto' }
-        }}
-      />
     </>
   );
 } 

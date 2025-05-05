@@ -24,18 +24,36 @@ export const db = getFirestore(app);
 export const storage = getStorage(app);
 
 // Initialize App Check only on the client side
-let appCheck = null;
 
-// Function to initialize App Check
-export function initializeAppCheckForClient() {
-  if (typeof window !== 'undefined' && !appCheck) {
-    appCheck = initializeAppCheck(app, {
-      provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
-      isTokenAutoRefreshEnabled: true,
-      debug: process.env.NODE_ENV !== 'production'
-    });
+let appCheckInstance = null;
+
+export const initializeAppCheckForClient = () => {
+  if (appCheckInstance) {
+    return appCheckInstance;
   }
-  return appCheck;
-}
+  // Ensure this runs only on client
+  if (typeof window !== 'undefined') {
+    // Check if the environment variable is set
+    if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
+      console.error("App Check Error: NEXT_PUBLIC_RECAPTCHA_SITE_KEY environment variable is not set.");
+      return null; // Or throw an error
+    }
 
-export { appCheck };
+    try {
+      // Pass your reCAPTCHA v3 site key (from Google Cloud Console) here.
+      // It's crucial this key is stored in an environment variable.
+      appCheckInstance = initializeAppCheck(app, {
+        provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
+        // Optional: default assumes true, but you can set false for environments
+        // where App Check should be disabled (e.g., local testing without tokens)
+        isTokenAutoRefreshEnabled: true
+      });
+      console.log("App Check initialized successfully.");
+      return appCheckInstance;
+    } catch (e) {
+      console.error("Error initializing App Check provider:", e);
+      return null; // Or handle error appropriately
+    }
+  }
+  return null;
+};

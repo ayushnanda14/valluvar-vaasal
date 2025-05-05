@@ -19,10 +19,14 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../src/context/AuthContext';
+import { getOrCreateRecaptcha } from '../src/context/AuthContext';
+import { auth } from '../src/firebase/firebaseConfig';
+import { signInWithPhoneNumber } from 'firebase/auth';
 import GoogleIcon from '@mui/icons-material/Google';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import Head from 'next/head';
+import { getFunctions, httpsCallable } from 'firebase/functions';
 
 const MotionBox = motion(Box);
 const MotionPaper = motion(Paper);
@@ -30,9 +34,9 @@ const MotionPaper = motion(Paper);
 export default function Login() {
   const theme = useTheme();
   const router = useRouter();
-  const { loginWithEmail, loginWithGoogle, sendVerificationCode, verifyCodeAndSignUp } = useAuth();
+  const { loginWithEmail, loginWithGoogle, verifyCodeAndSignUp } = useAuth();
 
-  const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
+  const [authMethod, setAuthMethod] = useState('phone'); // Changed default to 'phone'
 
   // Email login state
   const [email, setEmail] = useState('');
@@ -49,6 +53,9 @@ export default function Login() {
 
   // Ref for reCAPTCHA container
   const recaptchaContainerRef = useRef(null);
+
+  // Add new ref for reCAPTCHA
+  const recaptchaRef = useRef(null);
 
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
@@ -110,67 +117,55 @@ export default function Login() {
     return phone.startsWith('+') ? phone : `+${phone}`;
   };
 
-  // Make sure the reCAPTCHA container is always in the DOM
-  useEffect(() => {
-    // Create the reCAPTCHA container if it doesn't exist
-    if (!document.getElementById('recaptcha-container-login')) {
-      const recaptchaContainer = document.createElement('div');
-      recaptchaContainer.id = 'recaptcha-container-login';
-      document.body.appendChild(recaptchaContainer);
-    }
-
-    // Cleanup function
-    return () => {
-      // Don't remove the container on component unmount
-      // Just clear the reCAPTCHA if it exists
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-    };
-  }, []);
-
   const handleSendVerificationCode = async (e) => {
     e.preventDefault();
+    setError('');
+    setLoading(true); // Start loading early
 
     if (!phoneNumber) {
       setError('Please enter your phone number');
+      setLoading(false);
       return;
     }
 
-    // Validate Indian phone number
+    const formatted = formatIndianPhoneNumber(phoneNumber);
     if (!validateIndianPhoneNumber(phoneNumber)) {
-      setError('Please enter a valid Indian phone number (10 digits)');
+      setError('Enter valid 10-digit Indian number');
+      setLoading(false);
       return;
     }
 
     try {
-      setError('');
-      setLoading(true);
+      // 1️⃣ check with Cloud Function
+      const functions = getFunctions(); // Get Firebase Functions instance
+      const checkPhone = httpsCallable(functions, 'checkPhone');
+      const resultCheck = await checkPhone({ phone: formatted });
+      const data = resultCheck.data; // Access the data property
 
-      // Format to E.164 format with Indian country code
-      const formattedPhoneNumber = formatIndianPhoneNumber(phoneNumber);
+      if (!data.exists) {
+        setError('No account found for this number. Please sign up first.');
+        setLoading(false);
+        return;
+      }
 
-      const result = await sendVerificationCode(formattedPhoneNumber, 'recaptcha-container-login');
+      // 2️⃣ send OTP if number exists
+      const verifier = getOrCreateRecaptcha(); // Use the singleton verifier
+      const result = await signInWithPhoneNumber(auth, formatted, verifier);
       setConfirmationResult(result);
       setPhoneStep(1);
+
     } catch (err) {
-      console.error('Phone verification error:', err);
-
-      // Display user-friendly error message
-      setError(err.message || 'Failed to send verification code. Please try again.');
-
-      // If it's the "not enabled" error, show additional guidance
-      if (err.message && err.message.includes('not enabled')) {
-        setError(`${err.message} 
-        
-Note for developers: You need to enable Phone Authentication in the Firebase Console:
-1. Go to Firebase Console > Authentication > Sign-in method
-2. Enable "Phone" provider
-3. Add your app's domain to the authorized domains`);
+      console.error('Error during phone check or OTP send:', err);
+      if (err.code === 'functions/internal' || err.code === 'auth/internal-error') {
+         setError('An internal server error occurred. Please try again later.');
+      } else if (err.code === 'auth/quota-exceeded') {
+        setError('SMS quota exceeded. Please try again later.');
+      } else if (err.code === 'auth/app-not-authorized' || err.code === 'auth/invalid-app-credential') {
+        setError('Domain not authorised or invalid app credential. Check Firebase setup.');
+      } else if (err.code === 'functions/invalid-argument') {
+        setError('Invalid phone number format sent to server.');
+      } else {
+        setError(err.message || 'An unexpected error occurred.');
       }
     } finally {
       setLoading(false);
@@ -244,292 +239,217 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
       <Box sx={{
         display: 'flex',
         flexDirection: 'column',
-        minHeight: '100vh'
+        minHeight: '100vh',
+        position: 'relative'
       }}>
-
-        <Box
-          sx={{
-            py: { xs: 6, md: 10 },
-            backgroundColor: theme.palette.background.default,
-            flexGrow: 1,
-            display: 'flex',
-            alignItems: 'center'
-          }}
-        >
-          <Container maxWidth="sm">
-            <MotionPaper
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-              elevation={3}
+        <Container maxWidth="sm" sx={{ py: 8 }}>
+          <MotionPaper
+            elevation={3}
+            sx={{
+              p: 4,
+              borderRadius: 2,
+              backgroundColor: 'rgba(255, 255, 255, 0.9)',
+              backdropFilter: 'blur(10px)'
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Typography
+              variant="h4"
+              component="h1"
+              gutterBottom
               sx={{
-                p: { xs: 3, md: 5 },
-                borderRadius: '16px',
-                background: 'rgba(255, 255, 255, 0.95)'
+                textAlign: 'center',
+                fontFamily: '"Cinzel", serif',
+                color: theme.palette.primary.main,
+                mb: 4
               }}
             >
-              <Typography
-                variant="h4"
-                component="h1"
-                align="center"
-                sx={{
-                  mb: 4,
-                  fontFamily: '"Cinzel", serif',
-                  color: theme.palette.secondary.dark
-                }}
-              >
-                Welcome Back
-              </Typography>
+              Sign In
+            </Typography>
 
-              {error && (
-                <Alert
-                  severity="error"
-                  sx={{
-                    mb: 3,
-                    whiteSpace: 'pre-line' // This will preserve line breaks in the error message
-                  }}
-                  action={
-                    error.includes('Invalid app credential') || error.includes('billing') ? (
-                      <Button color="inherit" size="small" onClick={handleRefresh}>
-                        Refresh
-                      </Button>
-                    ) : null
-                  }
-                >
-                  {error}
-                </Alert>
-              )}
+            <Tabs
+              value={authMethod}
+              onChange={handleAuthMethodChange}
+              centered
+              sx={{ mb: 3 }}
+            >
+              <Tab
+                value="phone"
+                label="Mobile Number"
+                icon={<PhoneIcon />}
+                iconPosition="start"
+                sx={{ fontFamily: '"Cinzel", serif' }}
+              />
+              <Tab
+                value="email"
+                label="Email"
+                icon={<EmailIcon />}
+                iconPosition="start"
+                sx={{ fontFamily: '"Cinzel", serif' }}
+              />
+            </Tabs>
 
-              <Tabs
-                value={authMethod}
-                onChange={handleAuthMethodChange}
-                variant="fullWidth"
-                sx={{ mb: 3 }}
-              >
-                <Tab
-                  icon={<EmailIcon />}
-                  label="Email"
-                  value="email"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                />
-                <Tab
-                  icon={<PhoneIcon />}
-                  label="Phone"
-                  value="phone"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                />
-              </Tabs>
+            {error && (
+              <Alert severity="error" sx={{ mb: 3 }}>
+                {error}
+              </Alert>
+            )}
 
-              {authMethod === 'email' ? (
-                <form onSubmit={handleEmailLogin} autoComplete="off">
-                  <TextField
-                    label="Email"
-                    type="email"
-                    fullWidth
-                    margin="normal"
-                    variant="outlined"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                    autoComplete="new-email"
-                    inputProps={{ autoComplete: 'new-email' }}
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
-                          <EmailIcon color="action" />
-                        </InputAdornment>
-                      ),
-                    }}
-                  />
+            {/* Invisible reCAPTCHA container rendered once */}
+            <div id="recaptcha-container-login" />
 
-                  <TextField
-                    label="Password"
-                    type="password"
-                    fullWidth
-                    margin="normal"
-                    variant="outlined"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                    autoComplete="new-password"
-                    inputProps={{ autoComplete: 'new-password' }}
-                  />
-
-                  <Box sx={{ textAlign: 'right', mt: 1, mb: 2 }}>
-                    <Link href="/reset-password" passHref sx={{
-                      color: theme.palette.primary.main,
-                      textDecoration: 'none',
-                      '&:hover': {
-                        textDecoration: 'underline'
-                      }
-                    }}>
-                      Forgot password?
-                    </Link>
-                  </Box>
-
-                  <Button
-                    type="submit"
-                    fullWidth
-                    variant="contained"
-                    color="primary"
-                    size="large"
-                    disabled={loading}
-                    sx={{
-                      py: 1.5,
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '1.1rem'
-                    }}
-                  >
-                    {loading ? <CircularProgress size={24} /> : 'Sign In'}
-                  </Button>
-                </form>
-              ) : (
-                <>
-                  {/* Hidden div for reCAPTCHA */}
-                  <div id="recaptcha-container-login" ref={recaptchaContainerRef}></div>
-
-                  {phoneStep === 0 ? (
-                    <form onSubmit={handleSendVerificationCode} autoComplete="off">
-                      <TextField
-                        label="Phone Number"
-                        fullWidth
-                        margin="normal"
-                        variant="outlined"
-                        value={phoneNumber}
-                        onChange={(e) => setPhoneNumber(e.target.value)}
-                        required
-                        placeholder="Enter 10-digit mobile number"
-                        helperText="Indian mobile number only (e.g., 9876543210)"
-                        autoComplete="off"
-                        InputProps={{
-                          startAdornment: (
-                            <InputAdornment position="start">
-                              <PhoneIcon color="action" />
-                              <Typography variant="body2" sx={{ ml: 0.5 }}>+91</Typography>
-                            </InputAdornment>
-                          ),
-                        }}
-                      />
-
-                      <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        size="large"
-                        disabled={loading}
-                        sx={{
-                          mt: 3,
-                          py: 1.5,
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1.1rem'
-                        }}
-                      >
-                        {loading ? <CircularProgress size={24} /> : 'Send Verification Code'}
-                      </Button>
-                    </form>
-                  ) : (
-                    <form onSubmit={handleVerifyCode} autoComplete="off">
-                      <TextField
-                        label="Verification Code"
-                        fullWidth
-                        margin="normal"
-                        variant="outlined"
-                        value={verificationCode}
-                        onChange={(e) => setVerificationCode(e.target.value)}
-                        required
-                        autoComplete="off"
-                      />
-
-                      <Button
-                        type="submit"
-                        fullWidth
-                        variant="contained"
-                        color="primary"
-                        size="large"
-                        disabled={loading}
-                        sx={{
-                          mt: 3,
-                          py: 1.5,
-                          fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1.1rem'
-                        }}
-                      >
-                        {loading ? <CircularProgress size={24} /> : 'Verify & Sign In'}
-                      </Button>
-
-                      <Button
-                        fullWidth
-                        variant="text"
-                        color="secondary"
-                        onClick={() => setPhoneStep(0)}
-                        sx={{ mt: 1 }}
-                      >
-                        Back to Phone Number
-                      </Button>
-                    </form>
-                  )}
-                </>
-              )}
-
-              <Divider sx={{ my: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  OR
-                </Typography>
-              </Divider>
-
-              <Button
-                fullWidth
-                variant="outlined"
-                color="primary"
-                size="large"
-                startIcon={<GoogleIcon />}
-                onClick={handleGoogleLogin}
-                disabled={loading}
-                sx={{
-                  py: 1.5,
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1.1rem'
-                }}
-              >
-                Sign in with Google
-              </Button>
-
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Typography variant="body2">
-                  Don't have an account?{' '}
-                  <Link href="/signup" passHref sx={{
-                    color: theme.palette.primary.main,
-                    textDecoration: 'none',
-                    '&:hover': {
-                      textDecoration: 'underline'
-                    }
-                  }}>
-                    Sign up
-                  </Link>
-                </Typography>
+            {authMethod === 'phone' ? (
+              <Box>
+                {phoneStep === 0 ? (
+                  <form onSubmit={handleSendVerificationCode}>
+                    <TextField
+                      fullWidth
+                      label="Mobile Number"
+                      value={phoneNumber}
+                      onChange={(e) => setPhoneNumber(e.target.value)}
+                      margin="normal"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
+                            <PhoneIcon color="primary" />
+                          </InputAdornment>
+                        ),
+                      }}
+                      placeholder="Enter 10-digit mobile number"
+                      sx={{ mb: 3 }}
+                    />
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      type="submit"
+                      disabled={loading}
+                      sx={{
+                        py: 1.5,
+                        fontFamily: '"Cinzel", serif',
+                        fontSize: '1.1rem'
+                      }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : 'Send OTP'}
+                    </Button>
+                  </form>
+                ) : (
+                  <form onSubmit={handleVerifyCode}>
+                    <TextField
+                      fullWidth
+                      label="Verification Code"
+                      value={verificationCode}
+                      onChange={(e) => setVerificationCode(e.target.value)}
+                      margin="normal"
+                      placeholder="Enter 6-digit code"
+                      sx={{ mb: 3 }}
+                    />
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
+                      type="submit"
+                      disabled={loading}
+                      sx={{
+                        py: 1.5,
+                        fontFamily: '"Cinzel", serif',
+                        fontSize: '1.1rem'
+                      }}
+                    >
+                      {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
+                    </Button>
+                    <Button
+                      fullWidth
+                      variant="text"
+                      onClick={handleRefresh}
+                      sx={{ mt: 2 }}
+                    >
+                      Resend OTP
+                    </Button>
+                  </form>
+                )}
               </Box>
-            </MotionPaper>
-          </Container>
-        </Box>
+            ) : (
+              <form onSubmit={handleEmailLogin}>
+                <TextField
+                  fullWidth
+                  label="Email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  margin="normal"
+                  InputProps={{
+                    startAdornment: (
+                      <InputAdornment position="start">
+                        <EmailIcon color="primary" />
+                      </InputAdornment>
+                    ),
+                  }}
+                  sx={{ mb: 3 }}
+                />
+                <TextField
+                  fullWidth
+                  label="Password"
+                  type="password"
+                  value={password}
+                  onChange={(e) => setPassword(e.target.value)}
+                  margin="normal"
+                  sx={{ mb: 3 }}
+                />
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
+                  type="submit"
+                  disabled={loading}
+                  sx={{
+                    py: 1.5,
+                    fontFamily: '"Cinzel", serif',
+                    fontSize: '1.1rem'
+                  }}
+                >
+                  {loading ? <CircularProgress size={24} /> : 'Sign In'}
+                </Button>
+              </form>
+            )}
 
+            <Divider sx={{ my: 3 }}>
+              <Typography variant="body2" color="text.secondary">
+                OR
+              </Typography>
+            </Divider>
+
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<GoogleIcon />}
+              onClick={handleGoogleLogin}
+              sx={{
+                py: 1.5,
+                fontFamily: '"Cinzel", serif',
+                fontSize: '1.1rem'
+              }}
+            >
+              Continue with Google
+            </Button>
+
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Typography variant="body2">
+                Don't have an account?{' '}
+                <Link href="/signup" passHref>
+                  <MuiLink color="primary">Sign up</MuiLink>
+                </Link>
+              </Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}>
+                <Link href="/reset-password" passHref>
+                  <MuiLink color="primary">Forgot password?</MuiLink>
+                </Link>
+              </Typography>
+            </Box>
+          </MotionPaper>
+        </Container>
       </Box>
-
-      {/* Add a visible reCAPTCHA container */}
-      <Box
-        id="recaptcha-container-login"
-        sx={{
-          mt: 2,
-          display: authMethod === 'phone' && phoneStep === 0 ? 'block' : 'none',
-          '& div': { margin: '0 auto' }
-        }}
-      />
     </>
   );
 } 

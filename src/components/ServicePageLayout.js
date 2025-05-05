@@ -30,6 +30,7 @@ import FileUploadSection from './FileUploadSection';
 import PaymentSummary from './PaymentSummary';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { SERVICE_TYPES } from '@/utils/constants';
+import PaymentButton from './PaymentButton';
 
 export default function ServicePageLayout({
   title,
@@ -146,10 +147,7 @@ export default function ServicePageLayout({
   };
 
   const handlePayment = async () => {
-    // This will be implemented with the payment gateway
     try {
-      // Create a new service request in Firestore
-
       // Create a new service request in Firestore
       const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), {
         clientId: currentUser.uid,
@@ -181,57 +179,22 @@ export default function ServicePageLayout({
         });
 
         // Upload file references to the chat
-        // This allows us to:
-        // 1. Associate uploaded documents with specific chats
-        // 2. Support multiple document uploads over time
-        // 3. Keep track of document metadata and access permissions
-
-        // For the initial files uploaded by the client
         const fileReferences = [];
 
         try {
-        // Process main files
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          // Generate appropriate file name based on service type
-          let newFileName;
-          if (serviceType === 'marriageMatching') {
+          // Process main files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+            
+            // Generate appropriate file name based on service type
+            let newFileName;
+            if (serviceType === 'marriageMatching') {
               newFileName = `Bride_Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-          } else {
+            } else {
               newFileName = `Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-          }
-          
-            // Create a storage reference with the user's UID in the path for better security
+            }
+            
             const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-          
-          // Upload the file to Firebase Storage
-          const uploadTask = await uploadBytes(storageRef, file);
-          const downloadURL = await getDownloadURL(uploadTask.ref);
-          
-          // Add file metadata to the array
-          fileReferences.push({
-            name: newFileName,
-            originalName: file.name,
-            type: file.type,
-            size: file.size,
-            url: downloadURL,
-            uploadedBy: currentUser.uid,
-            uploadedAt: serverTimestamp()
-          });
-        }
-
-        // Process secondary files if dual upload is enabled
-        if (dualUpload && secondFiles.length > 0) {
-          for (let i = 0; i < secondFiles.length; i++) {
-            const file = secondFiles[i];
-            
-            // For marriage matching, second set is for Groom
-              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            
-              // Create a storage reference with the user's UID in the path for better security
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-            
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
             
@@ -241,42 +204,58 @@ export default function ServicePageLayout({
               type: file.type,
               size: file.size,
               url: downloadURL,
-              category: dualUploadLabels[1], // Add category to distinguish second set of files
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
-        }
 
-        // Store file references in a subcollection of the chat
-        // This allows for easy querying of files associated with a chat
-        for (const fileRef of fileReferences) {
-          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-        }
+          // Process secondary files if dual upload is enabled
+          if (dualUpload && secondFiles.length > 0) {
+            for (let i = 0; i < secondFiles.length; i++) {
+              const file = secondFiles[i];
+              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+              const uploadTask = await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(uploadTask.ref);
+              
+              fileReferences.push({
+                name: newFileName,
+                originalName: file.name,
+                type: file.type,
+                size: file.size,
+                url: downloadURL,
+                category: dualUploadLabels[1],
+                uploadedBy: currentUser.uid,
+                uploadedAt: serverTimestamp()
+              });
+            }
+          }
 
-        // Add a system message about the uploaded files
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-          senderId: 'system',
-          text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
-          timestamp: serverTimestamp(),
-          read: false,
-          fileReferences: fileReferences.map(f => ({ 
-            name: f.name, 
-            url: f.url,
-            type: f.type
-          }))
-        });
+          // Store file references in a subcollection of the chat
+          for (const fileRef of fileReferences) {
+            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+          }
+
+          // Add a system message about the uploaded files
+          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+            senderId: 'system',
+            text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
+            timestamp: serverTimestamp(),
+            read: false,
+            fileReferences: fileReferences.map(f => ({ 
+              name: f.name, 
+              url: f.url,
+              type: f.type
+            }))
+          });
         } catch (err) {
           console.error('Error uploading files:', err);
           setError('There was an error uploading your files. Please try again.');
           return;
         }
       }
-      // Upload files to Firebase Storage
-      // Create conversation threads with selected astrologers
-      // Redirect to payment gateway
 
-      // For now, just redirect to a success page
+      // Redirect to success page after payment
       router.push('/service-success');
     } catch (err) {
       console.error('Payment error:', err);
@@ -800,10 +779,13 @@ export default function ServicePageLayout({
                         >
                           Payment Method
                         </Typography>
-                  <PaymentSummary
-                    total={calculateTotal()}
-                    onPaymentComplete={handlePayment}
-                  />
+                        
+                        <PaymentButton
+                          amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
+                          description={`Payment for ${SERVICE_TYPES[serviceType]} service`}
+                          onSuccess={handlePayment}
+                          onError={(error) => setError(error)}
+                        />
                       </Paper>
                     </Box>
 

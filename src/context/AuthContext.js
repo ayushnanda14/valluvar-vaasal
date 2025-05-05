@@ -30,6 +30,24 @@ export function useAuth() {
   return useContext(AuthContext);
 }
 
+// Utility: singleton invisible reCAPTCHA verifier for phone auth
+export function getOrCreateRecaptcha(containerId = 'recaptcha-container-login') {
+  if (typeof window === 'undefined') return null;
+  if (window.recaptchaVerifier) return window.recaptchaVerifier;
+
+  // Ensure container exists
+  let container = document.getElementById(containerId);
+  if (!container) {
+    container = document.createElement('div');
+    container.id = containerId;
+    document.body.appendChild(container);
+  }
+
+  // eslint-disable-next-line no-undef
+  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
+  return window.recaptchaVerifier;
+}
+
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRoles, setUserRoles] = useState([]);
@@ -104,49 +122,12 @@ export function AuthProvider({ children }) {
     }
   }
   
-  // Function to set up reCAPTCHA
-  function setupRecaptcha(containerId) {
-    try {
-      // Clear any existing reCAPTCHA instances first
-      if (window.recaptchaVerifier) {
-        window.recaptchaVerifier.clear();
-      }
-      
-      // Create a new reCAPTCHA verifier
-      window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, {
-        'size': 'normal',
-        'callback': (response) => {
-          // reCAPTCHA solved, allow the user to sign in
-          console.log('reCAPTCHA verified');
-        },
-        'expired-callback': () => {
-          // Response expired. Ask user to solve reCAPTCHA again.
-          console.log('reCAPTCHA expired');
-        }
-      });
-      
-      // Render the reCAPTCHA
-      window.recaptchaVerifier.render().then((widgetId) => {
-        window.recaptchaWidgetId = widgetId;
-      });
-      
-      return window.recaptchaVerifier;
-    } catch (error) {
-      console.error('Error setting up reCAPTCHA:', error);
-      throw new Error('Failed to set up verification. Please refresh the page and try again.');
-    }
-  }
-  
   // Function to send verification code
   async function sendVerificationCode(phoneNumber, recaptchaContainerId) {
     try {
-      // Make sure the container exists
-      const container = document.getElementById(recaptchaContainerId);
-      if (!container) {
-        throw new Error('reCAPTCHA container not found. Please refresh the page and try again.');
-      }
+      const verifier = getOrCreateRecaptcha(recaptchaContainerId);
       
-      const verifier = setupRecaptcha(recaptchaContainerId);
+      // Send verification code
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
       return confirmationResult;
     } catch (error) {
@@ -162,22 +143,9 @@ export function AuthProvider({ children }) {
       } else if (error.code === 'auth/captcha-check-failed') {
         throw new Error('reCAPTCHA verification failed. Please refresh the page and try again.');
       } else if (error.code === 'auth/billing-not-enabled') {
-        throw new Error(`Firebase billing is not properly configured. 
-
-For developers: You need to:
-1. Ensure you have a valid payment method in Firebase console
-2. Upgrade to the Blaze plan (pay-as-you-go)
-3. Make sure your billing account is in good standing
-4. Verify your project's quota settings for phone authentication`);
+        throw new Error('Firebase billing is not properly configured. Please contact the administrator.');
       } else if (error.code === 'auth/invalid-app-credential') {
-        throw new Error(`Invalid app credential. This often happens after changing Firebase plans or settings.
-
-For developers:
-1. Make sure your Firebase project is properly configured
-2. Verify that your app domain is added to the authorized domains in Firebase console
-3. Check that reCAPTCHA v2 is enabled for your project
-4. Try clearing your browser cache and cookies
-5. It may take some time for plan changes to propagate - wait 15-30 minutes and try again`);
+        throw new Error('Invalid app credential. Please refresh the page and try again.');
       } else if (error.message && error.message.includes('reCAPTCHA')) {
         throw new Error('reCAPTCHA error. Please refresh the page and try again.');
       } else {
@@ -366,8 +334,7 @@ For developers:
     resetPassword,
     updateUserRoles,
     getAllUsers,
-    getAstrologers,
-    setupRecaptcha
+    getAstrologers
   };
   
   return (
