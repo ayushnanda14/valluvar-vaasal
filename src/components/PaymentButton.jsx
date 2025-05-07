@@ -1,6 +1,5 @@
 import React, { useState } from 'react';
 import { Button, CircularProgress, Alert } from '@mui/material';
-import { createOrder } from '../services/paymentService';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
@@ -19,22 +18,35 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
       return;
     }
 
-    try {
-      setLoading(true);
-      setError('');
+    setLoading(true);
+    setError('');
 
-      const order = await createOrder(amount);
+    console.log('Current user for prefill:', currentUser);
+    console.log('Phone number for prefill:', currentUser?.phoneNumber);
+
+    try {
+      const functions = getFunctions();
+      const createOrderFunc = httpsCallable(functions, 'createRazorpayOrder');
+      const orderResult = await createOrderFunc({ 
+          amount: amount * 100,
+          currency: 'INR' 
+      });
+      
+      const { orderId, amount: orderAmount, currency: orderCurrency } = orderResult.data;
+      
+      if (!orderId) {
+          throw new Error('Failed to create payment order ID on server.');
+      }
 
       const options = {
         key: process.env.NEXT_PUBLIC_RAZORPAY_KEY_ID,
-        amount: order.amount,
-        currency: order.currency,
+        amount: orderAmount,
+        currency: orderCurrency,
         name: 'Valluvar Vaasal',
         description: description,
-        order_id: order.id,
+        order_id: orderId,
         handler: async (response) => {
           try {
-            const functions = getFunctions();
             const verifyPaymentFunc = httpsCallable(functions, 'verifyRazorpayPayment');
             
             const verificationResult = await verifyPaymentFunc({
@@ -68,6 +80,11 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
 
       if (typeof window !== 'undefined' && window.Razorpay) {
           const razorpay = new window.Razorpay(options);
+          razorpay.on('payment.failed', function (response){
+              console.error('Razorpay Payment Failed:', response.error);
+              setError(`Payment Failed: ${response.error.description || response.error.reason}`);
+              onError?.(`Payment Failed: ${response.error.reason}`); 
+          });
           razorpay.open();
       } else {
           console.error('Razorpay SDK not loaded');
@@ -77,7 +94,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
 
     } catch (error) {
       console.error('Payment initiation error:', error);
-      setError(t('payment.error'));
+      setError(error.message || t('payment.error'));
       onError?.(error.message);
     } finally {
       setLoading(false);

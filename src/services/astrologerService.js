@@ -8,40 +8,43 @@ import {
   query,
   where,
   orderBy,
-  limit
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { uploadFiles } from './fileService';
 
 // Update astrologer profile with services and pricing
 export const updateAstrologerServices = async (userId, services, pricing) => {
+  const userRef = doc(db, 'users', userId);
+  
+  const enabledServices = Object.keys(services).filter(key => services[key]);
+  const serviceCharges = {};
+  enabledServices.forEach(service => {
+    serviceCharges[service] = Number(pricing[service]) || 0; // Ensure pricing is a number
+  });
+
   try {
-    // Create service charges object
-    const serviceCharges = {};
-    
-    if (services.marriageMatching) {
-      serviceCharges.marriageMatching = parseInt(pricing.marriageMatching);
-    }
-    
-    if (services.jathakPrediction) {
-      serviceCharges.jathakPrediction = parseInt(pricing.jathakPrediction);
-    }
-    
-    if (services.jathakWriting) {
-      serviceCharges.jathakWriting = parseInt(pricing.jathakWriting);
-    }
-    
-    // Update user document
-    await updateDoc(doc(db, 'users', userId), {
-      services: Object.keys(services).filter(key => services[key]),
-      serviceCharges,
+    await updateDoc(userRef, {
+      services: enabledServices,
+      serviceCharges: serviceCharges,
       updatedAt: serverTimestamp()
     });
-    
-    return true;
   } catch (error) {
     console.error('Error updating astrologer services:', error);
-    throw new Error(`Failed to update services: ${error.message}`);
+    throw error;
+  }
+};
+
+// NEW Function to update basic profile details (like district)
+export const updateAstrologerProfileDetails = async (userId, details) => {
+  const userRef = doc(db, 'users', userId);
+  try {
+    await updateDoc(userRef, {
+      ...details, // Spread the details object (e.g., { district: 'New District' })
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating astrologer profile details:', error);
+    throw error;
   }
 };
 

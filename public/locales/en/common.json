@@ -120,6 +120,7 @@
   },
   "services": {
     "ourServices": "Our Services",
+    "checkOut": "Check Out",
     "servicesDescription": "Discover our range of traditional Tamil astrological services, crafted with ancient wisdom to guide your life's journey.",
     "marriageMatching": {
       "title": "Marriage Matching",
@@ -162,5 +163,23 @@
     "today": "Today",
     "yesterday": "Yesterday",
     "daysAgo": "{{count}} days ago"
+  },
+  "servicePage": {
+    "uploadTitle": "Upload Your Jathak",
+    "selectDistrictTitle": "Select District",
+    "selectAstrologersTitle": "Select Astrologers",
+    "showingAstrologers": "Showing astrologers for {{district}} district",
+    "noAstrologersFound": "No astrologers found offering {{service}} in {{district}}.",
+    "nextDistrict": "Next: Select District",
+    "nextAstrologers": "Next: Select Astrologers",
+    "nextPayment": "Next: Payment",
+    "back": "Back",
+    "paymentMethod": "Payment Method",
+    "orderSummary": "Order Summary",
+    "paymentDescription": "Payment for {{service}} service"
+  },
+  "payment": {
+    "payNow": "Pay Now",
+    "error": "Payment Error: Failed to process payment."
   }
 }

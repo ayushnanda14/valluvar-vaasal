@@ -17,7 +17,11 @@ import {
   Alert,
   CircularProgress,
   useTheme,
-  Snackbar
+  Snackbar,
+  InputLabel,
+  Select,
+  MenuItem,
+  FormControl
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -26,6 +30,17 @@ import FileUploadSection from '../../src/components/FileUploadSection';
 import PhoneIcon from '@mui/icons-material/Phone';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MuiAlert from '@mui/material/Alert';
+
+const TAMIL_NADU_DISTRICTS = [
+  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
+  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 
+  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 
+  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 
+  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)', 
+  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 
+  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 
+  'Virudhunagar'
+];
 
 export default function AstrologerSignup() {
   const theme = useTheme();
@@ -75,6 +90,10 @@ export default function AstrologerSignup() {
   
   // Add state for profile picture
   const [profilePicture, setProfilePicture] = useState([]);
+  
+  // Add state for state and district
+  const [state, setState] = useState('Tamil Nadu');
+  const [district, setDistrict] = useState('');
   
   // Redirect if already logged in
   useEffect(() => {
@@ -177,8 +196,8 @@ export default function AstrologerSignup() {
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     
-    if (!verificationCode) {
-      setError('Please enter the verification code');
+    if (!verificationCode || !district) {
+      setError('Please enter the verification code and select a District');
       return;
     }
     
@@ -186,12 +205,9 @@ export default function AstrologerSignup() {
       setError('');
       setLoading(true);
       
-      // For phone auth, we'll create the user after verifying the code
-      if (authMethod === 'phone') {
+      // We'll pass state/district to verifyCodeAndSignUp later when we modify AuthContext
         await verifyCodeAndSignUp(confirmationResult, verificationCode, displayName, ['astrologer']);
-        // Move to the next step after successful verification
         handleNext();
-      }
     } catch (err) {
       console.error('Code verification error:', err);
       setError('Failed to verify code: ' + err.message);
@@ -204,8 +220,8 @@ export default function AstrologerSignup() {
   const handleEmailSignup = async (e) => {
     e.preventDefault();
     
-    if (!email || !password || !displayName) {
-      setError('Please fill in all required fields');
+    if (!email || !password || !displayName || !district) {
+      setError('Please fill in all required fields, including District');
       return;
     }
     
@@ -213,8 +229,19 @@ export default function AstrologerSignup() {
       setError('');
       setLoading(true);
       
-      await signUpWithEmailAndPassword(email, password, displayName, ['astrologer']);
-      // Move to the next step after successful signup
+      // Include state and district when calling the signup function
+      // NOTE: We need to modify the actual signup function in AuthContext 
+      // OR adjust how data is saved if it happens later.
+      // For now, assuming signupWithEmail should handle it or we save later.
+      
+      // If signupWithEmail handles saving everything:
+      // await signupWithEmail(email, password, displayName, ['astrologer'], { state, district });
+      
+      // Let's assume for now that the user is created first, and we add 
+      // district/state later or modify the updateDoc in handleSubmit
+      
+      await signUpWithEmailAndPassword(email, password, displayName);
+      // User is created, move to next step. District/State saved later.
       handleNext();
     } catch (err) {
       console.error('Signup error:', err);
@@ -270,9 +297,11 @@ export default function AstrologerSignup() {
       // Wait for all uploads to complete
       await Promise.all(uploadTasks);
       
-      // Update user document with all uploaded documents
+      // Update user document with all uploaded documents, state, and district
       const userDocRef = doc(db, 'users', currentUser.uid);
       await updateDoc(userDocRef, {
+        state: state,
+        district: district,
         documents: {
           aadharCard: uploadedUrls.aadharCard || null,
           certificates: uploadedUrls.certificates || [],
@@ -449,6 +478,34 @@ export default function AstrologerSignup() {
                     onChange={(e) => setPassword(e.target.value)}
                     required
                   />
+                  
+                  <TextField
+                    fullWidth
+                    label="State"
+                    variant="outlined"
+                    margin="normal"
+                    value={state}
+                    InputProps={{
+                      readOnly: true,
+                    }}
+                    sx={{ backgroundColor: '#f0f0f0' }}
+                  />
+                  
+                  <FormControl fullWidth margin="normal" required>
+                    <InputLabel id="district-select-label">District</InputLabel>
+                    <Select
+                      labelId="district-select-label"
+                      id="district-select"
+                      value={district}
+                      label="District"
+                      onChange={(e) => setDistrict(e.target.value)}
+                    >
+                      <MenuItem value="" disabled><em>Select District</em></MenuItem>
+                      {TAMIL_NADU_DISTRICTS.map((dist) => (
+                        <MenuItem key={dist} value={dist}>{dist}</MenuItem>
+                      ))}
+                    </Select>
+                  </FormControl>
                   
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button

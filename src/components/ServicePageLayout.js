@@ -19,7 +19,12 @@ import {
   Avatar,
   Alert,
   CircularProgress,
-  useTheme
+  useTheme,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Chip as MuiChip
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -31,6 +36,19 @@ import PaymentSummary from './PaymentSummary';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { SERVICE_TYPES } from '@/utils/constants';
 import PaymentButton from './PaymentButton';
+import { useTranslation } from 'react-i18next';
+
+// Define the list of districts (should match the signup list)
+const TAMIL_NADU_DISTRICTS = [
+  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
+  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 
+  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 
+  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 
+  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)', 
+  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 
+  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 
+  'Virudhunagar'
+];
 
 export default function ServicePageLayout({
   title,
@@ -43,43 +61,96 @@ export default function ServicePageLayout({
   const theme = useTheme();
   const router = useRouter();
   const { currentUser } = useAuth();
+  const { t } = useTranslation('common');
+
+  const [availableDistricts, setAvailableDistricts] = useState(new Set());
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [districtLoading, setDistrictLoading] = useState(true);
 
   const [astrologers, setAstrologers] = useState([]);
   const [selectedAstrologers, setSelectedAstrologers] = useState([]);
   const [files, setFiles] = useState([]);
-  const [secondFiles, setSecondFiles] = useState([]); // For dual upload (marriage matching)
+  const [secondFiles, setSecondFiles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [step, setStep] = useState(1); // 1: Upload, 2: Select Astrologers, 3: Payment
+  const [step, setStep] = useState(1);
 
-  // Fetch astrologers on component mount
+  // Fetch available districts based on service type
   useEffect(() => {
-    const fetchAstrologers = async () => {
+    const fetchDistricts = async () => {
+      if (!serviceType) return;
+      setDistrictLoading(true);
       try {
-        setLoading(true);
+        // We can only have one array-contains query per query, so we'll need to do this in two steps
+        // First, get all astrologers in Tamil Nadu
         const astrologersQuery = query(
           collection(db, 'users'),
-          // where('roles', 'array-contains', 'astrologer'),
-          where('services', 'array-contains', serviceType)
+          where('roles', 'array-contains', 'astrologer'),
+          where('state', '==', 'Tamil Nadu')
+        );
+        
+        // Then filter the results for those who offer the specific service
+        const astrologersSnapshot = await getDocs(astrologersQuery);
+        const filteredDocs = astrologersSnapshot.docs.filter(doc => {
+          const data = doc.data();
+          return data.services && data.services.includes(serviceType);
+        });
+        
+        // Extract districts from the filtered results
+        const districts = new Set();
+        filteredDocs.forEach((doc) => {
+          const data = doc.data();
+          if (data.district) {
+            districts.add(data.district);
+          }
+        });
+        console.log('districts:: ', districts, filteredDocs);
+        setAvailableDistricts(districts);
+      } catch (err) {
+        console.error('Error fetching available districts:', err);
+        setError('Failed to load available districts. Please try again later.');
+      } finally {
+        setDistrictLoading(false);
+      }
+    };
+    fetchDistricts();
+  }, [serviceType]);
+
+  // Fetch astrologers based on selected district
+  useEffect(() => {
+    const fetchAstrologersByDistrict = async () => {
+      if (!selectedDistrict || step !== 2) return;
+
+        setLoading(true);
+      setSelectedAstrologers([]);
+      try {
+        // Broaden the query: Filter by role, state, and district only
+        const astrologersQuery = query(
+          collection(db, 'users'),
+          where('roles', 'array-contains', 'astrologer'),
+          where('state', '==', 'Tamil Nadu'),
+          where('district', '==', selectedDistrict)
+          // Remove: where('services', 'array-contains', serviceType)
         );
 
         const querySnapshot = await getDocs(astrologersQuery);
-        const astrologersList = querySnapshot.docs.map(doc => ({
-          id: doc.id,
-          ...doc.data()
-        }));
+        
+        // Client-side filtering for the specific service
+        const filteredAstrologers = querySnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() })) // Map to include ID and data
+          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)); // Filter by service
 
-        setAstrologers(astrologersList);
+        setAstrologers(filteredAstrologers); // Set state with the filtered list
       } catch (err) {
-        console.error('Error fetching astrologers:', err);
-        setError('Failed to load astrologers. Please try again later.');
+        console.error('Error fetching astrologers by district:', err);
+        setError('Failed to load astrologers for this district. Please try again.');
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAstrologers();
-  }, []);
+    fetchAstrologersByDistrict();
+  }, [selectedDistrict, serviceType, step]);
 
   // Check if user is logged in
   useEffect(() => {
@@ -109,35 +180,33 @@ export default function ServicePageLayout({
   };
 
   const handleNextStep = () => {
+    setError('');
     if (step === 1) {
-      // Validate files are uploaded
-      if (files.length === 0) {
-        setError('Please upload at least one file');
+      if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
+        setError(dualUpload ? `Please upload files for both ${dualUploadLabels[0]} and ${dualUploadLabels[1]}` : 'Please upload at least one file');
         return;
       }
-
-      if (dualUpload && secondFiles.length === 0) {
-        setError(`Please upload at least one file for ${dualUploadLabels[1]}`);
+      setStep(1.5);
+    } else if (step === 1.5) {
+      if (!selectedDistrict) {
+        setError('Please select a district.');
         return;
       }
-
-      setError('');
       setStep(2);
     } else if (step === 2) {
-      // Validate astrologers are selected
       if (selectedAstrologers.length === 0) {
         setError('Please select at least one astrologer');
         return;
       }
-
-      setError('');
       setStep(3);
     }
   };
 
   const handlePreviousStep = () => {
-    setStep(prev => Math.max(1, prev - 1));
     setError('');
+    if (step === 3) setStep(2);
+    else if (step === 2) setStep(1.5);
+    else if (step === 1.5) setStep(1);
   };
 
   const calculateTotal = () => {
@@ -182,19 +251,39 @@ export default function ServicePageLayout({
         const fileReferences = [];
 
         try {
-          // Process main files
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
-            
-            // Generate appropriate file name based on service type
-            let newFileName;
-            if (serviceType === 'marriageMatching') {
+        // Process main files
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          
+          // Generate appropriate file name based on service type
+          let newFileName;
+          if (serviceType === 'marriageMatching') {
               newFileName = `Bride_Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            } else {
+          } else {
               newFileName = `Jathak${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            }
-            
+          }
+          
             const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+          const uploadTask = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(uploadTask.ref);
+          
+          fileReferences.push({
+            name: newFileName,
+            originalName: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+            uploadedBy: currentUser.uid,
+            uploadedAt: serverTimestamp()
+          });
+        }
+
+        // Process secondary files if dual upload is enabled
+        if (dualUpload && secondFiles.length > 0) {
+          for (let i = 0; i < secondFiles.length; i++) {
+            const file = secondFiles[i];
+              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
             
@@ -204,50 +293,30 @@ export default function ServicePageLayout({
               type: file.type,
               size: file.size,
               url: downloadURL,
+                category: dualUploadLabels[1],
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
+        }
 
-          // Process secondary files if dual upload is enabled
-          if (dualUpload && secondFiles.length > 0) {
-            for (let i = 0; i < secondFiles.length; i++) {
-              const file = secondFiles[i];
-              const newFileName = `Groom_Jathak${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-              const uploadTask = await uploadBytes(storageRef, file);
-              const downloadURL = await getDownloadURL(uploadTask.ref);
-              
-              fileReferences.push({
-                name: newFileName,
-                originalName: file.name,
-                type: file.type,
-                size: file.size,
-                url: downloadURL,
-                category: dualUploadLabels[1],
-                uploadedBy: currentUser.uid,
-                uploadedAt: serverTimestamp()
-              });
-            }
-          }
+        // Store file references in a subcollection of the chat
+        for (const fileRef of fileReferences) {
+          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+        }
 
-          // Store file references in a subcollection of the chat
-          for (const fileRef of fileReferences) {
-            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-          }
-
-          // Add a system message about the uploaded files
-          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-            senderId: 'system',
-            text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
-            timestamp: serverTimestamp(),
-            read: false,
-            fileReferences: fileReferences.map(f => ({ 
-              name: f.name, 
-              url: f.url,
-              type: f.type
-            }))
-          });
+        // Add a system message about the uploaded files
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: `${currentUser.displayName} has uploaded ${fileReferences.length} document(s) for review.`,
+          timestamp: serverTimestamp(),
+          read: false,
+          fileReferences: fileReferences.map(f => ({ 
+            name: f.name, 
+            url: f.url,
+            type: f.type
+          }))
+        });
         } catch (err) {
           console.error('Error uploading files:', err);
           setError('There was an error uploading your files. Please try again.');
@@ -316,8 +385,8 @@ export default function ServicePageLayout({
 
               {/* Step indicator */}
               <Box sx={{ mb: 4 }}>
-                <Grid container spacing={2} justifyContent="center">
-                  <Grid item xs={4}>
+                <Grid container spacing={1} justifyContent="center">
+                  <Grid item xs={3}>
                     <Box
                       sx={{
                         textAlign: 'center',
@@ -325,11 +394,23 @@ export default function ServicePageLayout({
                         fontWeight: step === 1 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">Step 1</Typography>
-                      <Typography variant="body2">Upload Files</Typography>
+                      <Typography variant="body1">{t('steps.step1', 'Step 1')}</Typography>
+                      <Typography variant="body2">{t('steps.uploadFiles', 'Upload Files')}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={3}>
+                    <Box
+                      sx={{
+                        textAlign: 'center',
+                        color: step >= 1.5 ? theme.palette.primary.main : 'text.secondary',
+                        fontWeight: step === 1.5 ? 'bold' : 'normal'
+                      }}
+                    >
+                      <Typography variant="body1">{t('steps.step2', 'Step 2')}</Typography>
+                      <Typography variant="body2">{t('steps.selectDistrict', 'Select District')}</Typography>
+                    </Box>
+                  </Grid>
+                  <Grid item xs={3}>
                     <Box
                       sx={{
                         textAlign: 'center',
@@ -337,11 +418,11 @@ export default function ServicePageLayout({
                         fontWeight: step === 2 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">Step 2</Typography>
-                      <Typography variant="body2">Select Astrologers</Typography>
+                      <Typography variant="body1">{t('steps.step3', 'Step 3')}</Typography>
+                      <Typography variant="body2">{t('steps.selectAstrologers', 'Select Astrologers')}</Typography>
                     </Box>
                   </Grid>
-                  <Grid item xs={4}>
+                  <Grid item xs={3}>
                     <Box
                       sx={{
                         textAlign: 'center',
@@ -349,8 +430,8 @@ export default function ServicePageLayout({
                         fontWeight: step === 3 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">Step 3</Typography>
-                      <Typography variant="body2">Payment</Typography>
+                      <Typography variant="body1">{t('steps.step4', 'Step 4')}</Typography>
+                      <Typography variant="body2">{t('steps.payment', 'Payment')}</Typography>
                     </Box>
                   </Grid>
                 </Grid>
@@ -368,7 +449,7 @@ export default function ServicePageLayout({
                       color: theme.palette.secondary.dark
                     }}
                   >
-                    Upload Your Jathak
+                    {t('servicePage.uploadTitle', 'Upload Your Jathak')}
                   </Typography>
 
                   {dualUpload ? (
@@ -415,7 +496,86 @@ export default function ServicePageLayout({
                         fontSize: '1.1rem'
                       }}
                     >
-                      Next: Select Astrologers
+                      {t('servicePage.nextDistrict', 'Next: Select District')}
+                    </Button>
+                  </Box>
+                </Box>
+              )}
+
+              {/* Step 1.5: Select District */}
+              {step === 1.5 && (
+                <Box>
+                  <Typography
+                    variant="h5"
+                    component="h2"
+                    sx={{
+                      mb: 3,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      color: theme.palette.secondary.dark
+                    }}
+                  >
+                    {t('servicePage.selectDistrictTitle', 'Select District')}
+                  </Typography>
+                  {districtLoading ? (
+                    <CircularProgress />
+                  ) : (
+                    <FormControl fullWidth margin="normal" required>
+                      <InputLabel id="district-select-label">District</InputLabel>
+                      <Select
+                        labelId="district-select-label"
+                        value={selectedDistrict}
+                        label="District"
+                        onChange={(e) => setSelectedDistrict(e.target.value)}
+                      >
+                        <MenuItem value="" disabled><em>Select a District</em></MenuItem>
+                        {TAMIL_NADU_DISTRICTS.map((dist) => {
+                          const isAvailable = availableDistricts.has(dist);
+                          return (
+                            <MenuItem key={dist} value={dist} disabled={!isAvailable}>
+                              {dist}
+                              {!isAvailable && (
+                                <MuiChip 
+                                  label={t('districts.comingSoon', 'Service Coming Soon')} 
+                                  size="small" 
+                                  variant="outlined" 
+                                  sx={{ ml: 1, opacity: 0.7 }}
+                                />
+                              )}
+                            </MenuItem>
+                          );
+                        })}
+                      </Select>
+                    </FormControl>
+                  )}
+                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <Button
+                      variant="outlined"
+                      color="primary"
+                      size="large"
+                      onClick={handlePreviousStep}
+                      sx={{
+                        py: 1.5,
+                        px: 4,
+                        fontFamily: '"Cormorant Garamond", serif',
+                        fontSize: '1.1rem'
+                      }}
+                    >
+                      {t('servicePage.back', 'Back')}
+                    </Button>
+                    <Button
+                      variant="contained"
+                      color="primary"
+                      size="large"
+                      onClick={handleNextStep}
+                      disabled={districtLoading || !selectedDistrict}
+                      sx={{
+                        py: 1.5,
+                        px: 4,
+                        fontFamily: '"Cormorant Garamond", serif',
+                        fontSize: '1.1rem'
+                      }}
+                    >
+                      {t('servicePage.nextAstrologers', 'Next: Select Astrologers')}
                     </Button>
                   </Box>
                 </Box>
@@ -428,18 +588,24 @@ export default function ServicePageLayout({
                     variant="h5"
                     component="h2"
                     sx={{
-                      mb: 3,
+                      mb: 1,
                       fontFamily: '"Cormorant Garamond", serif',
                       color: theme.palette.secondary.dark
                     }}
                   >
-                    Select Astrologers
+                    {t('servicePage.selectAstrologersTitle', 'Select Astrologers')}
                   </Typography>
-
+                  <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
+                    {t('servicePage.showingAstrologers', { district: selectedDistrict })}
+                  </Typography>
                   {loading ? (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
                       <CircularProgress />
                     </Box>
+                  ) : astrologers.length === 0 ? (
+                    <Typography sx={{ textAlign: 'center', py: 4 }}>
+                      {t('servicePage.noAstrologersFound', { service: t(`services.${serviceType}.title`), district: selectedDistrict })}
+                    </Typography>
                   ) : (
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
                       <Box
@@ -563,7 +729,7 @@ export default function ServicePageLayout({
                                         color="text.secondary"
                                         sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                       >
-                                        {astrologer.services.map(service => service.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ')).join(', ') || 'General Astrology'}
+                                        {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology','General Astrology')}
                                     </Typography>
                                       <Typography
                                         variant="body2"
@@ -714,7 +880,7 @@ export default function ServicePageLayout({
                         fontSize: '1.1rem'
                       }}
                     >
-                      Back
+                      {t('servicePage.back', 'Back')}
                     </Button>
 
                     <Button
@@ -730,7 +896,7 @@ export default function ServicePageLayout({
                         fontSize: '1.1rem'
                       }}
                     >
-                      Next: Payment
+                      {t('servicePage.nextPayment', 'Next: Payment')}
                     </Button>
                   </Box>
                 </Box>
@@ -748,7 +914,7 @@ export default function ServicePageLayout({
                       color: theme.palette.secondary.dark
                     }}
                   >
-                    Payment
+                    {t('steps.payment', 'Payment')}
                   </Typography>
 
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
@@ -777,15 +943,15 @@ export default function ServicePageLayout({
                             fontFamily: '"Cormorant Garamond", serif'
                           }}
                         >
-                          Payment Method
+                          {t('servicePage.paymentMethod', 'Payment Method')}
                         </Typography>
                         
                         <PaymentButton
                           amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
-                          description={`Payment for ${SERVICE_TYPES[serviceType]} service`}
+                          description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
                           onSuccess={handlePayment}
                           onError={(error) => setError(error)}
-                        />
+                  />
                       </Paper>
                     </Box>
 
@@ -816,7 +982,7 @@ export default function ServicePageLayout({
                             fontFamily: '"Cormorant Garamond", serif'
                           }}
                         >
-                          Order Summary
+                          {t('servicePage.orderSummary', 'Order Summary')}
                         </Typography>
                         <Box sx={{ flex: '1', overflowY: 'auto' }}>
                           <List>
@@ -931,7 +1097,7 @@ export default function ServicePageLayout({
                         fontSize: '1.1rem'
                       }}
                     >
-                      Back
+                      {t('servicePage.back', 'Back')}
                     </Button>
                   </Box>
                 </Box>
