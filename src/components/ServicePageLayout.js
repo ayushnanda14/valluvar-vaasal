@@ -63,6 +63,8 @@ export default function ServicePageLayout({
   const { currentUser } = useAuth();
   const { t } = useTranslation('common');
 
+  const localStorageKey = `servicePageProgress_${serviceType}`;
+
   const [availableDistricts, setAvailableDistricts] = useState(new Set());
   const [selectedDistrict, setSelectedDistrict] = useState('');
   const [districtLoading, setDistrictLoading] = useState(true);
@@ -74,6 +76,52 @@ export default function ServicePageLayout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+
+  // Load state from localStorage on mount
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentUser) { // Ensure currentUser is available before loading
+      const savedStateRaw = localStorage.getItem(localStorageKey);
+      if (savedStateRaw) {
+        try {
+          const savedState = JSON.parse(savedStateRaw);
+          
+          // Restore step, district, and astrologers
+          if (savedState.step) setStep(savedState.step);
+          if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
+          if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+
+          // Handle file state - user will need to re-select files
+          // If they were at step 1 and had files, ensure they are at step 1.
+          // If they were beyond step 1, their selections are preserved, but files array will be empty.
+          // They will need to re-upload if they navigate back to step 1.
+          if (savedState.filesUploaded && savedState.step === 1) {
+             setError(t('servicePage.errors.promptReupload'));
+          }
+          // Clear files state as File objects cannot be persisted directly
+          setFiles([]);
+          setSecondFiles([]);
+
+        } catch (e) {
+          console.error("Failed to parse saved state from localStorage", e);
+          localStorage.removeItem(localStorageKey); // Clear corrupted data
+        }
+      }
+    }
+  }, [serviceType, currentUser, localStorageKey, t]); // Added t to dependencies due to its use in potential setError
+
+  // Save state to localStorage whenever relevant parts change
+  useEffect(() => {
+    if (typeof window !== 'undefined' && currentUser) { // Ensure currentUser before saving
+      const stateToSave = {
+        step,
+        selectedDistrict,
+        selectedAstrologers,
+        filesUploaded: files.length > 0,
+        secondFilesUploaded: secondFiles.length > 0,
+      };
+      localStorage.setItem(localStorageKey, JSON.stringify(stateToSave));
+    }
+  }, [step, selectedDistrict, selectedAstrologers, files, secondFiles, serviceType, currentUser, localStorageKey]);
 
   // Fetch available districts based on service type
   useEffect(() => {
@@ -108,7 +156,7 @@ export default function ServicePageLayout({
         setAvailableDistricts(districts);
       } catch (err) {
         console.error('Error fetching available districts:', err);
-        setError('Failed to load available districts. Please try again later.');
+        setError(t('servicePage.errors.loadDistricts'));
       } finally {
         setDistrictLoading(false);
       }
@@ -143,7 +191,7 @@ export default function ServicePageLayout({
         setAstrologers(filteredAstrologers); // Set state with the filtered list
       } catch (err) {
         console.error('Error fetching astrologers by district:', err);
-        setError('Failed to load astrologers for this district. Please try again.');
+        setError(t('servicePage.errors.loadAstrologers'));
       } finally {
         setLoading(false);
       }
@@ -183,19 +231,19 @@ export default function ServicePageLayout({
     setError('');
     if (step === 1) {
       if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
-        setError(dualUpload ? `Please upload files for both ${dualUploadLabels[0]} and ${dualUploadLabels[1]}` : 'Please upload at least one file');
+        setError(dualUpload ? t('servicePage.errors.uploadDual', { label1: dualUploadLabels[0], label2: dualUploadLabels[1] }) : t('servicePage.errors.uploadSingle'));
         return;
       }
       setStep(1.5);
     } else if (step === 1.5) {
       if (!selectedDistrict) {
-        setError('Please select a district.');
+        setError(t('servicePage.errors.selectDistrict'));
         return;
       }
       setStep(2);
     } else if (step === 2) {
       if (selectedAstrologers.length === 0) {
-        setError('Please select at least one astrologer');
+        setError(t('servicePage.errors.selectAstrologer'));
         return;
       }
       setStep(3);
@@ -319,16 +367,21 @@ export default function ServicePageLayout({
         });
         } catch (err) {
           console.error('Error uploading files:', err);
-          setError('There was an error uploading your files. Please try again.');
+          setError(t('servicePage.errors.fileUploadFailed'));
           return;
         }
+      }
+
+      // Clear saved state from localStorage on successful payment
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(localStorageKey);
       }
 
       // Redirect to success page after payment
       router.push('/service-success');
     } catch (err) {
       console.error('Payment error:', err);
-      setError('Payment failed. Please try again.');
+      setError(t('servicePage.errors.paymentFailed'));
     }
   };
 

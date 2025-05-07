@@ -176,7 +176,18 @@
     "back": "Back",
     "paymentMethod": "Payment Method",
     "orderSummary": "Order Summary",
-    "paymentDescription": "Payment for {{service}} service"
+    "paymentDescription": "Payment for {{service}} service",
+    "errors": {
+      "loadDistricts": "Failed to load available districts. Please try again later.",
+      "loadAstrologers": "Failed to load astrologers for this district. Please try again.",
+      "uploadDual": "Please upload files for both {{label1}} and {{label2}}.",
+      "uploadSingle": "Please upload at least one file.",
+      "selectDistrict": "Please select a district.",
+      "selectAstrologer": "Please select at least one astrologer.",
+      "fileUploadFailed": "There was an error uploading your files. Please try again.",
+      "paymentFailed": "Payment failed. Please try again.",
+      "promptReupload": "Please re-select your files due to page refresh."
+    }
   },
   "payment": {
     "payNow": "Pay Now",
