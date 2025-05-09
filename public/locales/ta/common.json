@@ -100,7 +100,8 @@
     "astrologerBookings": "வாடிக்கையாளர் முன்பதிவுகள்",
     "bookingDate": "முன்பதிவு தேதி",
     "total": "மொத்தம்",
-    "close": "மூடுக"
+    "close": "மூடுக",
+    "viewPayment": "பணம் செலுத்தியதை காண்க"
   },
   "testimonials": {
     "title": "கருத்துகள்",

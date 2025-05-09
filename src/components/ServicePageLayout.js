@@ -263,25 +263,49 @@ export default function ServicePageLayout({
     }, 0);
   };
 
-  const handlePayment = async () => {
+  const handlePayment = async (paymentResponse) => {
+    if (!currentUser || !paymentResponse || !paymentResponse.razorpay_payment_id) {
+      console.error("Payment handling error: Missing current user or payment response details.");
+      setError(t('servicePage.errors.paymentFailed'));
+      return;
+    }
+
     try {
       // Create a new service request in Firestore
-      const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), {
+      const serviceRequestData = {
         clientId: currentUser.uid,
+        clientName: currentUser.displayName || 'Anonymous',
+        clientEmail: currentUser.email,
         serviceType: serviceType,
         astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
-        status: 'pending',
-        totalAmount: calculateTotal(),
+        status: 'payment_successful', // Initial status after successful payment
+        totalAmount: calculateTotal(), // Original amount before any taxes/fees from your calc
+        paidAmount: paymentResponse.amount / 100, // Amount from Razorpay (in smallest currency unit)
+        currency: 'INR', // Assuming INR, or take from paymentResponse.currency if available
+        razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID
+        filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
         createdAt: serverTimestamp(),
-        updatedAt: serverTimestamp()
-      });
+        updatedAt: serverTimestamp(),
+        selectedDistrict: selectedDistrict // Storing selected district
+      };
+
+      const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
 
       // Create conversation threads with each selected astrologer
       for (const astrologer of selectedAstrologers) {
         const conversationRef = await addDoc(collection(db, 'chats'), {
           participants: [currentUser.uid, astrologer.id],
+          participantNames: {
+            [currentUser.uid]: currentUser.displayName || 'Client',
+            [astrologer.id]: astrologer.displayName || 'Astrologer'
+          },
+          participantAvatars: {
+            [currentUser.uid]: currentUser.photoURL || null,
+            [astrologer.id]: astrologer.photoURL || null
+          },
           serviceRequestId: serviceRequestRef.id,
           serviceType: serviceType,
+          razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID in chat doc
           lastMessage: null,
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()

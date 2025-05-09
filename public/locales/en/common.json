@@ -104,7 +104,8 @@
     "astrologerBookings": "Client Bookings",
     "bookingDate": "Booking Date",
     "total": "Total Amount",
-    "close": "Close"
+    "close": "Close",
+    "viewPayment": "View Payment"
   },
   "messages": {
     "title": "My Readings",

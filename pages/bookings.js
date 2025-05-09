@@ -31,9 +31,15 @@ import ChatIcon from '@mui/icons-material/Chat';
 import PersonIcon from '@mui/icons-material/Person';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
-import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, getDoc, doc, limit } from 'firebase/firestore';
 import { db } from '../src/firebase/firebaseConfig';
 import { useTranslation } from 'react-i18next';
+
+// Helper to generate Razorpay payment link
+const getRazorpayPaymentLink = (paymentId) => {
+  if (!paymentId) return '#';
+  return `https://dashboard.razorpay.com/app/payments/${paymentId}`;
+};
 
 export default function Bookings() {
   const theme = useTheme();
@@ -91,24 +97,44 @@ export default function Bookings() {
         const querySnapshot = await getDocs(bookingsQuery);
         const bookingsData = [];
         
-        for (const doc of querySnapshot.docs) {
-          const booking = doc.data();
-          booking.id = doc.id;
+        for (const bookingDoc of querySnapshot.docs) {
+          const bookingData = bookingDoc.data();
+          bookingData.id = bookingDoc.id;
           
-          // Fetch user details
-          if (isClient) {
-            const astrologerDoc = await getDoc(doc(db, 'users', booking.astrologerId));
+          // Fetch related user details (astrologer for client, client for astrologer)
+          if (isClient && bookingData.astrologerId) {
+            const astrologerDoc = await getDoc(doc(db, 'users', bookingData.astrologerId));
             if (astrologerDoc.exists()) {
-              booking.astrologer = astrologerDoc.data();
+              bookingData.astrologer = astrologerDoc.data();
             }
-          } else if (isAstrologer) {
-            const clientDoc = await getDoc(doc(db, 'users', booking.clientId));
+          } else if (isAstrologer && bookingData.clientId) {
+            const clientDoc = await getDoc(doc(db, 'users', bookingData.clientId));
             if (clientDoc.exists()) {
-              booking.client = clientDoc.data();
+              bookingData.client = clientDoc.data();
+            }
+          }
+
+          // If client is viewing, try to fetch Razorpay payment ID
+          if (isClient && bookingData.serviceRequestId) {
+            try {
+              const paymentsQuery = query(
+                collection(db, 'payments'),
+                where('serviceRequestId', '==', bookingData.serviceRequestId),
+                where('clientId', '==', currentUser.uid),
+                orderBy('timestamp', 'desc'), // Get the latest payment if multiple (should ideally be one)
+                limit(1)
+              );
+              const paymentSnapshot = await getDocs(paymentsQuery);
+              if (!paymentSnapshot.empty) {
+                const paymentData = paymentSnapshot.docs[0].data();
+                bookingData.razorpayPaymentId = paymentData.razorpay_payment_id; 
+              }
+            } catch (paymentError) {
+              console.error('Error fetching payment details for booking:', bookingData.id, paymentError);
             }
           }
           
-          bookingsData.push(booking);
+          bookingsData.push(bookingData);
         }
         
         setBookings(bookingsData);
@@ -183,6 +209,19 @@ export default function Bookings() {
                   >
                     {t('bookings.invoice')}
                   </Button>
+                  {booking.razorpayPaymentId && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="info"
+                      startIcon={<ReceiptIcon />}
+                      href={getRazorpayPaymentLink(booking.razorpayPaymentId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {t('bookings.viewPayment')}
+                    </Button>
+                  )}
                   <Button
                     variant="contained"
                     size="small"
@@ -247,6 +286,19 @@ export default function Bookings() {
                   >
                     {t('bookings.invoice')}
                   </Button>
+                  {booking.razorpayPaymentId && (
+                    <Button
+                      variant="outlined"
+                      size="small"
+                      color="info"
+                      startIcon={<ReceiptIcon />}
+                      href={getRazorpayPaymentLink(booking.razorpayPaymentId)}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                    >
+                      {t('bookings.viewPayment')}
+                    </Button>
+                  )}
                   <Button
                     variant="contained"
                     size="small"
