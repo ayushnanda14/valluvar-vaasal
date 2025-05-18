@@ -77,8 +77,21 @@ export default function Signup() {
       await signupWithEmail(email, password, displayName, ['client']);
       router.push('/dashboard');
     } catch (err) {
-      console.error('Signup error:', err);
-      setError('Failed to create an account: ' + err.message);
+      console.log('[pages/signup.js] Entered catch block for handleEmailSignup');
+      console.error('[pages/signup.js] Raw signup error object:', err);
+
+      let errorMessage = 'Failed to create an account. Please try again.'; // Default error message
+
+      if (err && err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email address is already in use. Please try a different email or log in.';
+      } else if (err && err.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak. Please choose a stronger password (at least 6 characters).';
+      } else if (err && typeof err.message === 'string') {
+        errorMessage = 'Failed to create an account: ' + err.message;
+      }
+      
+      console.log(`[pages/signup.js] Setting error state to: "${errorMessage}"`);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }

@@ -31,6 +31,11 @@ import PhoneIcon from '@mui/icons-material/Phone';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MuiAlert from '@mui/material/Alert';
 
+// Firebase imports
+import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
+import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
+import { db, storage } from '../../src/firebase/firebaseConfig'; // Assuming storage is exported alongside db
+
 const TAMIL_NADU_DISTRICTS = [
   'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
   'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 
@@ -46,7 +51,7 @@ export default function AstrologerSignup() {
   const theme = useTheme();
   const router = useRouter();
   const { 
-    signUpWithEmailAndPassword, 
+    signupWithEmail,
     sendVerificationCode, 
     verifyCodeAndSignUp,
     currentUser
@@ -95,12 +100,12 @@ export default function AstrologerSignup() {
   const [state, setState] = useState('Tamil Nadu');
   const [district, setDistrict] = useState('');
   
-  // Redirect if already logged in
+  // Redirect if already logged in AND on the first step
   useEffect(() => {
-    if (currentUser) {
+    if (currentUser && activeStep === 0 && !loading) {
       router.push('/dashboard');
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, activeStep, loading]);
   
   // Validate Indian phone number
   const validateIndianPhoneNumber = (phone) => {
@@ -232,20 +237,28 @@ export default function AstrologerSignup() {
       // Include state and district when calling the signup function
       // NOTE: We need to modify the actual signup function in AuthContext 
       // OR adjust how data is saved if it happens later.
-      // For now, assuming signupWithEmail should handle it or we save later.
+      // For now, using the corrected signupWithEmail with basic params.
+      // State and district will be added via updateDoc in handleSubmit or if we enhance signupWithEmail
       
-      // If signupWithEmail handles saving everything:
-      // await signupWithEmail(email, password, displayName, ['astrologer'], { state, district });
-      
-      // Let's assume for now that the user is created first, and we add 
-      // district/state later or modify the updateDoc in handleSubmit
-      
-      await signUpWithEmailAndPassword(email, password, displayName);
-      // User is created, move to next step. District/State saved later.
+      await signupWithEmail(email, password, displayName, ['astrologer']);
+      // User is created, move to next step. District/State saved later during final handleSubmit.
       handleNext();
     } catch (err) {
-      console.error('Signup error:', err);
-      setError('Failed to sign up: ' + err.message);
+      console.log('[pages/signup/astrologer.js] Entered catch block for handleEmailSignup');
+      console.error('[pages/signup/astrologer.js] Raw signup error object:', err);
+      
+      let errorMessage = 'Failed to sign up. Please try again.'; // Default error message
+
+      if (err && err.code === 'auth/email-already-in-use') {
+        errorMessage = 'This email address is already registered. Please use a different email or log in if you already have an account.';
+      } else if (err && err.code === 'auth/weak-password') {
+        errorMessage = 'The password is too weak. Please choose a stronger password (at least 6 characters).';
+      } else if (err && typeof err.message === 'string') {
+        errorMessage = 'Failed to sign up: ' + err.message;
+      }
+
+      console.log(`[pages/signup/astrologer.js] Setting error state to: "${errorMessage}"`);
+      setError(errorMessage);
     } finally {
       setLoading(false);
     }
@@ -262,8 +275,14 @@ export default function AstrologerSignup() {
   
   // Handle final submission
   const handleSubmit = async () => {
+    if (!currentUser) {
+      setError('User not authenticated. Please go back and log in or complete previous steps.');
+      setLoading(false);
+      return;
+    }
     if (aadharFiles.length === 0 || profilePicture.length === 0) {
       setError('Please upload required documents (Aadhar Card and Profile Picture)');
+      setLoading(false);
       return;
     }
     
@@ -302,6 +321,8 @@ export default function AstrologerSignup() {
       await updateDoc(userDocRef, {
         state: state,
         district: district,
+        services: services,
+        pricing: pricing,
         documents: {
           aadharCard: uploadedUrls.aadharCard || null,
           certificates: uploadedUrls.certificates || [],

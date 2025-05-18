@@ -31,21 +31,60 @@ export function useAuth() {
 }
 
 // Utility: singleton invisible reCAPTCHA verifier for phone auth
-export function getOrCreateRecaptcha(containerId = 'recaptcha-container-login') {
-  if (typeof window === 'undefined') return null;
-  if (window.recaptchaVerifier) return window.recaptchaVerifier;
+// Keep track of the current verifier and its associated container ID at the module level
+let currentRecaptchaVerifier = null;
+let currentRecaptchaContainerId = null;
 
-  // Ensure container exists
-  let container = document.getElementById(containerId);
-  if (!container) {
-    container = document.createElement('div');
-    container.id = containerId;
-    document.body.appendChild(container);
+export function getOrCreateRecaptcha(containerId) { // Made containerId mandatory
+  if (typeof window === 'undefined') return null;
+
+  // If a verifier exists but is for a different container, 
+  // or if the container element for the old verifier is gone, clear the old one.
+  if (currentRecaptchaVerifier) {
+    if (currentRecaptchaContainerId !== containerId || !document.getElementById(currentRecaptchaContainerId)) {
+      try {
+        currentRecaptchaVerifier.clear(); // Clear the widget from the old container
+      } catch (e) {
+        console.warn("Error clearing old reCAPTCHA verifier:", e);
+      }
+      currentRecaptchaVerifier = null; // Discard the verifier instance
+      currentRecaptchaContainerId = null;
+    }
   }
 
-  // eslint-disable-next-line no-undef
-  window.recaptchaVerifier = new RecaptchaVerifier(auth, containerId, { size: 'invisible' });
-  return window.recaptchaVerifier;
+  if (!currentRecaptchaVerifier) {
+    const containerElement = document.getElementById(containerId);
+    if (!containerElement) {
+      console.error(`reCAPTCHA container element with id '${containerId}' not found in the DOM.`);
+      // This will be caught by the calling function (sendVerificationCode)
+      return null; 
+    }
+
+    try {
+      // Create a new verifier
+      const verifier = new RecaptchaVerifier(auth, containerId, { // Pass containerId (string)
+        size: 'invisible',
+        'callback': (response) => {
+          // console.log("reCAPTCHA challenge successful (AuthContext):", response);
+        },
+        'expired-callback': () => {
+          // console.warn("reCAPTCHA challenge expired (AuthContext). User may need to try again.");
+          // Consider how to signal this to the user if it becomes an issue.
+          // For now, subsequent signInWithPhoneNumber might fail and show an error.
+        },
+        'error-callback': (error) => {
+          console.error("reCAPTCHA error-callback (AuthContext):", error);
+        }
+      });
+      currentRecaptchaVerifier = verifier;
+      currentRecaptchaContainerId = containerId;
+    } catch (e) {
+      console.error("Error creating new RecaptchaVerifier:", e);
+      // This error will be caught by sendVerificationCode and re-thrown
+      throw new Error(`Failed to initialize reCAPTCHA system: ${e.message}. Please ensure Firebase is configured, third-party scripts (Google reCAPTCHA) are not blocked, and the container element '#${containerId}' exists. If the issue persists, try refreshing the page.`);
+    }
+  }
+  return currentRecaptchaVerifier;
 }
 
 export function AuthProvider({ children }) {
@@ -126,6 +165,10 @@ export function AuthProvider({ children }) {
   async function sendVerificationCode(phoneNumber, recaptchaContainerId) {
     try {
       const verifier = getOrCreateRecaptcha(recaptchaContainerId);
+      if (!verifier) {
+        // This means getOrCreateRecaptcha decided it couldn't create one (e.g., container not found and it returned null)
+        throw new Error(`Failed to obtain reCAPTCHA verifier. Ensure the reCAPTCHA container element with ID #${recaptchaContainerId} exists in the DOM and is visible.`);
+      }
       
       // Send verification code
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
@@ -134,6 +177,9 @@ export function AuthProvider({ children }) {
       console.error("Error sending verification code:", error);
       
       // Improved error handling for phone authentication
+      if (error.message.startsWith("Failed to initialize reCAPTCHA system") || error.message.startsWith("Failed to obtain reCAPTCHA verifier")) {
+          throw error; // Rethrow the specific reCAPTCHA initialization error
+      }
       if (error.code === 'auth/operation-not-allowed') {
         throw new Error('Phone authentication is not enabled in Firebase. Please contact the administrator.');
       } else if (error.code === 'auth/invalid-phone-number') {
