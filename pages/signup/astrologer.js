@@ -34,7 +34,8 @@ import MuiAlert from '@mui/material/Alert';
 // Firebase imports
 import { getStorage, ref, uploadBytes, getDownloadURL } from "firebase/storage";
 import { doc, updateDoc, serverTimestamp } from "firebase/firestore";
-import { db, storage } from '../../src/firebase/firebaseConfig'; // Assuming storage is exported alongside db
+import { db, storage, auth } from '../../src/firebase/firebaseConfig'; // Assuming storage is exported alongside db
+import { updateProfile } from "firebase/auth"; // Add this import
 
 const TAMIL_NADU_DISTRICTS = [
   'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
@@ -71,6 +72,13 @@ export default function AstrologerSignup() {
   const [phoneStep, setPhoneStep] = useState(0);
   const [authMethod, setAuthMethod] = useState('email');
   
+  // Store credentials temporarily until final submission
+  const [tempCredentials, setTempCredentials] = useState({
+    email: '',
+    password: '',
+    phoneNumber: ''
+  });
+  
   // State for services and pricing
   const [services, setServices] = useState({
     marriageMatching: false,
@@ -100,12 +108,13 @@ export default function AstrologerSignup() {
   const [state, setState] = useState('Tamil Nadu');
   const [district, setDistrict] = useState('');
   
-  // Redirect if already logged in AND on the first step
-  useEffect(() => {
-    if (currentUser && activeStep === 0 && !loading) {
-      router.push('/dashboard');
-    }
-  }, [currentUser, router, activeStep, loading]);
+  // Redirect if already logged in AND not in the middle of signup
+  // Commented out because we handle auth state differently now
+  // useEffect(() => {
+  //   if (currentUser && activeStep === 0 && !loading) {
+  //     router.push('/dashboard');
+  //   }
+  // }, [currentUser, router, activeStep, loading]);
   
   // Validate Indian phone number
   const validateIndianPhoneNumber = (phone) => {
@@ -201,8 +210,8 @@ export default function AstrologerSignup() {
   const handleVerifyCode = async (e) => {
     e.preventDefault();
     
-    if (!verificationCode || !district) {
-      setError('Please enter the verification code and select a District');
+    if (!verificationCode) {
+      setError('Please enter the verification code');
       return;
     }
     
@@ -210,12 +219,30 @@ export default function AstrologerSignup() {
       setError('');
       setLoading(true);
       
-      // We'll pass state/district to verifyCodeAndSignUp later when we modify AuthContext
-        await verifyCodeAndSignUp(confirmationResult, verificationCode, displayName, ['astrologer']);
-        handleNext();
+      // Just verify the code without creating an account
+      const userCredential = await confirmationResult.confirm(verificationCode);
+      
+      // Store the verified phone number temporarily
+      setTempCredentials({
+        ...tempCredentials,
+        phoneNumber: userCredential.user.phoneNumber
+      });
+      
+      // Important: Sign out immediately to prevent being logged in
+      await auth.signOut();
+      
+      // Move to the next step
+      handleNext();
     } catch (err) {
       console.error('Code verification error:', err);
-      setError('Failed to verify code: ' + err.message);
+      
+      if (err.code === 'auth/invalid-verification-code') {
+        setError('The verification code is invalid. Please check and try again.');
+      } else if (err.code === 'auth/code-expired') {
+        setError('The verification code has expired. Please request a new code.');
+      } else {
+        setError('Failed to verify code: ' + err.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -234,29 +261,21 @@ export default function AstrologerSignup() {
       setError('');
       setLoading(true);
       
-      // Include state and district when calling the signup function
-      // NOTE: We need to modify the actual signup function in AuthContext 
-      // OR adjust how data is saved if it happens later.
-      // For now, using the corrected signupWithEmail with basic params.
-      // State and district will be added via updateDoc in handleSubmit or if we enhance signupWithEmail
+      // Store credentials temporarily - DO NOT create account yet
+      setTempCredentials({
+        ...tempCredentials,
+        email,
+        password
+      });
       
-      await signupWithEmail(email, password, displayName, ['astrologer']);
-      // User is created, move to next step. District/State saved later during final handleSubmit.
+      // Just move to the next step without creating the account
       handleNext();
     } catch (err) {
-      console.log('[pages/signup/astrologer.js] Entered catch block for handleEmailSignup');
-      console.error('[pages/signup/astrologer.js] Raw signup error object:', err);
+      console.log('[pages/signup/astrologer.js] Error in handleEmailSignup');
+      console.error('[pages/signup/astrologer.js] Error:', err);
       
-      let errorMessage = 'Failed to sign up. Please try again.'; // Default error message
-
-      if (err && err.code === 'auth/email-already-in-use') {
-        errorMessage = 'This email address is already registered. Please use a different email or log in if you already have an account.';
-      } else if (err && err.code === 'auth/weak-password') {
-        errorMessage = 'The password is too weak. Please choose a stronger password (at least 6 characters).';
-      } else if (err && typeof err.message === 'string') {
-        errorMessage = 'Failed to sign up: ' + err.message;
-      }
-
+      let errorMessage = 'Failed to proceed. Please try again.';
+      
       console.log(`[pages/signup/astrologer.js] Setting error state to: "${errorMessage}"`);
       setError(errorMessage);
     } finally {
@@ -275,14 +294,8 @@ export default function AstrologerSignup() {
   
   // Handle final submission
   const handleSubmit = async () => {
-    if (!currentUser) {
-      setError('User not authenticated. Please go back and log in or complete previous steps.');
-      setLoading(false);
-      return;
-    }
     if (aadharFiles.length === 0 || profilePicture.length === 0) {
       setError('Please upload required documents (Aadhar Card and Profile Picture)');
-      setLoading(false);
       return;
     }
     
@@ -290,13 +303,36 @@ export default function AstrologerSignup() {
       setError('');
       setLoading(true);
       
+      // First, create the account using stored credentials
+      let user;
+      
+      if (tempCredentials.email && tempCredentials.password) {
+        // Email-based signup
+        await signupWithEmail(tempCredentials.email, tempCredentials.password, displayName, ['astrologer']);
+        user = auth.currentUser;
+      } else if (tempCredentials.phoneNumber) {
+        // Phone-based signup (already verified)
+        // Since we already verified the phone, we need to create the user document
+        // The user was temporarily created during verification, so we need to get the current user
+        setError('Phone-only signup is not fully implemented yet. Please use email signup.');
+        return;
+      } else {
+        setError('No valid credentials found. Please start the signup process again.');
+        return;
+      }
+      
+      if (!user) {
+        setError('Failed to create account. Please try again.');
+        return;
+      }
+      
       // Upload all files and documents
       const uploadTasks = [];
       let uploadedUrls = {};
       
       // Upload profile picture
       if (profilePicture.length > 0) {
-        const profilePicRef = ref(storage, `users/${currentUser.uid}/profile-picture/${profilePicture[0].name}`);
+        const profilePicRef = ref(storage, `users/${user.uid}/profile-picture/${profilePicture[0].name}`);
         const profilePicUploadTask = uploadBytes(profilePicRef, profilePicture[0]);
         uploadTasks.push(
           profilePicUploadTask.then(async (snapshot) => {
@@ -304,20 +340,60 @@ export default function AstrologerSignup() {
             uploadedUrls.profilePicture = downloadURL;
             
             // Also update user profile with this URL
-            return updateProfile(currentUser, {
+            return updateProfile(user, {
               photoURL: downloadURL
             });
           })
         );
       }
       
-      // ... existing upload tasks for other documents ...
+      // Upload Aadhar card
+      if (aadharFiles.length > 0) {
+        const aadharRef = ref(storage, `users/${user.uid}/documents/aadhar/${aadharFiles[0].name}`);
+        const aadharUploadTask = uploadBytes(aadharRef, aadharFiles[0]);
+        uploadTasks.push(
+          aadharUploadTask.then(async (snapshot) => {
+            const downloadURL = await getDownloadURL(snapshot.ref);
+            uploadedUrls.aadharCard = downloadURL;
+          })
+        );
+      }
+      
+      // Upload certificates
+      if (certificateFiles.length > 0) {
+        uploadedUrls.certificates = [];
+        certificateFiles.forEach((file, index) => {
+          const certRef = ref(storage, `users/${user.uid}/documents/certificates/${file.name}`);
+          const certUploadTask = uploadBytes(certRef, file);
+          uploadTasks.push(
+            certUploadTask.then(async (snapshot) => {
+              const downloadURL = await getDownloadURL(snapshot.ref);
+              uploadedUrls.certificates.push(downloadURL);
+            })
+          );
+        });
+      }
+      
+      // Upload experience proof
+      if (experienceFiles.length > 0) {
+        uploadedUrls.experienceProof = [];
+        experienceFiles.forEach((file, index) => {
+          const expRef = ref(storage, `users/${user.uid}/documents/experience/${file.name}`);
+          const expUploadTask = uploadBytes(expRef, file);
+          uploadTasks.push(
+            expUploadTask.then(async (snapshot) => {
+              const downloadURL = await getDownloadURL(snapshot.ref);
+              uploadedUrls.experienceProof.push(downloadURL);
+            })
+          );
+        });
+      }
       
       // Wait for all uploads to complete
       await Promise.all(uploadTasks);
       
       // Update user document with all uploaded documents, state, and district
-      const userDocRef = doc(db, 'users', currentUser.uid);
+      const userDocRef = doc(db, 'users', user.uid);
       await updateDoc(userDocRef, {
         state: state,
         district: district,
@@ -330,6 +406,7 @@ export default function AstrologerSignup() {
           profilePicture: uploadedUrls.profilePicture || null
         },
         verificationStatus: 'pending',
+        phoneNumber: tempCredentials.phoneNumber || null,
         updatedAt: serverTimestamp()
       });
       
@@ -337,7 +414,11 @@ export default function AstrologerSignup() {
       router.push('/astrologer/dashboard');
     } catch (error) {
       console.error('Error submitting documents:', error);
-      setError('Failed to upload documents: ' + error.message);
+      if (error.code === 'auth/email-already-in-use') {
+        setError('This email address is already registered. Please use a different email or log in.');
+      } else {
+        setError('Failed to complete signup: ' + error.message);
+      }
     } finally {
       setLoading(false);
     }
@@ -346,23 +427,26 @@ export default function AstrologerSignup() {
   // Make sure the reCAPTCHA container is always in the DOM
   useEffect(() => {
     // Create the reCAPTCHA container if it doesn't exist
-    if (!document.getElementById('recaptcha-container-astrologer')) {
-      const recaptchaContainer = document.createElement('div');
-      recaptchaContainer.id = 'recaptcha-container-astrologer';
-      document.body.appendChild(recaptchaContainer);
+    let container = document.getElementById('recaptcha-container-astrologer');
+    if (!container) {
+      container = document.createElement('div');
+      container.id = 'recaptcha-container-astrologer';
+      container.style.display = 'none'; // Make it invisible
+      document.body.appendChild(container);
     }
     
     // Cleanup function
     return () => {
-      // Don't remove the container on component unmount
-      // Just clear the reCAPTCHA if it exists
+      // Clear any existing reCAPTCHA verifier when component unmounts
       if (window.recaptchaVerifier) {
         try {
           window.recaptchaVerifier.clear();
+          window.recaptchaVerifier = null;
         } catch (error) {
           console.error('Error clearing reCAPTCHA:', error);
         }
       }
+      // Don't remove the container - let it persist
     };
   }, []);
   
@@ -581,14 +665,8 @@ export default function AstrologerSignup() {
                         }}
                       />
                       
-                      <Box 
-                        id="recaptcha-container-astrologer" 
-                        sx={{ 
-                          mt: 2, 
-                          display: 'block',
-                          '& div': { margin: '0 auto' }
-                        }}
-                      />
+                      {/* Invisible reCAPTCHA container - render it inline instead of relying on the one in body */}
+                      {/* Removed to prevent conflicts - container is created in useEffect */}
                       
                       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                         <Button

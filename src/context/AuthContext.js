@@ -35,51 +35,92 @@ export function useAuth() {
 let currentRecaptchaVerifier = null;
 let currentRecaptchaContainerId = null;
 
+// Debug function to check reCAPTCHA state
+function debugRecaptchaState() {
+  console.log('[debugRecaptchaState] Current verifier:', currentRecaptchaVerifier);
+  console.log('[debugRecaptchaState] Current container ID:', currentRecaptchaContainerId);
+  if (currentRecaptchaContainerId) {
+    const container = document.getElementById(currentRecaptchaContainerId);
+    console.log('[debugRecaptchaState] Container in DOM:', container);
+    console.log('[debugRecaptchaState] Container HTML:', container?.innerHTML);
+  }
+}
+
 export function getOrCreateRecaptcha(containerId) { // Made containerId mandatory
   if (typeof window === 'undefined') return null;
+
+  console.log(`[getOrCreateRecaptcha] Called with containerId: ${containerId}`);
+  debugRecaptchaState();
 
   // If a verifier exists but is for a different container, 
   // or if the container element for the old verifier is gone, clear the old one.
   if (currentRecaptchaVerifier) {
+    console.log(`[getOrCreateRecaptcha] Existing verifier found for container: ${currentRecaptchaContainerId}`);
+    
     if (currentRecaptchaContainerId !== containerId || !document.getElementById(currentRecaptchaContainerId)) {
+      console.log(`[getOrCreateRecaptcha] Clearing old verifier due to container mismatch or missing DOM element`);
       try {
         currentRecaptchaVerifier.clear(); // Clear the widget from the old container
       } catch (e) {
-        console.warn("Error clearing old reCAPTCHA verifier:", e);
+        console.warn("[getOrCreateRecaptcha] Error clearing old reCAPTCHA verifier:", e);
       }
       currentRecaptchaVerifier = null; // Discard the verifier instance
       currentRecaptchaContainerId = null;
+    } else {
+      // Check if the existing verifier is still valid
+      try {
+        // Try to access a property to see if the verifier is still valid
+        if (currentRecaptchaVerifier._delegate) {
+          console.log(`[getOrCreateRecaptcha] Reusing existing verifier for container: ${containerId}`);
+          return currentRecaptchaVerifier;
+        }
+      } catch (e) {
+        console.warn("[getOrCreateRecaptcha] Existing verifier seems invalid, will create new one:", e);
+        currentRecaptchaVerifier = null;
+        currentRecaptchaContainerId = null;
+      }
     }
   }
 
   if (!currentRecaptchaVerifier) {
     const containerElement = document.getElementById(containerId);
     if (!containerElement) {
-      console.error(`reCAPTCHA container element with id '${containerId}' not found in the DOM.`);
+      console.error(`[getOrCreateRecaptcha] reCAPTCHA container element with id '${containerId}' not found in the DOM.`);
       // This will be caught by the calling function (sendVerificationCode)
       return null; 
     }
 
+    console.log(`[getOrCreateRecaptcha] Creating new RecaptchaVerifier for container: ${containerId}`);
+    
     try {
+      // Clear any existing content in the container
+      containerElement.innerHTML = '';
+      
       // Create a new verifier
       const verifier = new RecaptchaVerifier(auth, containerId, { // Pass containerId (string)
         size: 'invisible',
         'callback': (response) => {
-          // console.log("reCAPTCHA challenge successful (AuthContext):", response);
+          console.log("[getOrCreateRecaptcha] reCAPTCHA challenge successful");
         },
         'expired-callback': () => {
-          // console.warn("reCAPTCHA challenge expired (AuthContext). User may need to try again.");
-          // Consider how to signal this to the user if it becomes an issue.
-          // For now, subsequent signInWithPhoneNumber might fail and show an error.
+          console.warn("[getOrCreateRecaptcha] reCAPTCHA challenge expired.");
+          // Don't immediately clear - let the auth flow complete first
+          // The verifier will be cleared on next attempt or component unmount
         },
         'error-callback': (error) => {
-          console.error("reCAPTCHA error-callback (AuthContext):", error);
-        }
+          console.error("[getOrCreateRecaptcha] reCAPTCHA error-callback:", error);
+          // Don't immediately clear - let the auth flow complete first
+        },
+        // Disable enterprise features
+        'badge': 'bottomright',
+        'tabindex': 0
       });
+      
       currentRecaptchaVerifier = verifier;
       currentRecaptchaContainerId = containerId;
+      console.log(`[getOrCreateRecaptcha] Successfully created new RecaptchaVerifier`);
     } catch (e) {
-      console.error("Error creating new RecaptchaVerifier:", e);
+      console.error("[getOrCreateRecaptcha] Error creating new RecaptchaVerifier:", e);
       // This error will be caught by sendVerificationCode and re-thrown
       throw new Error(`Failed to initialize reCAPTCHA system: ${e.message}. Please ensure Firebase is configured, third-party scripts (Google reCAPTCHA) are not blocked, and the container element '#${containerId}' exists. If the issue persists, try refreshing the page.`);
     }
@@ -170,14 +211,38 @@ export function AuthProvider({ children }) {
         throw new Error(`Failed to obtain reCAPTCHA verifier. Ensure the reCAPTCHA container element with ID #${recaptchaContainerId} exists in the DOM and is visible.`);
       }
       
+      console.log('[sendVerificationCode] About to render reCAPTCHA verifier');
+      
+      // Render the reCAPTCHA widget (for invisible reCAPTCHA, this prepares it)
+      try {
+        await verifier.render();
+        console.log('[sendVerificationCode] reCAPTCHA verifier rendered successfully');
+      } catch (renderError) {
+        // If already rendered, that's okay
+        if (renderError.message && renderError.message.includes('already rendered')) {
+          console.log('[sendVerificationCode] reCAPTCHA verifier was already rendered');
+        } else {
+          console.error('[sendVerificationCode] Error rendering reCAPTCHA:', renderError);
+          throw new Error('Failed to render reCAPTCHA. Please refresh the page and try again.');
+        }
+      }
+      
+      // Add a small delay to ensure reCAPTCHA is fully ready
+      await new Promise(resolve => setTimeout(resolve, 100));
+      
+      console.log('[sendVerificationCode] Calling signInWithPhoneNumber');
+      
       // Send verification code
       const confirmationResult = await signInWithPhoneNumber(auth, phoneNumber, verifier);
+      
+      console.log('[sendVerificationCode] Successfully sent verification code');
+      
       return confirmationResult;
     } catch (error) {
       console.error("Error sending verification code:", error);
       
       // Improved error handling for phone authentication
-      if (error.message.startsWith("Failed to initialize reCAPTCHA system") || error.message.startsWith("Failed to obtain reCAPTCHA verifier")) {
+      if (error.message && (error.message.startsWith("Failed to initialize reCAPTCHA system") || error.message.startsWith("Failed to obtain reCAPTCHA verifier"))) {
           throw error; // Rethrow the specific reCAPTCHA initialization error
       }
       if (error.code === 'auth/operation-not-allowed') {
@@ -191,8 +256,14 @@ export function AuthProvider({ children }) {
       } else if (error.code === 'auth/billing-not-enabled') {
         throw new Error('Firebase billing is not properly configured. Please contact the administrator.');
       } else if (error.code === 'auth/invalid-app-credential') {
+        // Clear the verifier and suggest refresh
+        currentRecaptchaVerifier = null;
+        currentRecaptchaContainerId = null;
         throw new Error('Invalid app credential. Please refresh the page and try again.');
       } else if (error.message && error.message.includes('reCAPTCHA')) {
+        // Clear the verifier for any reCAPTCHA related errors
+        currentRecaptchaVerifier = null;
+        currentRecaptchaContainerId = null;
         throw new Error('reCAPTCHA error. Please refresh the page and try again.');
       } else {
         throw new Error(`Failed to send verification code: ${error.message}`);

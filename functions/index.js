@@ -31,7 +31,7 @@ function getRazorpayInstance() {
 
 // --- checkPhone function (ensure it uses v2 onCall for consistency if not already) ---
 exports.checkPhone = onCall(
-    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' }, // Example: AppCheck options
+    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' }, // Temporarily disable App Check enforcement for debugging
     async (request) => {
         const phone = request.data.phone;
         if (!phone) {
@@ -49,7 +49,7 @@ exports.checkPhone = onCall(
 
 // --- verifyRazorpayPayment function (ensure it uses v2 onCall) --- 
 exports.verifyRazorpayPayment = onCall(
-    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' }, 
+    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' },
     async (request) => {
         const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.data;
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
@@ -108,4 +108,3 @@ exports.createRazorpayOrder = onCall(
             throw new HttpsError('internal', errorMessage, error.code); // Include error code if available
         }
     });
- 

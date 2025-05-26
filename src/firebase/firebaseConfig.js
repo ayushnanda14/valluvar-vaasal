@@ -1,59 +1,82 @@
 // Import the functions you need from the SDKs you need
-import { initializeApp } from "firebase/app";
+import { initializeApp, getApps, getApp } from "firebase/app";
 import { getAuth } from "firebase/auth";
 import { getFirestore } from "firebase/firestore";
 import { getStorage } from "firebase/storage";
+import { getFunctions } from "firebase/functions";
 import { initializeAppCheck, ReCaptchaV3Provider } from "firebase/app-check";
 
-// Your web app's Firebase configuration
+// console.log("Firebase API Key Used:", process.env.NEXT_PUBLIC_FIREBASE_API_KEY);
+// console.log("reCAPTCHA Site Key Used:", process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY);
+
+// Your web app's Firebase configuration using environment variables
 const firebaseConfig = {
   apiKey: process.env.NEXT_PUBLIC_FIREBASE_API_KEY,
   authDomain: process.env.NEXT_PUBLIC_FIREBASE_AUTH_DOMAIN,
   projectId: process.env.NEXT_PUBLIC_FIREBASE_PROJECT_ID,
   storageBucket: process.env.NEXT_PUBLIC_FIREBASE_STORAGE_BUCKET,
   messagingSenderId: process.env.NEXT_PUBLIC_FIREBASE_MESSAGING_SENDER_ID,
-  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID
+  appId: process.env.NEXT_PUBLIC_FIREBASE_APP_ID,
+  measurementId: process.env.NEXT_PUBLIC_FIREBASE_MEASUREMENT_ID,
 };
 
 // Initialize Firebase
-const app = initializeApp(firebaseConfig);
+let app;
+if (!getApps().length) {
+  app = initializeApp(firebaseConfig);
+} else {
+  app = getApp();
+}
 
-// Initialize Firebase Authentication and get a reference to the service
+// Initialize Firebase Authentication and other services
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
+export const functions = getFunctions(app);
 
-// Initialize App Check only on the client side
+// --- App Check Initialization ---
+let appCheckInstance = null; // Variable to store the App Check instance
 
-let appCheckInstance = null;
-
+// This function initializes App Check. It should be called once on the client-side.
 export const initializeAppCheckForClient = () => {
+  // Prevent re-initialization
   if (appCheckInstance) {
     return appCheckInstance;
   }
-  // Ensure this runs only on client
+
+  // Ensure this code runs only in the browser
   if (typeof window !== 'undefined') {
-    // Check if the environment variable is set
+    // For local development ONLY: Enable debug token generation.
+    // This line MUST be executed BEFORE initializeAppCheck() is called.
+    if (process.env.NODE_ENV === 'development') {
+      console.log("App Check: Development mode detected. Enabling debug token logging.");
+      // IMPORTANT: The 'self' keyword is used here as per Firebase documentation for debug tokens.
+      // @ts-ignore
+      self.FIREBASE_APPCHECK_DEBUG_TOKEN = true;
+    }
+
+    // Check if the reCAPTCHA site key environment variable is set
     if (!process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY) {
-      console.error("App Check Error: NEXT_PUBLIC_RECAPTCHA_SITE_KEY environment variable is not set.");
-      return null; // Or throw an error
+      console.error("App Check Error: The NEXT_PUBLIC_RECAPTCHA_SITE_KEY environment variable is not set. App Check will not be initialized.");
+      return null; // Stop initialization if the key is missing
     }
 
     try {
-      // Pass your reCAPTCHA v3 site key (from Google Cloud Console) here.
-      // It's crucial this key is stored in an environment variable.
+      // Initialize App Check with your reCAPTCHA v3 Site Key
       appCheckInstance = initializeAppCheck(app, {
         provider: new ReCaptchaV3Provider(process.env.NEXT_PUBLIC_RECAPTCHA_SITE_KEY),
-        // Optional: default assumes true, but you can set false for environments
-        // where App Check should be disabled (e.g., local testing without tokens)
-        isTokenAutoRefreshEnabled: true
+        isTokenAutoRefreshEnabled: true // Keep tokens refreshed automatically
       });
-      console.log("App Check initialized successfully.");
+      console.log("Firebase App Check initialized successfully.", appCheckInstance);
       return appCheckInstance;
-    } catch (e) {
-      console.error("Error initializing App Check provider:", e);
-      return null; // Or handle error appropriately
+    } catch (error) {
+      console.error("Firebase App Check: Error during initialization -", error);
+      // appCheckInstance will remain null
+      return null;
     }
   }
   return null;
 };
+
+// Export the app instance for use in other parts of the application
+export { app };
