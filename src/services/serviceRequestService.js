@@ -86,9 +86,17 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
     const userData = userDoc.data();
     const astrologerData = astrologerDoc.data();
     
-    // Create the conversation
-    const conversationRef = await addDoc(collection(db, 'conversations'), {
+    // Create the chat
+    const chatRef = await addDoc(collection(db, 'chats'), {
       participants: [userId, astrologerId],
+      participantNames: {
+        [userId]: userData.displayName || 'Client',
+        [astrologerId]: astrologerData.displayName || 'Astrologer'
+      },
+      participantAvatars: {
+        [userId]: userData.photoURL || null,
+        [astrologerId]: astrologerData.photoURL || null
+      },
       serviceRequestId,
       serviceType,
       status: 'active',
@@ -96,23 +104,24 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
       updatedAt: serverTimestamp(),
       lastMessage: {
         text: `New ${SERVICE_TYPES[serviceType]} service request`,
-        createdAt: serverTimestamp(),
+        timestamp: serverTimestamp(),
         senderId: userId
       }
     });
     
     // Add initial system message
-    await addDoc(collection(db, 'conversations', conversationRef.id, 'messages'), {
+    await addDoc(collection(db, 'chats', chatRef.id, 'messages'), {
       text: `${userData.displayName} has requested a ${SERVICE_TYPES[serviceType]} service. The astrologer will review the uploaded documents and provide insights soon.`,
       senderId: 'system',
-      createdAt: serverTimestamp(),
-      isSystemMessage: true
+      timestamp: serverTimestamp(),
+      read: false,
+      type: 'text'
     });
     
     // Update user's conversations list
     await updateDoc(doc(db, 'users', userId), {
       conversations: arrayUnion({
-        id: conversationRef.id,
+        id: chatRef.id,
         with: astrologerId,
         withName: astrologerData.displayName,
         withPhoto: astrologerData.photoURL || '',
@@ -124,7 +133,7 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
     // Update astrologer's conversations list
     await updateDoc(doc(db, 'users', astrologerId), {
       conversations: arrayUnion({
-        id: conversationRef.id,
+        id: chatRef.id,
         with: userId,
         withName: userData.displayName,
         withPhoto: userData.photoURL || '',
@@ -133,10 +142,10 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
       })
     });
     
-    return conversationRef.id;
+    return chatRef.id;
   } catch (error) {
-    console.error('Error creating conversation:', error);
-    throw new Error(`Failed to create conversation: ${error.message}`);
+    console.error('Error creating chat:', error);
+    throw new Error(`Failed to create chat: ${error.message}`);
   }
 };
 

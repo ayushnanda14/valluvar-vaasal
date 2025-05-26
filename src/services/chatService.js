@@ -233,4 +233,47 @@ export const markMessagesAsRead = async (chatId, userId) => {
         console.error('Error marking messages as read:', error);
         throw error;
     }
+};
+
+// Send a voice message
+export const sendVoiceMessage = async (chatId, senderId, audioBlob, duration) => {
+    try {
+        // Create a unique filename for the voice message
+        const timestamp = new Date().getTime();
+        const fileName = `voice_message_${timestamp}.webm`;
+        
+        // 1. Upload audio file to Firebase Storage
+        const storageRef = ref(storage, `chats/${chatId}/voice/${fileName}`);
+        const uploadTask = await uploadBytes(storageRef, audioBlob);
+        const downloadURL = await getDownloadURL(uploadTask.ref);
+        
+        // 2. Add message referencing the voice file
+        const messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), {
+            senderId,
+            timestamp: serverTimestamp(),
+            read: false,
+            type: 'voice',
+            voiceReference: {
+                url: downloadURL,
+                duration: duration, // Duration in seconds
+                fileName: fileName
+            },
+            text: 'Voice message' // Default text for the message
+        });
+        
+        // 3. Update the last message in the chat document
+        await updateDoc(doc(db, 'chats', chatId), {
+            lastMessage: {
+                text: 'Voice message',
+                timestamp: serverTimestamp(),
+                senderId
+            },
+            updatedAt: serverTimestamp()
+        });
+        
+        return messageRef.id;
+    } catch (error) {
+        console.error('Error sending voice message:', error);
+        throw error;
+    }
 }; 

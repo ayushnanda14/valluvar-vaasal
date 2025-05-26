@@ -47,23 +47,34 @@ export default function Messages() {
     let unsubscribe;
 
     const fetchChats = async () => {
-      if (!currentUser) return;
+      if (!currentUser) {
+        console.log('MessagesPage: currentUser not available yet.');
+        return;
+      }
+      console.log('MessagesPage: CurrentUser available:', currentUser.uid);
+      console.log('MessagesPage: router.query on fetchChats start:', router.query);
 
       try {
         setLoading(true);
 
         // Use the real-time listener
         unsubscribe = getUserChats(currentUser.uid, (userChats) => {
+          console.log('MessagesPage: getUserChats callback. Chats received:', userChats.length, 'Router query:', router.query);
           setChats(userChats);
 
           // If chatId is specified in the URL, select that chat
           if (router.query.chatId) {
+            console.log('MessagesPage: Attempting to select chat from URL chatId:', router.query.chatId);
             const chat = userChats.find(c => c.id === router.query.chatId);
             if (chat) {
+              console.log('MessagesPage: Chat found and selected:', chat.id);
               setSelectedChat(chat);
+            } else {
+              console.warn('MessagesPage: Chat with ID from URL not found in userChats:', router.query.chatId);
             }
           } else if (userChats.length > 0 && !isMobile) {
             // Auto-select the first chat on desktop
+            console.log('MessagesPage: No chatId in URL, auto-selecting first chat for desktop.');
             setSelectedChat(userChats[0]);
           }
 
@@ -88,6 +99,7 @@ export default function Messages() {
 
   const handleSelectChat = (chat) => {
     setSelectedChat(chat);
+    console.log('MessagesPage: handleSelectChat. Chat selected:', chat.id);
 
     // Update URL with the selected chat ID for direct linking
     router.push({
@@ -101,6 +113,7 @@ export default function Messages() {
 
   const handleBackToList = () => {
     setSelectedChat(null);
+    console.log('MessagesPage: handleBackToList. Cleared selected chat.');
 
     // Remove chatId from URL
     router.push('/messages', undefined, { shallow: true });
