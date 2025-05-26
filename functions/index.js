@@ -31,7 +31,7 @@ function getRazorpayInstance() {
 
 // --- checkPhone function (ensure it uses v2 onCall for consistency if not already) ---
 exports.checkPhone = onCall(
-    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' }, // Temporarily disable App Check enforcement for debugging
+    { region: 'us-central1', enforceAppCheck: true },
     async (request) => {
         const phone = request.data.phone;
         if (!phone) {

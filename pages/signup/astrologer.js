@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { 
   Box, 
   Container, 
@@ -115,6 +115,9 @@ export default function AstrologerSignup() {
   //     router.push('/dashboard');
   //   }
   // }, [currentUser, router, activeStep, loading]);
+  
+  // The useEffect that previously cleared window.recaptchaVerifier has been removed.
+  // AuthContext.js now handles reCAPTCHA verifier lifecycle.
   
   // Validate Indian phone number
   const validateIndianPhoneNumber = (phone) => {
@@ -424,52 +427,6 @@ export default function AstrologerSignup() {
     }
   };
   
-  // Make sure the reCAPTCHA container is always in the DOM
-  useEffect(() => {
-    // Create the reCAPTCHA container if it doesn't exist
-    let container = document.getElementById('recaptcha-container-astrologer');
-    if (!container) {
-      container = document.createElement('div');
-      container.id = 'recaptcha-container-astrologer';
-      container.style.display = 'none'; // Make it invisible
-      document.body.appendChild(container);
-    }
-    
-    // Cleanup function
-    return () => {
-      // Clear any existing reCAPTCHA verifier when component unmounts
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-      // Don't remove the container - let it persist
-    };
-  }, []);
-  
-  // Handle refresh for reCAPTCHA errors
-  const handleRefresh = () => {
-    // Clear any existing reCAPTCHA
-    if (window.recaptchaVerifier) {
-      try {
-        window.recaptchaVerifier.clear();
-      } catch (error) {
-        console.error('Error clearing reCAPTCHA:', error);
-      }
-    }
-    
-    // Reset state
-    setError('');
-    setPhoneStep(0);
-    setConfirmationResult(null);
-    
-    // Reload the page to get fresh Firebase configuration
-    window.location.reload();
-  };
-  
   // Add state for toast notification
   const [toast, setToast] = useState({ open: false, message: '', severity: 'success' });
   
@@ -477,6 +434,7 @@ export default function AstrologerSignup() {
   const handleCloseToast = () => {
     setToast({ ...toast, open: false });
   };
+
   
   return (
     <>
@@ -535,7 +493,7 @@ export default function AstrologerSignup() {
                   }}
                   action={
                     error.includes('Invalid app credential') || error.includes('billing') ? (
-                      <Button color="inherit" size="small" onClick={handleRefresh}>
+                      <Button color="inherit" size="small">
                         Refresh
                       </Button>
                     ) : null
@@ -665,8 +623,8 @@ export default function AstrologerSignup() {
                         }}
                       />
                       
-                      {/* Invisible reCAPTCHA container - render it inline instead of relying on the one in body */}
-                      {/* Removed to prevent conflicts - container is created in useEffect */}
+                      {/* Add the reCAPTCHA container div here */}
+                      <div id="recaptcha-container-astrologer" style={{ display: 'none' }}></div>
                       
                       <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
                         <Button

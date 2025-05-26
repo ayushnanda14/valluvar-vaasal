@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Container,
@@ -49,22 +49,6 @@ export default function Signup() {
 
   // Ref for reCAPTCHA container
   const recaptchaContainerRef = useRef(null);
-
-  // Ensure reCAPTCHA container is properly managed
-  useEffect(() => {
-    // Cleanup function
-    return () => {
-      // Clear any existing reCAPTCHA verifier when component unmounts
-      if (window.recaptchaVerifier) {
-        try {
-          window.recaptchaVerifier.clear();
-          window.recaptchaVerifier = null;
-        } catch (error) {
-          console.error('Error clearing reCAPTCHA:', error);
-        }
-      }
-    };
-  }, []);
 
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
@@ -224,15 +208,6 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
   };
 
   const handleRefresh = () => {
-    // Clear any existing reCAPTCHA
-    if (window.recaptchaVerifier) {
-      try {
-        window.recaptchaVerifier.clear();
-      } catch (error) {
-        console.error('Error clearing reCAPTCHA:', error);
-      }
-    }
-
     // Reset state
     setError('');
     setPhoneStep(0);

@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from 'react';
+import React, { useState, useRef } from 'react';
 import {
   Box,
   Container,
@@ -149,7 +149,7 @@ export default function Login() {
       }
 
       // 2️⃣ send OTP if number exists
-      const verifier = getOrCreateRecaptcha(); // Use the singleton verifier
+      const verifier = getOrCreateRecaptcha('recaptcha-container-login'); // Use the singleton verifier
       const result = await signInWithPhoneNumber(auth, formatted, verifier);
       setConfirmationResult(result);
       setPhoneStep(1);
@@ -157,7 +157,7 @@ export default function Login() {
     } catch (err) {
       console.error('Error during phone check or OTP send:', err);
       if (err.code === 'functions/internal' || err.code === 'auth/internal-error') {
-         setError('An internal server error occurred. Please try again later.');
+        setError('An internal server error occurred. Please try again later.');
       } else if (err.code === 'auth/quota-exceeded') {
         setError('SMS quota exceeded. Please try again later.');
       } else if (err.code === 'auth/app-not-authorized' || err.code === 'auth/invalid-app-credential') {
@@ -245,51 +245,51 @@ export default function Login() {
         <Container maxWidth="sm" sx={{ py: 8 }}>
           <MotionPaper
             elevation={3}
-          sx={{
+            sx={{
               p: 4,
               borderRadius: 2,
               backgroundColor: 'rgba(255, 255, 255, 0.9)',
               backdropFilter: 'blur(10px)'
-          }}
-              initial={{ opacity: 0, y: 20 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.5 }}
-            >
-              <Typography
-                variant="h4"
-                component="h1"
+            }}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.5 }}
+          >
+            <Typography
+              variant="h4"
+              component="h1"
               gutterBottom
-                sx={{
+              sx={{
                 textAlign: 'center',
-                  fontFamily: '"Cinzel", serif',
+                fontFamily: '"Cinzel", serif',
                 color: theme.palette.primary.main,
                 mb: 4
-                }}
-              >
+              }}
+            >
               Sign In
-              </Typography>
+            </Typography>
 
-              <Tabs
-                value={authMethod}
-                onChange={handleAuthMethodChange}
+            <Tabs
+              value={authMethod}
+              onChange={handleAuthMethodChange}
               centered
-                sx={{ mb: 3 }}
-              >
-                <Tab
+              sx={{ mb: 3 }}
+            >
+              <Tab
                 value="phone"
                 label="Mobile Number"
                 icon={<PhoneIcon />}
                 iconPosition="start"
                 sx={{ fontFamily: '"Cinzel", serif' }}
-                />
-                <Tab
+              />
+              <Tab
                 value="email"
                 label="Email"
                 icon={<EmailIcon />}
                 iconPosition="start"
                 sx={{ fontFamily: '"Cinzel", serif' }}
-                />
-              </Tabs>
+              />
+            </Tabs>
 
             {error && (
               <Alert severity="error" sx={{ mb: 3 }}>
@@ -304,60 +304,60 @@ export default function Login() {
               <Box>
                 {phoneStep === 0 ? (
                   <form onSubmit={handleSendVerificationCode}>
-                  <TextField
-                    fullWidth
+                    <TextField
+                      fullWidth
                       label="Mobile Number"
                       value={phoneNumber}
                       onChange={(e) => setPhoneNumber(e.target.value)}
-                    margin="normal"
-                    InputProps={{
-                      startAdornment: (
-                        <InputAdornment position="start">
+                      margin="normal"
+                      InputProps={{
+                        startAdornment: (
+                          <InputAdornment position="start">
                             <PhoneIcon color="primary" />
-                        </InputAdornment>
-                      ),
-                    }}
+                          </InputAdornment>
+                        ),
+                      }}
                       placeholder="Enter 10-digit mobile number"
                       sx={{ mb: 3 }}
                     />
-                  <Button
-                    fullWidth
-                    variant="contained"
-                    color="primary"
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
                       type="submit"
-                    disabled={loading}
-                    sx={{
-                      py: 1.5,
+                      disabled={loading}
+                      sx={{
+                        py: 1.5,
                         fontFamily: '"Cinzel", serif',
-                      fontSize: '1.1rem'
-                    }}
-                  >
+                        fontSize: '1.1rem'
+                      }}
+                    >
                       {loading ? <CircularProgress size={24} /> : 'Send OTP'}
-                  </Button>
-                </form>
-              ) : (
+                    </Button>
+                  </form>
+                ) : (
                   <form onSubmit={handleVerifyCode}>
-                      <TextField
-                        fullWidth
+                    <TextField
+                      fullWidth
                       label="Verification Code"
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
-                        margin="normal"
+                      margin="normal"
                       placeholder="Enter 6-digit code"
                       sx={{ mb: 3 }}
-                      />
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
+                    />
+                    <Button
+                      fullWidth
+                      variant="contained"
+                      color="primary"
                       type="submit"
-                        disabled={loading}
-                        sx={{
-                          py: 1.5,
+                      disabled={loading}
+                      sx={{
+                        py: 1.5,
                         fontFamily: '"Cinzel", serif',
-                          fontSize: '1.1rem'
-                        }}
-                      >
+                        fontSize: '1.1rem'
+                      }}
+                    >
                       {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
                     </Button>
                     <Button
@@ -367,11 +367,11 @@ export default function Login() {
                       sx={{ mt: 2 }}
                     >
                       Resend OTP
-                      </Button>
-                    </form>
+                    </Button>
+                  </form>
                 )}
               </Box>
-                  ) : (
+            ) : (
               <form onSubmit={handleEmailLogin}>
                 <TextField
                   fullWidth
@@ -388,55 +388,55 @@ export default function Login() {
                   }}
                   sx={{ mb: 3 }}
                 />
-                      <TextField
-                        fullWidth
+                <TextField
+                  fullWidth
                   label="Password"
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
-                        margin="normal"
+                  margin="normal"
                   sx={{ mb: 3 }}
                 />
-                      <Button
-                        fullWidth
-                        variant="contained"
-                        color="primary"
+                <Button
+                  fullWidth
+                  variant="contained"
+                  color="primary"
                   type="submit"
-                        disabled={loading}
-                        sx={{
-                          py: 1.5,
+                  disabled={loading}
+                  sx={{
+                    py: 1.5,
                     fontFamily: '"Cinzel", serif',
-                          fontSize: '1.1rem'
-                        }}
-                      >
+                    fontSize: '1.1rem'
+                  }}
+                >
                   {loading ? <CircularProgress size={24} /> : 'Sign In'}
-                      </Button>
-                    </form>
-              )}
+                </Button>
+              </form>
+            )}
 
-              <Divider sx={{ my: 3 }}>
-                <Typography variant="body2" color="text.secondary">
-                  OR
-                </Typography>
-              </Divider>
+            <Divider sx={{ my: 3 }}>
+              <Typography variant="body2" color="text.secondary">
+                OR
+              </Typography>
+            </Divider>
 
-              <Button
-                fullWidth
-                variant="outlined"
-                startIcon={<GoogleIcon />}
-                onClick={handleGoogleLogin}
-                sx={{
-                  py: 1.5,
+            <Button
+              fullWidth
+              variant="outlined"
+              startIcon={<GoogleIcon />}
+              onClick={handleGoogleLogin}
+              sx={{
+                py: 1.5,
                 fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem'
-                }}
-              >
+                fontSize: '1.1rem'
+              }}
+            >
               Continue with Google
-              </Button>
+            </Button>
 
-              <Box sx={{ mt: 3, textAlign: 'center' }}>
-                <Typography variant="body2">
-                  Don't have an account?{' '}
+            <Box sx={{ mt: 3, textAlign: 'center' }}>
+              <Typography variant="body2">
+                Don't have an account?{' '}
                 <Link href="/signup" passHref>
                   <MuiLink color="primary">Sign up</MuiLink>
                 </Link>
@@ -444,12 +444,12 @@ export default function Login() {
               <Typography variant="body2" sx={{ mt: 1 }}>
                 <Link href="/reset-password" passHref>
                   <MuiLink color="primary">Forgot password?</MuiLink>
-                  </Link>
-                </Typography>
-              </Box>
-            </MotionPaper>
-          </Container>
-        </Box>
+                </Link>
+              </Typography>
+            </Box>
+          </MotionPaper>
+        </Container>
+      </Box>
     </>
   );
 } 
