@@ -79,8 +79,19 @@ export default function ChatBox({ chatId, otherUser }) {
     useEffect(() => {
         const checkAstrologerRole = async () => {
             if (currentUser) {
-                const hasAstrologerRole = await hasRole('astrologer');
-                setIsAstrologer(hasAstrologerRole);
+                console.log('[ChatBox] Checking astrologer role. currentUser.uid:', currentUser.uid);
+                // Log roles if they exist on the currentUser object provided by AuthContext
+                if (currentUser.roles) {
+                    console.log('[ChatBox] currentUser.roles from AuthContext:', JSON.stringify(currentUser.roles));
+                } else {
+                    console.log('[ChatBox] currentUser.roles is not directly available on the currentUser object in ChatBox.');
+                }
+                const astrologerCheckResult = await hasRole('astrologer');
+                console.log('[ChatBox] Result of hasRole("astrologer"):', astrologerCheckResult);
+                setIsAstrologer(astrologerCheckResult);
+            } else {
+                console.log('[ChatBox] No currentUser available for role check.');
+                setIsAstrologer(false); // Ensure isAstrologer is false if no currentUser
             }
         };
         checkAstrologerRole();
