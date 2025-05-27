@@ -54,7 +54,7 @@ export default function ChatBox({ chatId, otherUser }) {
     const [previewFile, setPreviewFile] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const messagesContainerRef = useRef(null);
-    
+
     // Voice recording states
     const [isRecording, setIsRecording] = useState(false);
     const [recordingTime, setRecordingTime] = useState(0);
@@ -63,7 +63,7 @@ export default function ChatBox({ chatId, otherUser }) {
     const recordingTimerRef = useRef(null);
     const [recordedAudio, setRecordedAudio] = useState(null);
     const [isRecordingComplete, setIsRecordingComplete] = useState(false);
-    
+
     // Audio playback states
     const [playingAudio, setPlayingAudio] = useState(null);
     const [audioProgress, setAudioProgress] = useState({});
@@ -387,7 +387,7 @@ export default function ChatBox({ chatId, otherUser }) {
                 audioRefs.current[playingAudio].currentTime = 0;
                 setAudioProgress(prev => ({ ...prev, [playingAudio]: 0 }));
             }
-            
+
             // Play new audio
             if (currentAudioRef) {
                 currentAudioRef.play();
@@ -413,7 +413,7 @@ export default function ChatBox({ chatId, otherUser }) {
         if (messageId === 'preview') {
             setPreviewAudioProgress(0);
             if (audioRefs.current['preview']) {
-                 audioRefs.current['preview'].currentTime = 0;
+                audioRefs.current['preview'].currentTime = 0;
             }
         } else {
             setAudioProgress(prev => ({ ...prev, [messageId]: 0 }));
@@ -619,11 +619,11 @@ export default function ChatBox({ chatId, otherUser }) {
                             container
                             spacing={1}
                             alignItems="center"
-                            // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
+                        // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
                         >
                             {!isRecording && !isRecordingComplete && (
-                                <>
-                                
+                                <Grid container spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'nowrap' }}>
+
                                     <Grid item>
                                         <Box sx={{ display: 'flex', gap: 1 }}>
                                             <input
@@ -643,7 +643,7 @@ export default function ChatBox({ chatId, otherUser }) {
                                             </Tooltip>
 
                                             {/* Voice recording button - only for astrologers */}
-                                            {isAstrologer && (
+                                            {/* {isAstrologer && ( */}
                                                 <Tooltip title="Record voice message">
                                                     <IconButton
                                                         color="primary"
@@ -653,35 +653,22 @@ export default function ChatBox({ chatId, otherUser }) {
                                                         <MicIcon />
                                                     </IconButton>
                                                 </Tooltip>
-                                            )}
+                                            {/* )} */}
                                         </Box>
                                     </Grid>
 
-                                    <Grid item> {/* Allow TextField to grow to maximum width */}
+                                    <Grid item sx={{ flex: 1 }}>
                                         <TextField
-                                            fullWidth
                                             variant="outlined"
                                             placeholder="Type a message"
                                             size="small"
                                             value={newMessage}
                                             onChange={(e) => setNewMessage(e.target.value)}
                                             disabled={sendingFile}
-                                            sx={{
-                                                width: '100%',
-                                                '& .MuiInputBase-root': {
-                                                    width: '100%'
-                                                },
-                                                '& .MuiInputBase-input': {
-                                                    width: '100%',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
-                                                }
-                                            }}
-                                            inputProps={{
-                                                style: { width: '100%' }
-                                            }}
+                                            fullWidth
                                         />
                                     </Grid>
+
                                     <Grid item sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                                         <IconButton
                                             color="primary"
@@ -691,7 +678,7 @@ export default function ChatBox({ chatId, otherUser }) {
                                             <SendIcon />
                                         </IconButton>
                                     </Grid>
-                                </>
+                                </Grid>
                             )}
 
                             {/* Recording UI */}
@@ -709,9 +696,9 @@ export default function ChatBox({ chatId, otherUser }) {
                                             Recording... {formatTime(recordingTime)}
                                         </Typography>
                                     </Box>
-                                    <Box sx={{ 
-                                        display: 'flex', 
-                                        alignItems: 'center', 
+                                    <Box sx={{
+                                        display: 'flex',
+                                        alignItems: 'center',
                                         gap: 0.5,
                                         flex: 1,
                                         justifyContent: 'center'
