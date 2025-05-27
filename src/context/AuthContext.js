@@ -138,6 +138,28 @@ export function AuthProvider({ children }) {
     return snap.exists() && (snap.data().roles || []).includes(role);
   };
 
+  // Restore getAllUsers function
+  const getAllUsers = async () => {
+    try {
+      const usersRef = collection(db, 'users');
+      const q = query(usersRef);
+      const querySnapshot = await getDocs(q);
+      
+      const users = [];
+      querySnapshot.forEach((doc) => {
+        users.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+      
+      return users;
+    } catch (error) {
+      console.error('Error fetching users:', error);
+      throw error;
+    }
+  };
+
   useEffect(() => {
     const unsub = onAuthStateChanged(auth, async user => {
       setCurrentUser(user);
@@ -162,7 +184,8 @@ export function AuthProvider({ children }) {
     loginWithGoogle,
     logout,
     resetPassword,
-    hasRole
+    hasRole,
+    getAllUsers
   };
 
   return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;

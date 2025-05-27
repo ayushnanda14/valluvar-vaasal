@@ -13,7 +13,7 @@ import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import { useAuth } from '../../src/context/AuthContext';
 import ProtectedRoute from '../../src/components/ProtectedRoute';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, getDocs, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 
 export default function AdminChats() {

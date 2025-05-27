@@ -89,6 +89,10 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
     // Create the chat
     const chatRef = await addDoc(collection(db, 'chats'), {
       participants: [userId, astrologerId],
+      clientId: userId,
+      clientName: userData.displayName || 'Client',
+      astrologerId: astrologerId,
+      astrologerName: astrologerData.displayName || 'Astrologer',
       participantNames: {
         [userId]: userData.displayName || 'Client',
         [astrologerId]: astrologerData.displayName || 'Astrologer'

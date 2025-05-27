@@ -49,31 +49,27 @@ exports.checkPhone = onCall(
 
 // --- verifyRazorpayPayment function (ensure it uses v2 onCall) --- 
 exports.verifyRazorpayPayment = onCall(
-    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' },
-    async (request) => {
-        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = request.data;
+    { region: 'us-central1', enforceAppCheck: false },
+    async (req) => {
+        const { razorpay_order_id, razorpay_payment_id, razorpay_signature } = req.data;
+
         if (!razorpay_order_id || !razorpay_payment_id || !razorpay_signature) {
-            throw new HttpsError('invalid-argument', 'Missing Razorpay payment details.');
+            throw new functions.https.HttpsError('invalid-argument', 'Missing Razorpay payment details.');
         }
-        const secret = process.env.RAZORPAY_KEY_SECRET;
-        if (!secret) {
-            console.error('Razorpay Key Secret is not set in Firebase Function environment variables.');
-            throw new HttpsError('internal', 'Server configuration error.');
+
+        const secret = functions.config().razorpay.key_secret;  // <-- see step 4
+        const expected = crypto
+            .createHmac('sha256', secret)
+            .update(`${razorpay_order_id}|${razorpay_payment_id}`)
+            .digest('hex');
+
+        if (expected !== razorpay_signature) {
+            throw new functions.https.HttpsError('permission-denied', 'Invalid Razorpay signature');
         }
-        try {
-            const body = razorpay_order_id + "|" + razorpay_payment_id;
-            const expectedSignature = crypto.createHmac("sha256", secret).update(body.toString()).digest("hex");
-            if (expectedSignature === razorpay_signature) {
-                console.log(`Payment verified successfully for Order ID: ${razorpay_order_id}`);
-                return { success: true, message: 'Payment verified successfully' };
-            }
-            console.warn(`Payment verification failed for Order ID: ${razorpay_order_id}`);
-            throw new HttpsError('unauthenticated', 'Payment verification failed: Invalid signature.');
-        } catch (error) {
-            console.error('verifyRazorpayPayment error:', error);
-            throw new HttpsError('internal', 'Could not verify payment.', error.message);
-        }
-    });
+
+        return { success: true };
+    }
+);
 
 // --- createRazorpayOrder function (ensure it uses v2 onCall) ---
 exports.createRazorpayOrder = onCall(

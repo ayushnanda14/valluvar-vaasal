@@ -35,6 +35,9 @@ import {
   Divider,
   Menu,
   Badge,
+  FormControlLabel,
+  InputAdornment,
+  CircularProgress,
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -61,6 +64,7 @@ import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
 import VerifiedIcon from '@mui/icons-material/Verified';
 import ChatIcon from '@mui/icons-material/Chat';
+import TuneIcon from '@mui/icons-material/Tune';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 
@@ -86,6 +90,13 @@ const availableRoles = [
   'support',
   'content_manager'
 ];
+
+// Define available services for astrologers
+const AVAILABLE_ASTROLOGER_SERVICES = {
+  marriageMatching: 'Marriage Matching',
+  jathakPrediction: 'Jathak Prediction',
+  jathakWriting: 'Jathak Writing',
+};
 
 export default function AdminDashboard() {
   const theme = useTheme();
@@ -115,6 +126,7 @@ export default function AdminDashboard() {
   // Action loading state
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   // Add these new state variables at the component level
   const [selectedAstrologer, setSelectedAstrologer] = useState(null);
@@ -125,6 +137,13 @@ export default function AdminDashboard() {
   const [roleFilter, setRoleFilter] = useState('all');
   const [anchorEl, setAnchorEl] = useState(null);
   const [selectedActionUser, setSelectedActionUser] = useState(null);
+
+  // State for managing astrologer services dialog
+  const [openServicesDialog, setOpenServicesDialog] = useState(false);
+  const [editingAstrologer, setEditingAstrologer] = useState(null);
+  const [astrologerServices, setAstrologerServices] = useState({});
+  const [astrologerPricing, setAstrologerPricing] = useState({});
+  const [servicesLoading, setServicesLoading] = useState(false);
 
   // Get tab from query params
   useEffect(() => {
@@ -508,6 +527,18 @@ export default function AdminDashboard() {
             <ListItemText>View Chats</ListItemText>
           </MenuItem>
           
+          {selectedActionUser?.roles?.includes('astrologer') && (
+            <MenuItem onClick={() => {
+              handleOpenServicesDialog(selectedActionUser);
+              handleCloseActionMenu();
+            }}>
+              <ListItemIcon>
+                <TuneIcon fontSize="small" />
+              </ListItemIcon>
+              <ListItemText primary="Manage Services & Pricing" />
+            </MenuItem>
+          )}
+          
           <Divider />
           
           <MenuItem 
@@ -841,6 +872,113 @@ export default function AdminDashboard() {
     setOpenVerificationDialog(true);
   };
 
+  // Handler to open the astrologer services dialog
+  const handleOpenServicesDialog = async (user) => {
+    setEditingAstrologer(user);
+    setServicesLoading(true);
+    setError(''); // Clear previous errors
+
+    try {
+      const userDocRef = doc(db, 'users', user.id);
+      const userDocSnap = await getDoc(userDocRef);
+
+      if (userDocSnap.exists()) {
+        const userData = userDocSnap.data();
+        const currentServices = userData.services || [];
+        const currentPricing = userData.serviceCharges || {};
+
+        const initialServicesState = {};
+        Object.keys(AVAILABLE_ASTROLOGER_SERVICES).forEach(key => {
+          initialServicesState[key] = currentServices.includes(key);
+        });
+        setAstrologerServices(initialServicesState);
+
+        const initialPricingState = {};
+        Object.keys(AVAILABLE_ASTROLOGER_SERVICES).forEach(key => {
+          initialPricingState[key] = currentPricing[key] || '500'; // Default to 500 if not set
+        });
+        setAstrologerPricing(initialPricingState);
+
+      } else {
+        setError('Could not load astrologer data.');
+        setAstrologerServices({});
+        setAstrologerPricing({});
+      }
+    } catch (err) {
+      console.error('Error fetching astrologer services data:', err);
+      setError('Failed to load services data. Please try again.');
+      setAstrologerServices({});
+      setAstrologerPricing({});
+    } finally {
+      setServicesLoading(false);
+      setOpenServicesDialog(true);
+    }
+  };
+
+  const handleCloseServicesDialog = () => {
+    setEditingAstrologer(null);
+    setOpenServicesDialog(false);
+    setActionLoading(false); // Reset actionLoading, already present
+    setError(''); // Clear error on close
+    setSuccessMessage(''); // Clear success message on close
+  };
+
+  const handleAstrologerServiceChange = (service, checked) => {
+    setAstrologerServices({
+      ...astrologerServices,
+      [service]: checked
+    });
+  };
+
+  const handleAstrologerPricingChange = (service, value) => {
+    setAstrologerPricing({
+      ...astrologerPricing,
+      [service]: value
+    });
+  };
+
+  const handleSaveAstrologerServices = async () => {
+    if (!editingAstrologer) return;
+
+    try {
+      setServicesLoading(true);
+
+      // Reference to the astrologer document
+      const astrologerRef = doc(db, 'users', editingAstrologer.id);
+
+      // Prepare data for update
+      const servicesToUpdate = Object.keys(astrologerServices)
+        .filter(serviceKey => astrologerServices[serviceKey]);
+      
+      const pricingToUpdate = {};
+      servicesToUpdate.forEach(serviceKey => {
+        // Ensure price is a number and provide a default if empty or invalid
+        const price = parseFloat(astrologerPricing[serviceKey]);
+        pricingToUpdate[serviceKey] = !isNaN(price) && price > 0 ? price : 500; 
+      });
+
+      // Update astrologer document with services and pricing
+      await updateDoc(astrologerRef, {
+        services: servicesToUpdate,
+        serviceCharges: pricingToUpdate,
+        updatedAt: serverTimestamp()
+      });
+
+      // Close the dialog
+      handleCloseServicesDialog();
+      setSuccessMessage('Astrologer services and pricing updated successfully!'); // Provide success feedback
+
+      // Optionally, refresh user data if needed, though roles haven't changed here
+      // e.g., by re-fetching users for the main table if displayed info changes
+      
+    } catch (error) {
+      console.error('Error updating astrologer services:', error);
+      setError('Failed to update astrologer services. Please try again.');
+    } finally {
+      setServicesLoading(false);
+    }
+  };
+
   return (
     <ProtectedRoute requiredRoles={['admin']}>
       <Head>
@@ -945,6 +1083,64 @@ export default function AdminDashboard() {
           <Button onClick={handleCloseRoleDialog}>Cancel</Button>
           <Button onClick={handleSaveRoles} variant="contained" color="primary">
             Save
+          </Button>
+        </DialogActions>
+      </Dialog>
+
+      {/* Manage Astrologer Services Dialog */}
+      <Dialog open={openServicesDialog} onClose={handleCloseServicesDialog} maxWidth="sm" fullWidth>
+        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
+          Manage Services for {editingAstrologer?.displayName || 'Astrologer'}
+        </DialogTitle>
+        <DialogContent>
+          {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}      
+          {servicesLoading ? (
+            <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <Box>
+              {Object.entries(AVAILABLE_ASTROLOGER_SERVICES).map(([key, name]) => (
+                <Paper key={key} variant="outlined" sx={{ p: 2, mb: 2 }}>
+                  <FormControlLabel
+                    control={
+                      <Checkbox
+                        checked={!!astrologerServices[key]}
+                        onChange={(e) => handleAstrologerServiceChange(key, e.target.checked)}
+                        name={key}
+                      />
+                    }
+                    label={<Typography variant="subtitle1">{name}</Typography>}
+                    sx={{ mb: 1 }}
+                  />
+                  <TextField
+                    label="Price (₹)"
+                    variant="outlined"
+                    size="small"
+                    fullWidth
+                    type="number"
+                    value={astrologerPricing[key] || ''}
+                    onChange={(e) => handleAstrologerPricingChange(key, e.target.value)}
+                    disabled={!astrologerServices[key]}
+                    InputProps={{
+                      startAdornment: <InputAdornment position="start">₹</InputAdornment>,
+                    }}
+                  />
+                </Paper>
+              ))}
+            </Box>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseServicesDialog}>Cancel</Button>
+          <Button 
+            onClick={handleSaveAstrologerServices} 
+            variant="contained" 
+            color="primary"
+            disabled={servicesLoading || actionLoading}
+          >
+            {actionLoading ? 'Saving...' : 'Save Services'}
           </Button>
         </DialogActions>
       </Dialog>

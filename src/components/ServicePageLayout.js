@@ -79,40 +79,60 @@ export default function ServicePageLayout({
 
   // Load state from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && currentUser) { // Ensure currentUser is available before loading
+    if (typeof window !== 'undefined' && currentUser) { 
       const savedStateRaw = localStorage.getItem(localStorageKey);
       if (savedStateRaw) {
         try {
           const savedState = JSON.parse(savedStateRaw);
-          
-          // Restore step, district, and astrologers
-          if (savedState.step) setStep(savedState.step);
-          if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
-          if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
 
-          // Handle file state - user will need to re-select files
-          // If they were at step 1 and had files, ensure they are at step 1.
-          // If they were beyond step 1, their selections are preserved, but files array will be empty.
-          // They will need to re-upload if they navigate back to step 1.
-          if (savedState.filesUploaded && savedState.step === 1) {
-             setError(t('servicePage.errors.promptReupload'));
+          // Check if the saved state belongs to the current user
+          if (savedState.userId && savedState.userId === currentUser.uid) {
+            // Restore step, district, and astrologers
+            if (savedState.step) setStep(savedState.step);
+            if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
+            if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+
+            // Handle file state - user will need to re-select files
+            if (savedState.filesUploaded && savedState.step === 1) {
+               setError(t('servicePage.errors.promptReupload'));
+            }
+            // Clear files state as File objects cannot be persisted directly
+            setFiles([]);
+            setSecondFiles([]);
+          } else {
+            // Stored data is for a different user or has no userId, clear it and start fresh
+            localStorage.removeItem(localStorageKey);
+            // Reset to default step and selections for a truly fresh start
+            setStep(1);
+            setSelectedDistrict('');
+            setSelectedAstrologers([]);
+            setFiles([]);
+            setSecondFiles([]);
           }
-          // Clear files state as File objects cannot be persisted directly
-          setFiles([]);
-          setSecondFiles([]);
-
         } catch (e) {
           console.error("Failed to parse saved state from localStorage", e);
           localStorage.removeItem(localStorageKey); // Clear corrupted data
+          // Reset to default state after corruption
+          setStep(1);
+          setSelectedDistrict('');
+          setSelectedAstrologers([]);
+          setFiles([]);
+          setSecondFiles([]);
         }
+      } else {
+        // No saved state, ensure defaults (though useState already does this)
+        setStep(1);
+        setSelectedDistrict('');
+        setSelectedAstrologers([]);
       }
     }
-  }, [serviceType, currentUser, localStorageKey, t]); // Added t to dependencies due to its use in potential setError
+  }, [serviceType, currentUser, localStorageKey, t]); 
 
   // Save state to localStorage whenever relevant parts change
   useEffect(() => {
-    if (typeof window !== 'undefined' && currentUser) { // Ensure currentUser before saving
+    if (typeof window !== 'undefined' && currentUser) { 
       const stateToSave = {
+        userId: currentUser.uid, // Add userId here
         step,
         selectedDistrict,
         selectedAstrologers,
@@ -295,6 +315,10 @@ export default function ServicePageLayout({
       for (const astrologer of selectedAstrologers) {
         const conversationRef = await addDoc(collection(db, 'chats'), {
           participants: [currentUser.uid, astrologer.id],
+          clientId: currentUser.uid,
+          clientName: currentUser.displayName || 'Client',
+          astrologerId: astrologer.id,
+          astrologerName: astrologer.displayName || 'Astrologer',
           participantNames: {
             [currentUser.uid]: currentUser.displayName || 'Client',
             [astrologer.id]: astrologer.displayName || 'Astrologer'

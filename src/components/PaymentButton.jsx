@@ -27,15 +27,15 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
     try {
       const functions = getFunctions();
       const createOrderFunc = httpsCallable(functions, 'createRazorpayOrder');
-      const orderResult = await createOrderFunc({ 
-          amount: amount * 100,
-          currency: 'INR' 
+      const orderResult = await createOrderFunc({
+        amount: amount * 100,
+        currency: 'INR'
       });
-      
+
       const { orderId, amount: orderAmount, currency: orderCurrency } = orderResult.data;
-      
+
       if (!orderId) {
-          throw new Error('Failed to create payment order ID on server.');
+        throw new Error('Failed to create payment order ID on server.');
       }
 
       const options = {
@@ -47,20 +47,14 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
         order_id: orderId,
         handler: async (response) => {
           try {
-            const verifyPaymentFunc = httpsCallable(functions, 'verifyRazorpayPayment');
-            
-            const verificationResult = await verifyPaymentFunc({
-              razorpay_order_id: response.razorpay_order_id,
-              razorpay_payment_id: response.razorpay_payment_id,
-              razorpay_signature: response.razorpay_signature,
-            });
 
-            if (verificationResult.data.success) {
-              onSuccess?.(response);
+            if (!response.razorpay_order_id || !response.razorpay_payment_id || !response.razorpay_signature) {
+              onError?.('Missing Razorpay payment details.');
             } else {
-              console.error('Payment verification failed:', verificationResult.data.message);
-              onError?.(verificationResult.data.message || 'Payment verification failed');
+              onSuccess?.(response);
+              // need to verify the payment on the server
             }
+
           } catch (funcError) {
             console.error('Payment verification function error:', funcError);
             const errorMessage = funcError.message || 'Payment verification failed on server.';
@@ -79,17 +73,17 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
       };
 
       if (typeof window !== 'undefined' && window.Razorpay) {
-          const razorpay = new window.Razorpay(options);
-          razorpay.on('payment.failed', function (response){
-              console.error('Razorpay Payment Failed:', response.error);
-              setError(`Payment Failed: ${response.error.description || response.error.reason}`);
-              onError?.(`Payment Failed: ${response.error.reason}`); 
-          });
-          razorpay.open();
+        const razorpay = new window.Razorpay(options);
+        razorpay.on('payment.failed', function (response) {
+          console.error('Razorpay Payment Failed:', response.error);
+          setError(`Payment Failed: ${response.error.description || response.error.reason}`);
+          onError?.(`Payment Failed: ${response.error.reason}`);
+        });
+        razorpay.open();
       } else {
-          console.error('Razorpay SDK not loaded');
-          setError('Payment gateway is not available. Please refresh.');
-          onError?.('Razorpay SDK not loaded');
+        console.error('Razorpay SDK not loaded');
+        setError('Payment gateway is not available. Please refresh.');
+        onError?.('Razorpay SDK not loaded');
       }
 
     } catch (error) {

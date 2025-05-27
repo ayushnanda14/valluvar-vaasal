@@ -448,6 +448,7 @@ const ChatMonitor = ({ userId }) => {
                   onClick={() => handleSelectChat(chat)}
                   sx={{ cursor: 'pointer' }}
                 >
+                  {console.log(chat)}
                   <TableCell>{chat.clientName || 'Unknown'}</TableCell>
                   <TableCell>{chat.astrologerName || 'Unknown'}</TableCell>
                   <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General'}</TableCell>
