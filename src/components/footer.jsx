@@ -211,7 +211,8 @@ const Footer = () => {
                     fontSize: '1rem'
                   }}
                 >
-                  123 Cosmic Avenue
+                  Shri Kamba Kamatchi Amman Kovil, <br />
+                  Pachaikoppanpatti, Thirali,
                 </Typography>
                 <Typography
                   variant="body2"
@@ -220,7 +221,8 @@ const Footer = () => {
                     fontSize: '1rem'
                   }}
                 >
-                  Chennai, Tamil Nadu 600001
+                  Thirumangalam, Madurai, <br />
+                  Tamil nadu 625704
                 </Typography>
                 <Typography
                   variant="body2"
@@ -238,7 +240,7 @@ const Footer = () => {
                     fontSize: '1rem'
                   }}
                 >
-                  Phone: +91 98765 43210
+                  Phone: +91 94887 36192
                 </Typography>
               </Box>
             </Box>
