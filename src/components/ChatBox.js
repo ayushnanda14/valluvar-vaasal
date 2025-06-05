@@ -42,6 +42,8 @@ import {
     sendVoiceMessage
 } from '../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
+import Snackbar from '@mui/material/Snackbar';
+import MuiAlert from '@mui/material/Alert';
 
 export default function ChatBox({ chatId, otherUser }) {
     const { currentUser, hasRole } = useAuth();
@@ -74,6 +76,13 @@ export default function ChatBox({ chatId, otherUser }) {
     // Add new state for sound wave animation
     const [soundWaveHeight, setSoundWaveHeight] = useState(0);
     const soundWaveIntervalRef = useRef(null);
+
+    // Notification state
+    const [showNewMessageSnackbar, setShowNewMessageSnackbar] = useState(false);
+    const [newMessageContent, setNewMessageContent] = useState('');
+    const [windowFocused, setWindowFocused] = useState(true);
+    const [atBottom, setAtBottom] = useState(true);
+    const lastMessageIdRef = useRef(null);
 
     // Check if user is an astrologer
     useEffect(() => {
@@ -227,48 +236,74 @@ export default function ChatBox({ chatId, otherUser }) {
             return null;
         }
 
-        const { name, url, type } = fileReference;
-        console.log('Rendering file preview for:', { name, url, type });
+        const { name, url, type, size } = fileReference;
+        // Helper to format file size
+        const formatSize = (bytes) => {
+            if (!bytes) return '';
+            if (bytes < 1024) return `${bytes} B`;
+            if (bytes < 1024 * 1024) return `${(bytes / 1024).toFixed(1)} KB`;
+            return `${(bytes / 1024 / 1024).toFixed(2)} MB`;
+        };
 
-        // Image preview
+        // Image preview (large thumbnail)
         if (type && type.startsWith('image/')) {
             return (
-                <Card sx={{ maxWidth: 300, mb: 1 }}>
+                <Card sx={{ maxWidth: 340, mb: 1, boxShadow: 3 }}>
                     <CardActionArea onClick={() => openFilePreview(fileReference)}>
-                        <CardMedia
-                            component="img"
-                            height="140"
-                            image={url}
-                            alt={name}
-                            sx={{ objectFit: 'cover' }}
-                        />
+                        <Tooltip title={name} arrow>
+                            <CardMedia
+                                component="img"
+                                height="180"
+                                image={url}
+                                alt={name}
+                                sx={{ objectFit: 'cover', background: '#fafafa' }}
+                            />
+                        </Tooltip>
                         <CardContent sx={{ py: 1 }}>
-                            <Typography variant="body2" noWrap>
-                                {name}
-                            </Typography>
+                            <Typography variant="body2" noWrap>{name}</Typography>
+                            <Typography variant="caption" color="text.secondary">{formatSize(size)}</Typography>
                         </CardContent>
                     </CardActionArea>
                 </Card>
             );
         }
 
-        // PDF, document, or other file
+        // PDF preview (show icon, and try to show a preview image if available in the future)
+        if (type === 'application/pdf') {
+            return (
+                <Card sx={{ maxWidth: 340, mb: 1, boxShadow: 3 }}>
+                    <CardActionArea onClick={() => openFilePreview(fileReference)}>
+                        <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 2 }}>
+                            <PictureAsPdfIcon sx={{ fontSize: 60, color: 'error.main', mb: 1 }} />
+                        </Box>
+                        <CardContent sx={{ py: 1 }}>
+                            <Typography variant="body2" noWrap>{name}</Typography>
+                            <Typography variant="caption" color="text.secondary">PDF &bull; {formatSize(size)}</Typography>
+                        </CardContent>
+                    </CardActionArea>
+                </Card>
+            );
+        }
+
+        // Other files (show icon, type, and size)
         return (
-            <Card sx={{ maxWidth: 300, mb: 1 }}>
+            <Card sx={{ maxWidth: 340, mb: 1, boxShadow: 3 }}>
                 <CardActionArea onClick={() => openFilePreview(fileReference)}>
-                    <Box sx={{ p: 2, display: 'flex', alignItems: 'center' }}>
-                        <Box sx={{ mr: 2, color: 'primary.main' }}>
-                            {getFileIcon(type)}
-                        </Box>
-                        <Box>
-                            <Typography variant="body2" noWrap>
-                                {name}
-                            </Typography>
-                            <Typography variant="caption" color="text.secondary">
-                                Click to preview
-                            </Typography>
-                        </Box>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', pt: 2 }}>
+                        <Tooltip title={type || 'Unknown file type'} arrow>
+                            <Box sx={{ fontSize: 48, color: 'primary.main', mb: 1 }}>
+                                {getFileIcon(type)}
+                            </Box>
+                        </Tooltip>
                     </Box>
+                    <CardContent sx={{ py: 1 }}>
+                        <Typography variant="body2" noWrap>{name}</Typography>
+                        <Tooltip title={type || 'Unknown file type'} arrow>
+                            <Typography variant="caption" color="text.secondary">
+                                {type ? `${type.split('/').pop().toUpperCase()}` : 'File'} &bull; {formatTime(size)}
+                            </Typography>
+                        </Tooltip>
+                    </CardContent>
                 </CardActionArea>
             </Card>
         );
@@ -424,35 +459,127 @@ export default function ChatBox({ chatId, otherUser }) {
     const renderVoiceMessage = (message) => {
         const isPlaying = playingAudio === message.id;
         const progress = audioProgress[message.id] || 0;
+        // Calculate current time for display
+        const audioRef = audioRefs.current[message.id];
+        const currentTime = audioRef ? audioRef.currentTime : 0;
+        const duration = message.voiceReference?.duration || 0;
 
         return (
-            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, minWidth: '200px' }}>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: '220px', py: 1 }}>
                 <IconButton
                     onClick={() => handleAudioPlay(message.id, message.voiceReference.url)}
-                    color="primary"
-                    size="small"
+                    color={isPlaying ? 'secondary' : 'primary'}
+                    size="large"
+                    sx={{
+                        border: '2px solid',
+                        borderColor: isPlaying ? 'secondary.main' : 'primary.main',
+                        background: isPlaying ? 'rgba(25, 118, 210, 0.08)' : 'white',
+                        width: 48,
+                        height: 48,
+                        mr: 1
+                    }}
                 >
-                    {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+                    {isPlaying ? <PauseIcon sx={{ fontSize: 32 }} /> : <PlayArrowIcon sx={{ fontSize: 32 }} />}
                 </IconButton>
-                <Box sx={{ flex: 1 }}>
+                <Box sx={{ flex: 1, minWidth: 100 }}>
+                    {/* Waveform/progress bar */}
                     <LinearProgress
                         variant="determinate"
                         value={progress}
-                        sx={{ height: 4, borderRadius: 2 }}
+                        sx={{
+                            height: 8,
+                            borderRadius: 4,
+                            background: 'rgba(25, 118, 210, 0.08)',
+                            '& .MuiLinearProgress-bar': {
+                                background: isPlaying ? theme => theme.palette.secondary.main : theme => theme.palette.primary.main,
+                            },
+                            mb: 0.5
+                        }}
                     />
-                    <Typography variant="caption" color="text.secondary">
-                        {formatTime(message.voiceReference.duration)}
-                    </Typography>
+                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mt: 0.5 }}>
+                        <Typography variant="caption" color="text.secondary">
+                            {formatTime(currentTime)}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                            {formatTime(duration)}
+                        </Typography>
+                    </Box>
                 </Box>
-                <audio
-                    ref={el => audioRefs.current[message.id] = el}
-                    src={message.voiceReference.url}
-                    onTimeUpdate={(e) => handleAudioProgress(message.id, e)}
-                    onEnded={() => handleAudioEnd(message.id)}
-                    style={{ display: 'none' }}
-                />
             </Box>
         );
+    };
+
+    // Track window/tab focus
+    useEffect(() => {
+        const handleFocus = () => setWindowFocused(true);
+        const handleBlur = () => setWindowFocused(false);
+        window.addEventListener('focus', handleFocus);
+        window.addEventListener('blur', handleBlur);
+        return () => {
+            window.removeEventListener('focus', handleFocus);
+            window.removeEventListener('blur', handleBlur);
+        };
+    }, []);
+
+    // Track scroll position in chat
+    useEffect(() => {
+        const handleScroll = () => {
+            if (!messagesContainerRef.current) return;
+            const { scrollTop, scrollHeight, clientHeight } = messagesContainerRef.current;
+            // Consider at bottom if within 40px of bottom
+            setAtBottom(scrollHeight - scrollTop - clientHeight < 40);
+        };
+        const container = messagesContainerRef.current;
+        if (container) {
+            container.addEventListener('scroll', handleScroll);
+        }
+        return () => {
+            if (container) {
+                container.removeEventListener('scroll', handleScroll);
+            }
+        };
+    }, [messagesContainerRef]);
+
+    // Request browser notification permission on mount
+    useEffect(() => {
+        if ('Notification' in window && Notification.permission === 'default') {
+            Notification.requestPermission();
+        }
+    }, []);
+
+    // Listen for new messages and show notifications
+    useEffect(() => {
+        if (!messages || messages.length === 0) return;
+        const lastMessage = messages[messages.length - 1];
+        // Only notify if the last message is not from the current user
+        if (lastMessage.senderId !== currentUser?.uid && lastMessage.id !== lastMessageIdRef.current) {
+            lastMessageIdRef.current = lastMessage.id;
+            const content = lastMessage.text || (lastMessage.fileReference?.name ? `Sent a file: ${lastMessage.fileReference.name}` : 'New message');
+            setNewMessageContent(content);
+            // If window not focused or not at bottom, show snackbar
+            if (!windowFocused || !atBottom) {
+                setShowNewMessageSnackbar(true);
+            }
+            // Browser notification if permission granted and window not focused
+            if ('Notification' in window && Notification.permission === 'granted' && !windowFocused) {
+                const notif = new Notification(otherUser?.displayName || 'New Message', {
+                    body: content,
+                    icon: otherUser?.photoURL || '/images/default-avatar.png',
+                });
+                notif.onclick = () => {
+                    window.focus();
+                    notif.close();
+                };
+            }
+        }
+    }, [messages, windowFocused, atBottom, currentUser, otherUser]);
+
+    // Handler for snackbar click (scroll to bottom)
+    const handleSnackbarClick = () => {
+        if (messagesContainerRef.current) {
+            messagesContainerRef.current.scrollTop = messagesContainerRef.current.scrollHeight;
+        }
+        setShowNewMessageSnackbar(false);
     };
 
     return (
@@ -780,6 +907,23 @@ export default function ChatBox({ chatId, otherUser }) {
                 onClose={closeFilePreview}
                 file={previewFile}
             />
+            {/* Snackbar for new messages */}
+            <Snackbar
+                open={showNewMessageSnackbar}
+                autoHideDuration={6000}
+                onClose={() => setShowNewMessageSnackbar(false)}
+                anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+            >
+                <MuiAlert
+                    elevation={6}
+                    variant="filled"
+                    onClick={handleSnackbarClick}
+                    severity="info"
+                    sx={{ cursor: 'pointer' }}
+                >
+                    New message: {newMessageContent} (Click to view)
+                </MuiAlert>
+            </Snackbar>
         </>
     );
 } 
