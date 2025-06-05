@@ -122,17 +122,15 @@ const Testimonials = () => {
           sx={{ textAlign: 'center', mb: 6 }}
         >
           <MotionTypography 
-            variant="h2" 
+            variant="h4"
             component="h2"
             sx={{
-              fontFamily: '"Playfair Display", serif',
-              fontWeight: 600,
-              fontSize: { xs: '1.8rem', md: '2.5rem' },
-              mb: 2,
-              color: theme.palette.secondary.dark
+              fontFamily: '"Cormorant Garamond", serif',
+              color: theme.palette.primary.main,
+              mb: 2
             }}
           >
-            {t('testimonials.voicesHeading')}
+            {t('testimonials.voicesHeading', 'Voices of Transformation')}
           </MotionTypography>
           
           <MotionTypography 
