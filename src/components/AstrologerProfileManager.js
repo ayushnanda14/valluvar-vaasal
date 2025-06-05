@@ -27,6 +27,7 @@ import {
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
+import { useTranslation } from 'react-i18next';
 
 // Define the list of districts (reuse from signup)
 const TAMIL_NADU_DISTRICTS = [
@@ -43,6 +44,7 @@ const TAMIL_NADU_DISTRICTS = [
 export default function AstrologerProfileManager() {
   const theme = useTheme();
   const { currentUser } = useAuth();
+  const { t } = useTranslation();
 
   // State for services and pricing
   const [services, setServices] = useState({
@@ -218,15 +220,15 @@ export default function AstrologerProfileManager() {
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: '12px' }}>
       <Typography
-        variant="h5"
+        variant="h4"
         component="h2"
         sx={{
-          mb: 3,
           fontFamily: '"Cormorant Garamond", serif',
-          color: theme.palette.secondary.dark
+          color: theme.palette.primary.main,
+          mb: 2
         }}
       >
-        Manage Your Services
+        {t('astrologerProfile.title', 'Astrologer Profile')}
       </Typography>
 
       {renderVerificationStatus()}

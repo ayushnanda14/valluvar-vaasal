@@ -214,5 +214,11 @@
     "uploadedFiles": "Uploaded Files",
     "demoTooltipTitle": "Example of a Jathak Document",
     "demoTooltipAlt": "Example Jathak Document"
+  },
+  "astrologerProfile": {
+    "title": "Astrologer Profile"
+  },
+  "astrologerVerification": {
+    "title": "Astrologer Verification"
   }
 }

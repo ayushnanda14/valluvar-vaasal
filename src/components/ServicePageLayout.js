@@ -37,6 +37,7 @@ import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { SERVICE_TYPES } from '@/utils/constants';
 import PaymentButton from './PaymentButton';
 import { useTranslation } from 'react-i18next';
+import { createPaymentRecords } from '../services/createPaymentRecords';
 
 // Define the list of districts (should match the signup list)
 const TAMIL_NADU_DISTRICTS = [
@@ -311,6 +312,15 @@ export default function ServicePageLayout({
       };
 
       const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
+
+      // Create payment records for each astrologer
+      await createPaymentRecords({
+        selectedAstrologers,
+        currentUser,
+        serviceType,
+        paymentResponse,
+        serviceRequestRef
+      });
 
       // Create conversation threads with each selected astrologer
       for (const astrologer of selectedAstrologers) {
@@ -638,7 +648,11 @@ export default function ServicePageLayout({
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem',
+                        minWidth: '200px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {t('servicePage.nextDistrict', 'Next: Select District')}
@@ -702,7 +716,11 @@ export default function ServicePageLayout({
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem',
+                        minWidth: '120px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {t('servicePage.back', 'Back')}
@@ -717,7 +735,11 @@ export default function ServicePageLayout({
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem',
+                        minWidth: '200px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {t('servicePage.nextAstrologers', 'Next: Select Astrologers')}
@@ -1022,7 +1044,11 @@ export default function ServicePageLayout({
                         py: 1.5,
                         px: 4,
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: '1.1rem',
+                        minWidth: '120px',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis'
                       }}
                     >
                       {t('servicePage.back', 'Back')}

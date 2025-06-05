@@ -37,9 +37,11 @@ import { db } from '../../firebase/firebaseConfig';
 import CheckCircleIcon from '@mui/icons-material/CheckCircle';
 import CancelIcon from '@mui/icons-material/Cancel';
 import VisibilityIcon from '@mui/icons-material/Visibility';
+import { useTranslation } from 'react-i18next';
 
 export default function AstrologerVerificationManager() {
   const theme = useTheme();
+  const { t } = useTranslation();
   
   // State for astrologers list
   const [astrologers, setAstrologers] = useState([]);
@@ -171,16 +173,16 @@ export default function AstrologerVerificationManager() {
   
   return (
     <Paper elevation={3} sx={{ p: 3, borderRadius: '12px' }}>
-      <Typography 
-        variant="h5" 
+      <Typography
+        variant="h4"
         component="h2"
         sx={{
-          mb: 3,
           fontFamily: '"Cormorant Garamond", serif',
-          color: theme.palette.secondary.dark
+          color: theme.palette.primary.main,
+          mb: 2
         }}
       >
-        Astrologer Verification
+        {t('astrologerVerification.title', 'Astrologer Verification')}
       </Typography>
       
       {error && (
