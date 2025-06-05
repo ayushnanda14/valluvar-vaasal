@@ -127,7 +127,7 @@ const Navbar = () => {
           borderBottom: 'none'
         }}
       >
-        <Container maxWidth="lg">
+        <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '0' }}>
           {isMobile ? (
             <>
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', py: 1 }}>
@@ -163,17 +163,39 @@ const Navbar = () => {
               </Box>
             </>
           ) : (
-            <Toolbar disableGutters sx={{ justifyContent: 'space-between' }}>
-              {/* Logo/Brand - Centered */}
-              <Box sx={{ display: 'flex', justifyContent: 'center', flexGrow: 1 }}>
-                <Link href="/" passHref legacyBehavior>
-                  <Typography component="a" variant="h6" sx={{ fontFamily: '"Cinzel", serif', fontWeight: 600, letterSpacing: '1px', color: 'inherit', textDecoration: 'none', fontSize: { xs: '1.5rem', md: '1.75rem' } }}>
-                    {t('brand')}
-                  </Typography>
-                </Link>
-              </Box>
-              {/* Auth / Profile menu */}
-              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+            <Toolbar
+              disableGutters
+              sx={{
+                position: 'relative',
+                display: 'flex',
+                alignItems: 'center',
+                width: '100%',
+                px: { xs: 2, md: 3 }
+              }}
+            >
+              {/* Brand – absolutely centered */}
+              <Link href="/" passHref legacyBehavior>
+                <Typography
+                  component="a"
+                  variant="h6"
+                  sx={{
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)',
+                    fontFamily: '"Cinzel", serif',
+                    fontWeight: 600,
+                    letterSpacing: '1px',
+                    color: 'inherit',
+                    textDecoration: 'none',
+                    fontSize: { xs: '1.5rem', md: '1.75rem' }
+                  }}
+                >
+                  {t('brand')}
+                </Typography>
+              </Link>
+
+              {/* Right-hand controls */}
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
                 <LanguageSwitcher />
                 {currentUser ? (
                   <>

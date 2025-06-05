@@ -178,6 +178,8 @@
     "paymentMethod": "Payment Method",
     "orderSummary": "Order Summary",
     "paymentDescription": "Payment for {{service}} service",
+    "demoImageTitle": "Example of a Jathak Document",
+    "demoImageAlt": "Example Jathak Document",
     "errors": {
       "loadDistricts": "Failed to load available districts. Please try again later.",
       "loadAstrologers": "Failed to load astrologers for this district. Please try again.",
@@ -188,10 +190,28 @@
       "fileUploadFailed": "There was an error uploading your files. Please try again.",
       "paymentFailed": "Payment failed. Please try again.",
       "promptReupload": "Please re-select your files due to page refresh."
+    },
+    "steps": {
+      "step1": "Step 1",
+      "step2": "Step 2",
+      "step3": "Step 3",
+      "step4": "Step 4",
+      "uploadFiles": "Upload Files",
+      "selectDistrict": "Select District",
+      "selectAstrologers": "Select Astrologers",
+      "payment": "Payment"
     }
   },
   "payment": {
     "payNow": "Pay Now",
     "error": "Payment Error: Failed to process payment."
+  },
+  "fileUpload": {
+    "dragDropTitle": "Drag & Drop Files Here",
+    "supportedFormats": "Supported formats: PDF, JPG, PNG, DOC, DOCX",
+    "browseFiles": "Browse Files",
+    "uploadedFiles": "Uploaded Files",
+    "demoTooltipTitle": "Example of a Jathak Document",
+    "demoTooltipAlt": "Example Jathak Document"
   }
 }

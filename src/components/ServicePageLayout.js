@@ -61,7 +61,7 @@ export default function ServicePageLayout({
   const theme = useTheme();
   const router = useRouter();
   const { currentUser } = useAuth();
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
 
   const localStorageKey = `servicePageProgress_${serviceType}`;
 
@@ -500,8 +500,18 @@ export default function ServicePageLayout({
                         fontWeight: step === 1 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">{t('steps.step1', 'Step 1')}</Typography>
-                      <Typography variant="body2">{t('steps.uploadFiles', 'Upload Files')}</Typography>
+                      <Typography variant="body1">{t('servicePage.steps.step1')}</Typography>
+                      <Typography 
+                        variant="body2" 
+                        sx={{ 
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          maxWidth: '8rem'
+                        }}
+                      >
+                        {t('servicePage.steps.uploadFiles')}
+                      </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={3}>
@@ -512,8 +522,18 @@ export default function ServicePageLayout({
                         fontWeight: step === 1.5 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">{t('steps.step2', 'Step 2')}</Typography>
-                      <Typography variant="body2">{t('steps.selectDistrict', 'Select District')}</Typography>
+                      <Typography variant="body1">{t('servicePage.steps.step2')}</Typography>
+                      <Typography 
+                        variant="body2"
+                        sx={{ 
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          maxWidth: '8rem'
+                        }}
+                      >
+                        {t('servicePage.steps.selectDistrict')}
+                      </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={3}>
@@ -524,8 +544,18 @@ export default function ServicePageLayout({
                         fontWeight: step === 2 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">{t('steps.step3', 'Step 3')}</Typography>
-                      <Typography variant="body2">{t('steps.selectAstrologers', 'Select Astrologers')}</Typography>
+                      <Typography variant="body1">{t('servicePage.steps.step3')}</Typography>
+                      <Typography 
+                        variant="body2"
+                        sx={{ 
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          maxWidth: '9rem'
+                        }}
+                      >
+                        {t('servicePage.steps.selectAstrologers')}
+                      </Typography>
                     </Box>
                   </Grid>
                   <Grid item xs={3}>
@@ -536,8 +566,17 @@ export default function ServicePageLayout({
                         fontWeight: step === 3 ? 'bold' : 'normal'
                       }}
                     >
-                      <Typography variant="body1">{t('steps.step4', 'Step 4')}</Typography>
-                      <Typography variant="body2">{t('steps.payment', 'Payment')}</Typography>
+                      <Typography variant="body1">{t('servicePage.steps.step4')}</Typography>
+                      <Typography 
+                        variant="body2"
+                        sx={{ 
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto'
+                        }}
+                      >
+                        {t('servicePage.steps.payment')}
+                      </Typography>
                     </Box>
                   </Grid>
                 </Grid>

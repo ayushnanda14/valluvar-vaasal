@@ -8,7 +8,8 @@ import {
   ListItemText, 
   ListItemIcon, 
   IconButton,
-  Paper
+  Paper,
+  Tooltip
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -16,6 +17,7 @@ import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import DeleteIcon from '@mui/icons-material/Delete';
 import { styled } from '@mui/material/styles';
+import { useTranslation } from 'react-i18next';
 
 const VisuallyHiddenInput = styled('input')({
   clip: 'rect(0 0 0 0)',
@@ -30,6 +32,7 @@ const VisuallyHiddenInput = styled('input')({
 });
 
 export default function FileUploadSection({ files, onFilesChange, multiple = true }) {
+  const { t, i18n } = useTranslation('common');
   const [dragActive, setDragActive] = useState(false);
   
   const handleFileChange = (e) => {
@@ -95,14 +98,40 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
           cursor: 'pointer'
         }}
       >
-        <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} />
-        
+        {/* <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} /> */}
+
+        {/* Demo image above supported formats */}
+        <Box sx={{ mb: 2 }}>
+          <Typography variant="subtitle2" sx={{ mb: 1 }}>
+            {/* {t('fileUpload.demoTooltipTitle', 'Example of a Jathak Document')} */}
+          </Typography>
+          <Box
+            component="img"
+            src={'/images/jathak-demo.png'}
+            alt={t('fileUpload.demoTooltipAlt', 'Example Jathak Document')}
+            sx={{
+              width: '100%',
+              maxWidth: 220,
+              height: 'auto',
+              maxHeight: 140,
+              borderRadius: '4px',
+              objectFit: 'contain',
+              mx: 'auto',
+              boxShadow: '0 2px 8px rgba(0,0,0,0.07)'
+            }}
+          />
+        </Box>
+
         <Typography variant="h6" gutterBottom>
-          Drag & Drop Files Here
+          {t('fileUpload.dragDropTitle', 'Drag & Drop Files Here')}
         </Typography>
-        
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-          Supported formats: PDF, JPG, PNG, DOC, DOCX
+
+        <Typography 
+          variant="body2" 
+          color="text.secondary" 
+          sx={{ mb: 2 }}
+        >
+          {t('fileUpload.supportedFormats', 'Supported formats: PDF, JPG, PNG, DOC, DOCX')}
         </Typography>
         
         <Button
@@ -110,7 +139,7 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
           variant="contained"
           color="primary"
         >
-          Browse Files
+          {t('fileUpload.browseFiles', 'Browse Files')}
           <VisuallyHiddenInput 
             type="file" 
             onChange={handleFileChange} 
@@ -123,7 +152,7 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
       {files.length > 0 && (
         <Box sx={{ mt: 3 }}>
           <Typography variant="subtitle1" gutterBottom>
-            Uploaded Files ({files.length})
+            {t('fileUpload.uploadedFiles', 'Uploaded Files')} ({files.length})
           </Typography>
           
           <List>
