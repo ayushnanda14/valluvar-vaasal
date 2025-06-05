@@ -233,14 +233,27 @@ const PersonalizedHero = () => {
                   fontSize: { xs: '1.2rem', sm: '1.2rem', md: '1.4rem' },
                   fontWeight: 400,
                   color: theme.palette.text.secondary,
-                  mb: 4,
-                  maxWidth: { xs: '100%', sm: '60%' } // Full width on mobile
+                  mb: 2,
+                  maxWidth: { xs: '100%', sm: '60%' }
                 }}
               >
                 {currentUser
                   ? t('personalizedHero.subtitleUser')
                   : t('personalizedHero.subtitleGuest')}
               </MotionTypography>
+
+              {/* New line for favourite astrologers */}
+              <Typography
+                variant="subtitle1"
+                sx={{
+                  fontFamily: '"Cormorant Garamond", serif',
+                  color: theme.palette.primary.main,
+                  mb: 4,
+                  fontWeight: 500
+                }}
+              >
+                {t('personalizedHero.chooseFavourite', 'Choose your favourite among the best astrologers from your favourite district.')}
+              </Typography>
 
               {!currentUser && (
                 <MotionButton

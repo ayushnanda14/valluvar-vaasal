@@ -158,7 +158,8 @@
     "startReadingButton": "Start Your First Reading",
     "newReadingButton": "New Reading",
     "seeAllChatsButton": "See All Chats",
-    "guestPlaceholder": "See what others are saying about their journey."
+    "guestPlaceholder": "See what others are saying about their journey.",
+    "chooseFavourite": "Choose your favourite among the best astrologers from your favourite district."
   },
   "date": {
     "today": "Today",
