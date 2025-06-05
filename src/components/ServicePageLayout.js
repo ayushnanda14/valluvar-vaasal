@@ -76,6 +76,7 @@ export default function ServicePageLayout({
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
+  const [isPaymentFlowActiveByButton, setIsPaymentFlowActiveByButton] = useState(false);
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -431,6 +432,10 @@ export default function ServicePageLayout({
       console.error('Payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
     }
+  };
+
+  const handlePaymentProcessingChange = (isProcessing) => {
+    setIsPaymentFlowActiveByButton(isProcessing);
   };
 
   if (!currentUser) {
@@ -1021,7 +1026,7 @@ export default function ServicePageLayout({
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
                     <Box 
                       sx={{ 
-                        flex: { xs: '1 1 100%', md: '1 1 75%' },
+                        flex: { xs: '1 1 100%', md: isPaymentFlowActiveByButton ? '1 1 100%' : '1 1 75%' },
                         minHeight: { md: '500px' }
                       }}
                     >
@@ -1052,155 +1057,160 @@ export default function ServicePageLayout({
                           description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
                           onSuccess={handlePayment}
                           onError={(error) => setError(error)}
+                          onProcessingStateChange={handlePaymentProcessingChange}
                   />
                       </Paper>
                     </Box>
 
-                    <Box 
-                      sx={{ 
-                        flex: { xs: '1 1 100%', md: '1 1 25%' },
-                        minHeight: { md: '500px' }
-                      }}
-                    >
-                      <Paper
-                        elevation={2}
-                        sx={{
-                          p: 3,
-                          borderRadius: '8px',
-                          position: 'sticky',
-                          top: '20px',
-                          backgroundColor: theme.palette.background.paper,
-                          height: '100%',
-                          display: 'flex',
-                          flexDirection: 'column'
+                    {!isPaymentFlowActiveByButton && (
+                      <Box 
+                        sx={{ 
+                          flex: { xs: '1 1 100%', md: '1 1 25%' },
+                          minHeight: { md: '500px' }
                         }}
                       >
-                        <Typography 
-                          variant="h6" 
-                          sx={{ 
-                            mb: 2, 
-                            color: theme.palette.primary.main,
-                            fontFamily: '"Cormorant Garamond", serif'
+                        <Paper
+                          elevation={2}
+                          sx={{
+                            p: 3,
+                            borderRadius: '8px',
+                            position: 'sticky',
+                            top: '20px',
+                            backgroundColor: theme.palette.background.paper,
+                            height: '100%',
+                            display: 'flex',
+                            flexDirection: 'column'
                           }}
                         >
-                          {t('servicePage.orderSummary', 'Order Summary')}
-                        </Typography>
-                        <Box sx={{ flex: '1', overflowY: 'auto' }}>
-                          <List>
-                            {selectedAstrologers.map(astrologer => (
-                              <ListItem 
-                                key={astrologer.id} 
-                                disablePadding 
-                                sx={{ 
-                                  mb: 1,
-                                  p: 1,
-                                  borderRadius: '4px',
-                                  backgroundColor: theme.palette.background.default
-                                }}
-                              >
-                                <ListItemAvatar>
-                                  <Avatar
-                                    src={astrologer.photoURL || '/images/default-avatar.png'}
-                                    alt={astrologer.displayName}
-                                  />
-                                </ListItemAvatar>
-                                <ListItemText
-                                  primary={
-                                    <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                      {astrologer.displayName}
-                                    </Typography>
-                                  }
-                                  secondary={
-                                    <Typography 
-                                      sx={{ 
-                                        color: theme.palette.primary.main,
-                                        fontFamily: '"Cormorant Garamond", serif'
-                                      }}
-                                    >
-                                      ₹{astrologer.serviceCharges?.[serviceType] || 0}
-                                    </Typography>
-                                  }
-                                />
-                              </ListItem>
-                            ))}
-                          </List>
-                        </Box>
-                        <Divider sx={{ my: 2 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                          <Typography 
-                            variant="body1" 
-                            sx={{ 
-                              fontWeight: 'bold',
-                              fontFamily: '"Cormorant Garamond", serif'
-                            }}
-                          >
-                            Subtotal:
-                          </Typography>
-                          <Typography 
-                            variant="body1"
-                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                          >
-                            ₹{calculateTotal()}
-                          </Typography>
-                        </Box>
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                          <Typography 
-                            variant="body1" 
-                            sx={{ 
-                              fontWeight: 'bold',
-                              fontFamily: '"Cormorant Garamond", serif'
-                            }}
-                          >
-                            GST (18%):
-                          </Typography>
-                          <Typography 
-                            variant="body1"
-                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                          >
-                            ₹{Math.round(calculateTotal() * 0.18)}
-                          </Typography>
-                        </Box>
-                        <Divider sx={{ my: 2 }} />
-                        <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
                           <Typography 
                             variant="h6" 
                             sx={{ 
-                              fontWeight: 'bold',
-                              fontFamily: '"Cormorant Garamond", serif'
-                            }}
-                          >
-                            Total:
-                          </Typography>
-                          <Typography 
-                            variant="h5" 
-                            sx={{ 
+                              mb: 2, 
                               color: theme.palette.primary.main,
                               fontFamily: '"Cormorant Garamond", serif'
                             }}
                           >
-                            ₹{calculateTotal() + Math.round(calculateTotal() * 0.18)}
+                            {t('servicePage.orderSummary', 'Order Summary')}
                           </Typography>
-                        </Box>
-                      </Paper>
-                    </Box>
+                          <Box sx={{ flex: '1', overflowY: 'auto' }}>
+                            <List>
+                              {selectedAstrologers.map(astrologer => (
+                                <ListItem 
+                                  key={astrologer.id} 
+                                  disablePadding 
+                                  sx={{ 
+                                    mb: 1,
+                                    p: 1,
+                                    borderRadius: '4px',
+                                    backgroundColor: theme.palette.background.default
+                                  }}
+                                >
+                                  <ListItemAvatar>
+                                    <Avatar
+                                      src={astrologer.photoURL || '/images/default-avatar.png'}
+                                      alt={astrologer.displayName}
+                                    />
+                                  </ListItemAvatar>
+                                  <ListItemText
+                                    primary={
+                                      <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                        {astrologer.displayName}
+                                      </Typography>
+                                    }
+                                    secondary={
+                                      <Typography 
+                                        sx={{ 
+                                          color: theme.palette.primary.main,
+                                          fontFamily: '"Cormorant Garamond", serif'
+                                        }}
+                                      >
+                                        ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                                      </Typography>
+                                    }
+                                  />
+                                </ListItem>
+                              ))}
+                            </List>
+                          </Box>
+                          <Divider sx={{ my: 2 }} />
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography 
+                              variant="body1" 
+                              sx={{ 
+                                fontWeight: 'bold',
+                                fontFamily: '"Cormorant Garamond", serif'
+                              }}
+                            >
+                              Subtotal:
+                            </Typography>
+                            <Typography 
+                              variant="body1"
+                              sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                            >
+                              ₹{calculateTotal()}
+                            </Typography>
+                          </Box>
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                            <Typography 
+                              variant="body1" 
+                              sx={{ 
+                                fontWeight: 'bold',
+                                fontFamily: '"Cormorant Garamond", serif'
+                              }}
+                            >
+                              GST (18%):
+                            </Typography>
+                            <Typography 
+                              variant="body1"
+                              sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                            >
+                              ₹{Math.round(calculateTotal() * 0.18)}
+                            </Typography>
+                          </Box>
+                          <Divider sx={{ my: 2 }} />
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                            <Typography 
+                              variant="h6" 
+                              sx={{ 
+                                fontWeight: 'bold',
+                                fontFamily: '"Cormorant Garamond", serif'
+                              }}
+                            >
+                              Total:
+                            </Typography>
+                            <Typography 
+                              variant="h5" 
+                              sx={{ 
+                                color: theme.palette.primary.main,
+                                fontFamily: '"Cormorant Garamond", serif'
+                              }}
+                            >
+                              ₹{calculateTotal() + Math.round(calculateTotal() * 0.18)}
+                            </Typography>
+                          </Box>
+                        </Paper>
+                      </Box>
+                    )}
                   </Box>
 
-                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="large"
-                      onClick={handlePreviousStep}
-                      sx={{
-                        py: 1.5,
-                        px: 4,
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
-                      }}
-                    >
-                      {t('servicePage.back', 'Back')}
-                    </Button>
-                  </Box>
+                  {!isPaymentFlowActiveByButton && (
+                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                      <Button
+                        variant="outlined"
+                        color="primary"
+                        size="large"
+                        onClick={handlePreviousStep}
+                        sx={{
+                          py: 1.5,
+                          px: 4,
+                          fontFamily: '"Cormorant Garamond", serif',
+                          fontSize: '1.1rem'
+                        }}
+                      >
+                        {t('servicePage.back', 'Back')}
+                      </Button>
+                    </Box>
+                  )}
                 </Box>
               )}
             </Paper>

@@ -1,16 +1,17 @@
 import React, { useState } from 'react';
-import { Button, CircularProgress, Alert } from '@mui/material';
+import { Button, CircularProgress, Alert, Box, Typography } from '@mui/material';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
 import { getFunctions, httpsCallable } from 'firebase/functions';
 
-const PaymentButton = ({ amount, description, onSuccess, onError }) => {
+const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingStateChange }) => {
   const { t } = useTranslation('common');
   const router = useRouter();
   const { currentUser } = useAuth();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [paymentProcessing, setPaymentProcessing] = useState(false);
 
   const handlePayment = async () => {
     if (!currentUser) {
@@ -47,7 +48,8 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
         order_id: orderId,
         handler: async (response) => {
           try {
-
+            setPaymentProcessing(false);
+            onProcessingStateChange?.(false);
             if (!response.razorpay_order_id || !response.razorpay_payment_id || !response.razorpay_signature) {
               onError?.('Missing Razorpay payment details.');
             } else {
@@ -60,6 +62,9 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
             const errorMessage = funcError.message || 'Payment verification failed on server.';
             setError(errorMessage);
             onError?.(errorMessage);
+          } finally {
+            setPaymentProcessing(false);
+            onProcessingStateChange?.(false);
           }
         },
         prefill: {
@@ -75,10 +80,14 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
       if (typeof window !== 'undefined' && window.Razorpay) {
         const razorpay = new window.Razorpay(options);
         razorpay.on('payment.failed', function (response) {
+          setPaymentProcessing(false);
+          onProcessingStateChange?.(false);
           console.error('Razorpay Payment Failed:', response.error);
           setError(`Payment Failed: ${response.error.description || response.error.reason}`);
           onError?.(`Payment Failed: ${response.error.reason}`);
         });
+        setPaymentProcessing(true);
+        onProcessingStateChange?.(true);
         razorpay.open();
       } else {
         console.error('Razorpay SDK not loaded');
@@ -92,8 +101,21 @@ const PaymentButton = ({ amount, description, onSuccess, onError }) => {
       onError?.(error.message);
     } finally {
       setLoading(false);
+      setPaymentProcessing(false);
+      onProcessingStateChange?.(false);
     }
   };
+
+  if (paymentProcessing) {
+    return (
+      <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', py: 2 }}>
+        <CircularProgress />
+        <Typography sx={{ mt: 2 }}>
+          {t('payment.processing', 'Processing payment... Please wait.')}
+        </Typography>
+      </Box>
+    );
+  }
 
   return (
     <>
