@@ -8,7 +8,7 @@ import {
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
-import AstrologerVerificationManager from '../../src/components/admin/AstrologerVerificationManager';
+import AstrologerVerificationManager from '../../src/components/admin/AstrologerVerificationManager.jsx';
 
 export default function AdminAstrologersPage() {
   const theme = useTheme();
