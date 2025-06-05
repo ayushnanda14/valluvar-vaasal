@@ -220,5 +220,10 @@
   },
   "astrologerVerification": {
     "title": "Astrologer Verification"
+  },
+  "profile": {
+    "photoTitle": "Profile Photo",
+    "photoDescription": "Upload a clear, professional photo of yourself.",
+    "uploadPhoto": "Upload Photo"
   }
 }

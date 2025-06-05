@@ -28,6 +28,7 @@ import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { useTranslation } from 'react-i18next';
+import ProfilePhotoUploader from './ProfilePhotoUploader';
 
 // Define the list of districts (reuse from signup)
 const TAMIL_NADU_DISTRICTS = [
@@ -244,6 +245,17 @@ export default function AstrologerProfileManager() {
           {success}
         </Alert>
       )}
+
+      {/* Add Profile Photo Uploader */}
+      <Box sx={{ mb: 4 }}>
+        <ProfilePhotoUploader 
+          onPhotoUpdate={(newPhotoUrl) => {
+            setSuccess('Profile photo updated successfully.');
+          }} 
+        />
+      </Box>
+
+      <Divider sx={{ my: 3 }} />
 
       <form onSubmit={handleSubmit}>
         {/* Section for Location */}
