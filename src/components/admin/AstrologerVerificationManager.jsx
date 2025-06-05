@@ -104,7 +104,6 @@ const AstrologerVerificationManager = () => {
 
       // Update astrologer document
       await updateDoc(astrologerRef, {
-        verified: verificationStatus === 'verified',
         verificationStatus: verificationStatus,
         verificationMessage: verificationMessage || '',
         verifiedAt: verificationStatus === 'verified' ? serverTimestamp() : null,
@@ -389,7 +388,7 @@ const AstrologerVerificationManager = () => {
                   onChange={handleVerificationStatusChange}
                   label="Status"
                 >
-                  <MenuItem value="approved">Approve</MenuItem>
+                  <MenuItem value="verified">Verify</MenuItem>
                   <MenuItem value="rejected">Reject</MenuItem>
                   <MenuItem value="pending">Keep Pending</MenuItem>
                 </Select>
