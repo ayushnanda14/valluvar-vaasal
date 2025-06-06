@@ -21,7 +21,8 @@ import {
   Alert,
   IconButton,
   Divider,
-  useTheme
+  useTheme,
+  CircularProgress
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -46,6 +47,7 @@ export default function AstrologerDashboard() {
   const [tabValue, setTabValue] = useState(0);
   const [chats, setChats] = useState([]);
   const [revenue, setRevenue] = useState([]);
+  const [revenueLoading, setRevenueLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState(null);
 
@@ -127,6 +129,9 @@ export default function AstrologerDashboard() {
           // Fetch revenue data
           const fetchRevenue = async () => {
             try {
+              setRevenueLoading(true);
+              console.log('Fetching revenue for astrologer:', currentUser.uid);
+              
               const revenueQuery = query(
                 collection(db, 'payments'),
                 where('astrologerId', '==', currentUser.uid),
@@ -134,15 +139,24 @@ export default function AstrologerDashboard() {
               );
 
               const revenueSnapshot = await getDocs(revenueQuery);
-              const revenueData = revenueSnapshot.docs.map(doc => ({
-                id: doc.id,
-                ...doc.data()
-              }));
+              console.log('Revenue snapshot size:', revenueSnapshot.size);
+              
+              const revenueData = revenueSnapshot.docs.map(doc => {
+                const data = { id: doc.id, ...doc.data() };
+                console.log('Payment record:', data);
+                return data;
+              });
+              
               setRevenue(revenueData);
+              console.log('Total revenue records found:', revenueData.length);
             } catch (error) {
               console.error('Error fetching revenue data:', error);
+              // Check if it's a Firestore rules error
+              if (error.code === 'permission-denied') {
+                console.error('Permission denied - check Firestore rules for payments collection');
+              }
             } finally {
-              setLoading(false);
+              setRevenueLoading(false);
             }
           };
 
@@ -339,21 +353,42 @@ export default function AstrologerDashboard() {
   };
 
   const renderRevenueTab = () => {
-    if (loading) {
+    if (revenueLoading) {
       return (
         <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography>Loading revenue data...</Typography>
+          <CircularProgress />
+          <Typography sx={{ mt: 2 }}>Loading revenue data...</Typography>
         </Box>
       );
     }
 
     // Calculate total revenue
-    const totalRevenue = revenue.reduce((sum, payment) => sum + (payment.amount || 0), 0);
+    const totalRevenue = revenue.reduce((sum, payment) => {
+      const amount = payment.amount || 0;
+      console.log('Adding amount to total:', amount);
+      return sum + amount;
+    }, 0);
+
+    // Calculate this month's revenue
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    const thisMonthRevenue = revenue.reduce((sum, payment) => {
+      if (payment.timestamp) {
+        const paymentDate = payment.timestamp.toDate();
+        if (paymentDate.getMonth() === currentMonth && paymentDate.getFullYear() === currentYear) {
+          return sum + (payment.amount || 0);
+        }
+      }
+      return sum;
+    }, 0);
+
+    console.log('Total revenue calculated:', totalRevenue);
+    console.log('This month revenue calculated:', thisMonthRevenue);
 
     return (
       <Box>
         <Grid container spacing={3} sx={{ mb: 4 }}>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Card elevation={2}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Total Revenue</Typography>
@@ -361,22 +396,30 @@ export default function AstrologerDashboard() {
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
+            <Card elevation={2}>
+              <CardContent>
+                <Typography variant="h6" gutterBottom>This Month</Typography>
+                <Typography variant="h4" color="secondary">₹{thisMonthRevenue.toFixed(2)}</Typography>
+              </CardContent>
+            </Card>
+          </Grid>
+          <Grid item xs={12} md={3}>
             <Card elevation={2}>
               <CardContent>
                 <Typography variant="h6" gutterBottom>Completed Readings</Typography>
-                <Typography variant="h4" color="primary">
+                <Typography variant="h4" color="success.main">
                   {chats.filter(chat => chat.status === 'completed').length}
                 </Typography>
               </CardContent>
             </Card>
           </Grid>
-          <Grid item xs={12} md={4}>
+          <Grid item xs={12} md={3}>
             <Card elevation={2}>
               <CardContent>
-                <Typography variant="h6" gutterBottom>Pending Readings</Typography>
-                <Typography variant="h4" color="primary">
-                  {chats.filter(chat => chat.status === 'pending').length}
+                <Typography variant="h6" gutterBottom>Active Readings</Typography>
+                <Typography variant="h4" color="warning.main">
+                  {chats.filter(chat => !chat.status || chat.status === 'active').length}
                 </Typography>
               </CardContent>
             </Card>
@@ -386,9 +429,18 @@ export default function AstrologerDashboard() {
         <Typography variant="h6" sx={{ mb: 2 }}>Recent Transactions</Typography>
 
         {revenue.length === 0 ? (
-          <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography>No transactions yet.</Typography>
-          </Box>
+          <Card elevation={1}>
+            <CardContent>
+              <Box sx={{ textAlign: 'center', py: 4 }}>
+                <Typography variant="h6" color="text.secondary" gutterBottom>
+                  No transactions yet
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Your earnings will appear here once clients book your services.
+                </Typography>
+              </Box>
+            </CardContent>
+          </Card>
         ) : (
           <TableContainer component={Paper} elevation={1}>
             <Table>
@@ -397,6 +449,7 @@ export default function AstrologerDashboard() {
                   <TableCell>Date</TableCell>
                   <TableCell>Client</TableCell>
                   <TableCell>Service</TableCell>
+                  <TableCell>Payment ID</TableCell>
                   <TableCell align="right">Amount</TableCell>
                 </TableRow>
               </TableHead>
@@ -408,7 +461,16 @@ export default function AstrologerDashboard() {
                     </TableCell>
                     <TableCell>{payment.clientName || 'Unknown'}</TableCell>
                     <TableCell>{SERVICE_TYPES[payment.serviceType] || 'General Reading'}</TableCell>
-                    <TableCell align="right">₹{payment.amount?.toFixed(2) || '0.00'}</TableCell>
+                    <TableCell>
+                      <Typography variant="body2" color="text.secondary">
+                        {payment.razorpay_payment_id?.substring(0, 12)}...
+                      </Typography>
+                    </TableCell>
+                    <TableCell align="right">
+                      <Typography variant="body1" fontWeight="bold" color="success.main">
+                        ₹{payment.amount?.toFixed(2) || '0.00'}
+                      </Typography>
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

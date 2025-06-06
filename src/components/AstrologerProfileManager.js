@@ -22,13 +22,15 @@ import {
 import {
   updateAstrologerServices,
   getAstrologerVerificationStatus,
-  updateAstrologerProfileDetails
+  updateAstrologerProfileDetails,
+  uploadVerificationDocuments
 } from '../services/astrologerService';
 import { useAuth } from '../context/AuthContext';
 import { doc, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { useTranslation } from 'react-i18next';
 import ProfilePhotoUploader from './ProfilePhotoUploader';
+import FileUploadSection from './FileUploadSection';
 
 // Define the list of districts (reuse from signup)
 const TAMIL_NADU_DISTRICTS = [
@@ -45,7 +47,7 @@ const TAMIL_NADU_DISTRICTS = [
 export default function AstrologerProfileManager() {
   const theme = useTheme();
   const { currentUser } = useAuth();
-  const { t } = useTranslation();
+  const { t } = useTranslation('common');
 
   // State for services and pricing
   const [services, setServices] = useState({
@@ -73,6 +75,12 @@ export default function AstrologerProfileManager() {
   const [state, setState] = useState('Tamil Nadu'); // Fixed state
   const [district, setDistrict] = useState('');
   const [profileLoading, setProfileLoading] = useState(true); // Separate loading for profile fields
+
+  // Verification document state
+  const [aadharFiles, setAadharFiles] = useState([]);
+  const [certificateFiles, setCertificateFiles] = useState([]);
+  const [experienceFiles, setExperienceFiles] = useState([]);
+  const [documentLoading, setDocumentLoading] = useState(false);
 
   // Fetch astrologer profile data
   useEffect(() => {
@@ -177,6 +185,50 @@ export default function AstrologerProfileManager() {
       setError(err.message || 'Failed to update profile. Please try again.');
     } finally {
       setLoading(false);
+    }
+  };
+
+  // Handle verification document submission
+  const handleSubmitDocuments = async () => {
+    if (!currentUser) {
+      setError('Please log in to submit documents.');
+      return;
+    }
+
+    if (aadharFiles.length === 0) {
+      setError('Please upload your Aadhar card.');
+      return;
+    }
+
+    if (certificateFiles.length === 0) {
+      setError('Please upload at least one certificate.');
+      return;
+    }
+
+    setDocumentLoading(true);
+    setError('');
+    setSuccess('');
+
+    try {
+      await uploadVerificationDocuments(
+        currentUser.uid,
+        aadharFiles,
+        certificateFiles,
+        experienceFiles
+      );
+
+      setSuccess('Verification documents submitted successfully. Your application is now under review.');
+      setVerificationStatus('pending');
+      
+      // Clear the uploaded files
+      setAadharFiles([]);
+      setCertificateFiles([]);
+      setExperienceFiles([]);
+    } catch (err) {
+      console.error('Error submitting verification documents:', err);
+      setError(err.message || 'Failed to submit documents. Please try again.');
+    } finally {
+      setDocumentLoading(false);
     }
   };
 
@@ -292,6 +344,80 @@ export default function AstrologerProfileManager() {
         </Grid>
          
         <Divider sx={{ my: 3 }} />
+
+        {/* Verification Documents Section */}
+        {(verificationStatus === 'not_submitted' || verificationStatus === 'rejected') && (
+          <>
+            <Typography variant="h6" sx={{ mb: 2, mt: 3 }}>
+              Verification Documents
+            </Typography>
+            
+            <Alert severity="info" sx={{ mb: 3 }}>
+              Upload the required documents to complete your verification process. All documents will be reviewed by our team.
+            </Alert>
+
+            <Grid container spacing={3} sx={{ mb: 3 }}>
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Aadhar Card *
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Upload clear photos of front and back of your Aadhar card
+                </Typography>
+                <FileUploadSection
+                  files={aadharFiles}
+                  onFilesChange={setAadharFiles}
+                  multiple={true}
+                  maxFiles={2}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Certificates *
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Upload your astrology certificates or educational qualifications
+                </Typography>
+                <FileUploadSection
+                  files={certificateFiles}
+                  onFilesChange={setCertificateFiles}
+                  multiple={true}
+                  maxFiles={5}
+                />
+              </Grid>
+
+              <Grid item xs={12} md={4}>
+                <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                  Experience Proof
+                </Typography>
+                <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+                  Upload any documents proving your astrology experience (optional)
+                </Typography>
+                <FileUploadSection
+                  files={experienceFiles}
+                  onFilesChange={setExperienceFiles}
+                  multiple={true}
+                  maxFiles={3}
+                />
+              </Grid>
+            </Grid>
+
+            <Box sx={{ display: 'flex', gap: 2, mb: 3 }}>
+              <Button
+                variant="contained"
+                color="secondary"
+                onClick={handleSubmitDocuments}
+                disabled={documentLoading || aadharFiles.length === 0 || certificateFiles.length === 0}
+                startIcon={documentLoading ? <CircularProgress size={20} /> : null}
+              >
+                {documentLoading ? 'Submitting...' : 'Submit for Verification'}
+              </Button>
+            </Box>
+
+            <Divider sx={{ my: 3 }} />
+          </>
+        )}
 
         <FormGroup>
           <Typography variant="h6" sx={{ mb: 2 }}>

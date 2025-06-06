@@ -38,6 +38,7 @@ import {
   FormControlLabel,
   InputAdornment,
   CircularProgress,
+  Snackbar,
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -122,7 +123,6 @@ export default function AdminDashboard() {
   const [verificationStatus, setVerificationStatus] = useState('pending');
   const [verificationMessage, setVerificationMessage] = useState('');
 
-
   // Action loading state
   const [actionLoading, setActionLoading] = useState(false);
   const [error, setError] = useState('');
@@ -144,6 +144,14 @@ export default function AdminDashboard() {
   const [astrologerServices, setAstrologerServices] = useState({});
   const [astrologerPricing, setAstrologerPricing] = useState({});
   const [servicesLoading, setServicesLoading] = useState(false);
+
+  // Add state for feedback messages
+  const [errorMessage, setErrorMessage] = useState('');
+
+  // Add these new state variables for astrologer verification
+  const [openAstrologerVerificationDialog, setOpenAstrologerVerificationDialog] = useState(false);
+  const [selectedAstrologerForVerification, setSelectedAstrologerForVerification] = useState(null);
+  const [newVerificationStatus, setNewVerificationStatus] = useState('');
 
   // Get tab from query params
   useEffect(() => {
@@ -268,7 +276,12 @@ export default function AdminDashboard() {
     if (!selectedUser) return;
 
     try {
-      await updateUserRoles(selectedUser.id, selectedRoles);
+      // Update user roles directly in Firestore
+      const userRef = doc(db, 'users', selectedUser.id);
+      await updateDoc(userRef, {
+        roles: selectedRoles,
+        updatedAt: serverTimestamp()
+      });
 
       // Update local state
       setUsers(users.map(user =>
@@ -277,10 +290,14 @@ export default function AdminDashboard() {
           : user
       ));
 
+              // Show success message
+        setSuccessMessage(`User roles updated successfully for ${selectedUser.displayName || selectedUser.email}`);
+
       handleCloseRoleDialog();
     } catch (error) {
       console.error('Error updating roles:', error);
       // Show error message
+      setErrorMessage(`Failed to update user roles: ${error.message}`);
     }
   };
 
@@ -289,22 +306,28 @@ export default function AdminDashboard() {
       const testimonialRef = doc(db, 'testimonials', testimonialId);
       await updateDoc(testimonialRef, {
         approved: true,
+        approvedAt: serverTimestamp(),
+        approvedBy: currentUser.uid,
         updatedAt: serverTimestamp()
       });
 
       // Update local state
       setTestimonials(testimonials.map(testimonial =>
         testimonial.id === testimonialId
-          ? { ...testimonial, approved: true }
+          ? { ...testimonial, approved: true, approvedAt: new Date(), approvedBy: currentUser.uid }
           : testimonial
       ));
+
+      // Show success message
+      setSuccessMessage('Testimonial approved successfully and is now visible to users.');
     } catch (error) {
       console.error('Error approving testimonial:', error);
+      setErrorMessage(`Failed to approve testimonial: ${error.message}`);
     }
   };
 
   const handleDeleteTestimonial = async (testimonialId) => {
-    if (!confirm('Are you sure you want to delete this testimonial?')) return;
+    if (!confirm('Are you sure you want to delete this testimonial? This action cannot be undone.')) return;
 
     try {
       const testimonialRef = doc(db, 'testimonials', testimonialId);
@@ -314,8 +337,12 @@ export default function AdminDashboard() {
       setTestimonials(testimonials.filter(
         testimonial => testimonial.id !== testimonialId
       ));
+
+      // Show success message
+      setSuccessMessage('Testimonial deleted successfully.');
     } catch (error) {
       console.error('Error deleting testimonial:', error);
+      setErrorMessage(`Failed to delete testimonial: ${error.message}`);
     }
   };
 
@@ -342,8 +369,17 @@ export default function AdminDashboard() {
     handleCloseActionMenu();
   };
 
-  const handleDisableUser = async (userId) => {
-    if (!confirm('Are you sure you want to disable this user?')) {
+  const handleToggleUserStatus = async (userId) => {
+    const user = users.find(u => u.id === userId);
+    if (!user) return;
+
+    const isCurrentlyDisabled = user.disabled;
+    const action = isCurrentlyDisabled ? 'enable' : 'disable';
+    const confirmMessage = isCurrentlyDisabled 
+      ? 'Are you sure you want to enable this user?' 
+      : 'Are you sure you want to disable this user?';
+
+    if (!confirm(confirmMessage)) {
       handleCloseActionMenu();
       return;
     }
@@ -351,19 +387,23 @@ export default function AdminDashboard() {
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
-        disabled: true,
+        disabled: !isCurrentlyDisabled,
         updatedAt: serverTimestamp()
       });
       
       // Update local state
-      setUsers(users.map(user =>
-        user.id === userId
-          ? { ...user, disabled: true }
-          : user
+      setUsers(users.map(u =>
+        u.id === userId
+          ? { ...u, disabled: !isCurrentlyDisabled }
+          : u
       ));
+
+      // Show success message
+      setSuccessMessage(`User ${action}d successfully: ${user.displayName || user.email}`);
       
     } catch (error) {
-      console.error('Error disabling user:', error);
+      console.error(`Error ${action}ing user:`, error);
+      setErrorMessage(`Failed to ${action} user: ${error.message}`);
     }
     
     handleCloseActionMenu();
@@ -542,13 +582,19 @@ export default function AdminDashboard() {
           <Divider />
           
           <MenuItem 
-            onClick={() => handleDisableUser(selectedActionUser?.id)}
-            disabled={selectedActionUser?.disabled}
+            onClick={() => handleToggleUserStatus(selectedActionUser?.id)}
+            sx={{ color: selectedActionUser?.disabled ? 'success.main' : 'error.main' }}
           >
             <ListItemIcon>
-              <BlockIcon fontSize="small" color="error" />
+              {selectedActionUser?.disabled ? (
+                <CheckCircleIcon fontSize="small" color="success" />
+              ) : (
+                <BlockIcon fontSize="small" color="error" />
+              )}
             </ListItemIcon>
-            <ListItemText primary="Disable User" />
+            <ListItemText>
+              {selectedActionUser?.disabled ? 'Enable User' : 'Disable User'}
+            </ListItemText>
           </MenuItem>
         </Menu>
       </Box>
@@ -1303,6 +1349,29 @@ export default function AdminDashboard() {
           </Button>
         </DialogActions>
       </Dialog>
+
+      {/* Success/Error Snackbar */}
+      <Snackbar
+        open={!!successMessage}
+        autoHideDuration={6000}
+        onClose={() => setSuccessMessage('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="success" onClose={() => setSuccessMessage('')}>
+          {successMessage}
+        </Alert>
+      </Snackbar>
+
+      <Snackbar
+        open={!!errorMessage}
+        autoHideDuration={6000}
+        onClose={() => setErrorMessage('')}
+        anchorOrigin={{ vertical: 'bottom', horizontal: 'center' }}
+      >
+        <Alert severity="error" onClose={() => setErrorMessage('')}>
+          {errorMessage}
+        </Alert>
+      </Snackbar>
     </ProtectedRoute>
   );
 } 
