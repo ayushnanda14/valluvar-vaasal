@@ -201,47 +201,100 @@ const Footer = () => {
               <Box sx={{ 
                 display: 'flex', 
                 flexDirection: 'column', 
-                gap: 1,
+                gap: 2,
                 alignItems: { xs: 'center', md: 'flex-start' }
               }}>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                >
-                  Shri Kamba Kamatchi Amman Kovil, <br />
-                  Pachaikoppanpatti, Thirali,
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                >
-                  Thirumangalam, Madurai, <br />
-                  Tamil nadu 625704
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                >
-                  Email: info@valluvarvaasal.com
-                </Typography>
-                <Typography
-                  variant="body2"
-                  sx={{
-                    fontFamily: '"Cormorant Garamond", serif',
-                    fontSize: '1rem'
-                  }}
-                >
-                  Phone: +91 94887 36192
-                </Typography>
+                {/* Cultural Hub Address */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 0.5,
+                  alignItems: { xs: 'center', md: 'flex-start' }
+                }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      color: theme.palette.primary.dark
+                    }}
+                  >
+                    Cultural Hub Address
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    Shri Kamba Kamatchi Amman Kovil, <br />
+                    Pachaikoppanpatti, Thirali, <br />
+                    Thirumangalam, Madurai, <br />
+                    Tamil Nadu 625704
+                  </Typography>
+                </Box>
+
+                {/* Office Address */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 0.5,
+                  alignItems: { xs: 'center', md: 'flex-start' }
+                }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '1rem',
+                      fontWeight: 600,
+                      color: theme.palette.primary.dark
+                    }}
+                  >
+                    Office Address
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '0.9rem'
+                    }}
+                  >
+                    Valluvar Vaasal, <br />
+                    Kamba Kamatchi Jothida Nilaiyam, <br />
+                    5/35/16A, Kamaraj Nagar West, Ward 15, <br />
+                    Palaiyampatti (Post), Aruppukottai (Tk), <br />
+                    Viruthunagar (Dt) - 626101
+                  </Typography>
+                </Box>
+
+                {/* Contact Information */}
+                <Box sx={{ 
+                  display: 'flex', 
+                  flexDirection: 'column', 
+                  gap: 0.5,
+                  alignItems: { xs: 'center', md: 'flex-start' }
+                }}>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    Email: info@valluvarvaasal.com
+                  </Typography>
+                  <Typography
+                    variant="body2"
+                    sx={{
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '1rem'
+                    }}
+                  >
+                    Phone: +91 94887 36192
+                  </Typography>
+                </Box>
               </Box>
             </Box>
           </Grid>

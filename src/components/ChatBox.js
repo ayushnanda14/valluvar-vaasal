@@ -19,7 +19,8 @@ import {
     CardMedia,
     CardContent,
     CardActionArea,
-    LinearProgress
+    LinearProgress,
+    Collapse
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -34,12 +35,16 @@ import StopIcon from '@mui/icons-material/Stop';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
 import DeleteIcon from '@mui/icons-material/Delete';
+import FolderIcon from '@mui/icons-material/Folder';
+import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
+import ExpandLessIcon from '@mui/icons-material/ExpandLess';
 import { useAuth } from '../context/AuthContext';
 import {
     getChatMessages,
     sendTextMessage,
     sendFileMessage,
-    sendVoiceMessage
+    sendVoiceMessage,
+    getChatFiles
 } from '../services/chatService';
 import FilePreviewModal from './FilePreviewModal';
 import Snackbar from '@mui/material/Snackbar';
@@ -56,6 +61,11 @@ export default function ChatBox({ chatId, otherUser }) {
     const [previewFile, setPreviewFile] = useState(null);
     const [modalOpen, setModalOpen] = useState(false);
     const messagesContainerRef = useRef(null);
+
+    // Files section state
+    const [showFiles, setShowFiles] = useState(false);
+    const [chatFiles, setChatFiles] = useState([]);
+    const [loadingFiles, setLoadingFiles] = useState(false);
 
     // Voice recording states
     const [isRecording, setIsRecording] = useState(false);
@@ -191,6 +201,9 @@ export default function ChatBox({ chatId, otherUser }) {
             if (fileInputRef.current) {
                 fileInputRef.current.value = '';
             }
+            // Reload chat files to update the files section
+            const files = await getChatFiles(chatId);
+            setChatFiles(files);
         } catch (error) {
             console.error('Error uploading file:', error);
         } finally {
@@ -554,7 +567,17 @@ export default function ChatBox({ chatId, otherUser }) {
         // Only notify if the last message is not from the current user
         if (lastMessage.senderId !== currentUser?.uid && lastMessage.id !== lastMessageIdRef.current) {
             lastMessageIdRef.current = lastMessage.id;
-            const content = lastMessage.text || (lastMessage.fileReference?.name ? `Sent a file: ${lastMessage.fileReference.name}` : 'New message');
+            let content = lastMessage.text || 'New message';
+            
+            // Handle single file reference
+            if (lastMessage.fileReference?.name) {
+                content = `Sent a file: ${lastMessage.fileReference.name}`;
+            }
+            // Handle multiple file references
+            else if (lastMessage.fileReferences && lastMessage.fileReferences.length > 0) {
+                content = `Sent ${lastMessage.fileReferences.length} file(s)`;
+            }
+            
             setNewMessageContent(content);
             // If window not focused or not at bottom, show snackbar
             if (!windowFocused || !atBottom) {
@@ -582,6 +605,29 @@ export default function ChatBox({ chatId, otherUser }) {
         setShowNewMessageSnackbar(false);
     };
 
+    // Load chat files when component mounts or chatId changes
+    useEffect(() => {
+        const loadChatFiles = async () => {
+            if (!chatId) return;
+            
+            try {
+                setLoadingFiles(true);
+                const files = await getChatFiles(chatId);
+                setChatFiles(files);
+            } catch (error) {
+                console.error('Error loading chat files:', error);
+            } finally {
+                setLoadingFiles(false);
+            }
+        };
+
+        loadChatFiles();
+    }, [chatId]);
+
+    const toggleFilesSection = () => {
+        setShowFiles(!showFiles);
+    };
+
     return (
         <>
             <Paper
@@ -593,6 +639,53 @@ export default function ChatBox({ chatId, otherUser }) {
                     maxWidth: '100%'
                 }}
             >
+                {/* Files section header */}
+                <Box sx={{ borderBottom: '1px solid #e0e0e0', p: 1 }}>
+                    <Button
+                        startIcon={<FolderIcon />}
+                        endIcon={showFiles ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                        onClick={toggleFilesSection}
+                        size="small"
+                        sx={{ textTransform: 'none' }}
+                    >
+                        Files ({chatFiles.length})
+                    </Button>
+                    
+                    <Collapse in={showFiles}>
+                        <Box sx={{ mt: 1, maxHeight: '150px', overflow: 'auto' }}>
+                            {loadingFiles ? (
+                                <CircularProgress size={20} />
+                            ) : chatFiles.length > 0 ? (
+                                <Grid container spacing={1}>
+                                    {chatFiles.map((file) => (
+                                        <Grid item xs={12} sm={6} md={4} key={file.id}>
+                                            <Button
+                                                startIcon={getFileIcon(file.type)}
+                                                onClick={() => openFilePreview(file)}
+                                                size="small"
+                                                variant="outlined"
+                                                sx={{
+                                                    textTransform: 'none',
+                                                    justifyContent: 'flex-start',
+                                                    width: '100%',
+                                                    overflow: 'hidden',
+                                                    textOverflow: 'ellipsis'
+                                                }}
+                                            >
+                                                {file.name}
+                                            </Button>
+                                        </Grid>
+                                    ))}
+                                </Grid>
+                            ) : (
+                                <Typography variant="body2" color="text.secondary">
+                                    No files uploaded yet
+                                </Typography>
+                            )}
+                        </Box>
+                    </Collapse>
+                </Box>
+
                 {/* Messages area */}
                 <Box
                     ref={messagesContainerRef}
@@ -683,6 +776,17 @@ export default function ChatBox({ chatId, otherUser }) {
                                                     {/* File message */}
                                                     {message.type === 'file' && message.fileReference && (
                                                         renderFilePreview(message.fileReference)
+                                                    )}
+
+                                                    {/* Multiple file references (from initial upload) */}
+                                                    {message.fileReferences && message.fileReferences.length > 0 && (
+                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                            {message.fileReferences.map((fileRef, index) => (
+                                                                <Box key={index}>
+                                                                    {renderFilePreview(fileRef)}
+                                                                </Box>
+                                                            ))}
+                                                        </Box>
                                                     )}
 
                                                     {/* Text message */}

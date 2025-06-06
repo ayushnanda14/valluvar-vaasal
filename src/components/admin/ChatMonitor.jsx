@@ -20,7 +20,8 @@ import {
   Tooltip,
   Link,
   Grid,
-  Divider
+  Divider,
+  LinearProgress
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
@@ -28,6 +29,10 @@ import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import ImageIcon from '@mui/icons-material/Image';
 import DescriptionIcon from '@mui/icons-material/Description';
+import VideoFileIcon from '@mui/icons-material/VideoFile';
+import AudioFileIcon from '@mui/icons-material/AudioFile';
+import PlayArrowIcon from '@mui/icons-material/PlayArrow';
+import PauseIcon from '@mui/icons-material/Pause';
 import { collection, query, where, orderBy, onSnapshot, doc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import FilePreviewModal from '../FilePreviewModal';
@@ -44,6 +49,11 @@ const ChatMonitor = ({ userId }) => {
   // Modal state for file preview
   const [modalOpen, setModalOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
+  
+  // Voice message playback states
+  const [playingAudio, setPlayingAudio] = useState(null);
+  const [audioProgress, setAudioProgress] = useState({});
+  const audioRefs = useRef({});
   
   // Effect for fetching chats list with real-time updates
   useEffect(() => {
@@ -193,11 +203,119 @@ const ChatMonitor = ({ userId }) => {
       return <ImageIcon />;
     } else if (fileType === 'application/pdf') {
       return <PictureAsPdfIcon />;
+    } else if (fileType.startsWith('video/')) {
+      return <VideoFileIcon />;
+    } else if (fileType.startsWith('audio/')) {
+      return <AudioFileIcon />;
     } else {
       return <DescriptionIcon />;
     }
   };
   
+  // Handle audio playback
+  const handleAudioPlay = (messageId, audioUrl) => {
+    const currentAudioRef = audioRefs.current[messageId];
+
+    if (playingAudio === messageId) {
+      // Stop current audio
+      if (currentAudioRef) {
+        currentAudioRef.pause();
+      }
+      setPlayingAudio(null);
+    } else {
+      // Stop any currently playing audio
+      if (playingAudio && audioRefs.current[playingAudio]) {
+        audioRefs.current[playingAudio].pause();
+        audioRefs.current[playingAudio].currentTime = 0;
+        setAudioProgress(prev => ({ ...prev, [playingAudio]: 0 }));
+      }
+
+      // Play new audio
+      if (currentAudioRef) {
+        currentAudioRef.play();
+        setPlayingAudio(messageId);
+      }
+    }
+  };
+
+  // Handle audio progress update
+  const handleAudioProgress = (messageId, event) => {
+    const audio = event.target;
+    const progress = (audio.currentTime / audio.duration) * 100;
+    setAudioProgress(prev => ({ ...prev, [messageId]: progress }));
+  };
+
+  // Handle audio end
+  const handleAudioEnd = (messageId) => {
+    setPlayingAudio(null);
+    setAudioProgress(prev => ({ ...prev, [messageId]: 0 }));
+  };
+
+  // Format time in MM:SS format
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = Math.floor(seconds % 60);
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  // Render voice message
+  const renderVoiceMessage = (message) => {
+    const isPlaying = playingAudio === message.id;
+    const progress = audioProgress[message.id] || 0;
+    const audioRef = audioRefs.current[message.id];
+    const currentTime = audioRef ? audioRef.currentTime : 0;
+    const duration = message.voiceReference?.duration || 0;
+
+    return (
+      <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, minWidth: '220px', py: 1 }}>
+        <IconButton
+          onClick={() => handleAudioPlay(message.id, message.voiceReference.url)}
+          color={isPlaying ? 'secondary' : 'primary'}
+          size="small"
+          sx={{
+            border: '2px solid',
+            borderColor: isPlaying ? 'secondary.main' : 'primary.main',
+            background: isPlaying ? 'rgba(25, 118, 210, 0.08)' : 'white',
+            width: 40,
+            height: 40
+          }}
+        >
+          {isPlaying ? <PauseIcon /> : <PlayArrowIcon />}
+        </IconButton>
+        <Box sx={{ flex: 1, minWidth: 100 }}>
+          <LinearProgress
+            variant="determinate"
+            value={progress}
+            sx={{
+              height: 6,
+              borderRadius: 3,
+              background: 'rgba(25, 118, 210, 0.08)',
+              '& .MuiLinearProgress-bar': {
+                background: isPlaying ? theme.palette.secondary.main : theme.palette.primary.main,
+              },
+              mb: 0.5
+            }}
+          />
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+            <Typography variant="caption" color="text.secondary">
+              {formatTime(currentTime)}
+            </Typography>
+            <Typography variant="caption" color="text.secondary">
+              {formatTime(duration)}
+            </Typography>
+          </Box>
+        </Box>
+        <audio
+          ref={el => audioRefs.current[message.id] = el}
+          src={message.voiceReference?.url}
+          onTimeUpdate={(e) => handleAudioProgress(message.id, e)}
+          onEnded={() => handleAudioEnd(message.id)}
+          style={{ display: 'none' }}
+        />
+      </Box>
+    );
+  };
+
   if (loading) {
     return (
       <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -319,8 +437,15 @@ const ChatMonitor = ({ userId }) => {
                             maxWidth: '100%'
                           }}
                         >
-                          {/* Message text */}
-                          <Typography variant="body1">{message.text}</Typography>
+                          {/* Voice message */}
+                          {message.type === 'voice' && message.voiceReference && (
+                            renderVoiceMessage(message)
+                          )}
+
+                          {/* Message text (only show if not a voice message) */}
+                          {message.type !== 'voice' && (
+                            <Typography variant="body1">{message.text}</Typography>
+                          )}
                           
                           {/* Single file reference */}
                           {message.fileReference && (

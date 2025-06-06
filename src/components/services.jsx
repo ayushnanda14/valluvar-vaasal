@@ -38,8 +38,8 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
     imagePosition = 'center 20%'; // Lower focus point for desktop
   }
 
-  // Fixed image height for all screen sizes
-  const imageHeight = 280;
+  // Responsive image height
+  const imageHeight = isMobile ? 200 : isTablet ? 240 : 280;
 
   return (
     <Grid item xs={12} sm={6} md={4}>
@@ -73,6 +73,7 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
               boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
               position: 'relative',
               width: '100%',
+              minHeight: { xs: '400px', sm: '450px', md: '500px' }, // Responsive min height
               '&:hover': {
                 boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
                 transform: 'translateY(-5px)',
@@ -113,19 +114,21 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                 }}
               />
               <Typography
-                variant="h5"
+                variant={isMobile ? "h6" : "h5"}
                 component="h3"
                 sx={{
                   position: 'absolute',
-                  bottom: -10,
+                  bottom: { xs: -5, sm: -8, md: -10 },
                   left: 0,
                   width: '100%',
-                  px: 3,
+                  px: { xs: 2, sm: 2.5, md: 3 },
                   fontFamily: '"Cinzel", serif',
                   fontWeight: 600,
                   color: theme.palette.secondary.dark,
                   zIndex: 2,
-                  textShadow: '0 1px 2px rgba(255,255,255,0.8)'
+                  textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                  fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
+                  lineHeight: 1.2
                 }}
               >
                 {title}
@@ -134,41 +137,45 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
 
             <CardContent sx={{
               flexGrow: 1,
-              pt: 4,
+              pt: { xs: 3, sm: 3.5, md: 4 },
               pb: 2,
-              px: 3,
+              px: { xs: 2, sm: 2.5, md: 3 },
               background: theme.palette.background.paper,
               display: 'flex',
               flexDirection: 'column',
               justifyContent: 'space-between',
-              height: '220px' // Fixed height for content area
+              minHeight: { xs: '180px', sm: '200px', md: '220px' } // Responsive content height
             }}>
               <Typography
                 variant="body1"
                 sx={{
                   mb: 2,
                   fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1.1rem',
+                  fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
                   color: theme.palette.secondary.main,
                   overflow: 'hidden',
                   display: '-webkit-box',
-                  WebkitLineClamp: 4,
-                  WebkitBoxOrient: 'vertical'
+                  WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
+                  WebkitBoxOrient: 'vertical',
+                  lineHeight: 1.4
                 }}
               >
                 {description}
               </Typography>
-              <Box sx={{ mt: 'auto' }}>
+              <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'flex-start' }}>
                 <Link href={destinationUrl || '/'} passHref legacyBehavior>
                   <Button
-                    endIcon={<ArrowForwardIcon />}
+                    endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '1rem', md: '1.2rem' } }} />}
                     component="span"
                     sx={{
                       textTransform: 'none',
                       fontFamily: '"Cormorant Garamond", serif',
                       fontWeight: 600,
-                      fontSize: '1rem',
+                      fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' },
                       color: theme.palette.primary.main,
+                      px: { xs: 1, sm: 1.5, md: 2 },
+                      py: { xs: 0.5, sm: 0.75, md: 1 },
+                      minHeight: { xs: '36px', sm: '40px', md: '44px' },
                       '&:hover': {
                         backgroundColor: 'transparent',
                         color: theme.palette.primary.dark,
@@ -259,7 +266,7 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid container spacing={2} direction={{ xs: "column", md: "row" }} sx={{ flexWrap: 'nowrap' }}>
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center">
           {servicesList.map((service, index) => (
             <ServiceCard
               key={index}
