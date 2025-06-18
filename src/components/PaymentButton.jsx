@@ -12,6 +12,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
   const [paymentProcessing, setPaymentProcessing] = useState(false);
+  const [paymentInitiated, setPaymentInitiated] = useState(false);
 
   const handlePayment = async () => {
     if (!currentUser) {
@@ -21,6 +22,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
 
     setLoading(true);
     setError('');
+    setPaymentInitiated(true);
 
     console.log('Current user for prefill:', currentUser);
     console.log('Phone number for prefill:', currentUser?.phoneNumber);
@@ -51,8 +53,11 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
             setPaymentProcessing(false);
             onProcessingStateChange?.(false);
             if (!response.razorpay_order_id || !response.razorpay_payment_id || !response.razorpay_signature) {
+              // Payment failed - re-enable button
+              setPaymentInitiated(false);
               onError?.('Missing Razorpay payment details.');
             } else {
+              // Payment successful - keep button disabled, user will be redirected
               onSuccess?.(response);
               // need to verify the payment on the server
             }
@@ -61,6 +66,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
             console.error('Payment verification function error:', funcError);
             const errorMessage = funcError.message || 'Payment verification failed on server.';
             setError(errorMessage);
+            setPaymentInitiated(false); // Re-enable button on error
             onError?.(errorMessage);
           } finally {
             setPaymentProcessing(false);
@@ -82,6 +88,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
         razorpay.on('payment.failed', function (response) {
           setPaymentProcessing(false);
           onProcessingStateChange?.(false);
+          setPaymentInitiated(false); // Re-enable button on payment failure
           console.error('Razorpay Payment Failed:', response.error);
           setError(`Payment Failed: ${response.error.description || response.error.reason}`);
           onError?.(`Payment Failed: ${response.error.reason}`);
@@ -98,6 +105,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
     } catch (error) {
       console.error('Payment initiation error:', error);
       setError(error.message || t('payment.error'));
+      setPaymentInitiated(false); // Re-enable button on error
       onError?.(error.message);
     } finally {
       setLoading(false);
@@ -128,7 +136,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
         variant="contained"
         color="primary"
         onClick={handlePayment}
-        disabled={loading}
+        disabled={loading || paymentInitiated}
         sx={{
           py: 1.5,
           px: 4,
@@ -137,7 +145,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
           minWidth: '200px',
         }}
       >
-        {loading ? <CircularProgress size={24} /> : t('payment.payNow')}
+        {loading ? <CircularProgress size={24} /> : paymentInitiated ? t('payment.processing', 'Processing...') : t('payment.payNow')}
       </Button>
     </>
   );

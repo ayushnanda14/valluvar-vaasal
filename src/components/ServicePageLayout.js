@@ -87,21 +87,24 @@ export default function ServicePageLayout({
         try {
           const savedState = JSON.parse(savedStateRaw);
 
-          // Check if the saved state belongs to the current user
-          if (savedState.userId && savedState.userId === currentUser.uid) {
-            // Restore step, district, and astrologers
-            if (savedState.step) setStep(savedState.step);
-            if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
-            if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+                      // Check if the saved state belongs to the current user
+            if (savedState.userId && savedState.userId === currentUser.uid) {
+              // Always start from step 1 (file upload) after refresh
+              setStep(1);
+              
+              // Restore district and astrologer selections silently
+              if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
+              if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
 
-            // Handle file state - user will need to re-select files
-            if (savedState.filesUploaded && savedState.step === 1) {
-               setError(t('servicePage.errors.promptReupload'));
-            }
-            // Clear files state as File objects cannot be persisted directly
-            setFiles([]);
-            setSecondFiles([]);
-          } else {
+              // Show message only if user had meaningful previous selections (both district and astrologers)
+              if (savedState.selectedDistrict && savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
+                setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
+              }
+              
+              // Clear files state as File objects cannot be persisted directly
+              setFiles([]);
+              setSecondFiles([]);
+            } else {
             // Stored data is for a different user or has no userId, clear it and start fresh
             localStorage.removeItem(localStorageKey);
             // Reset to default step and selections for a truly fresh start
@@ -256,7 +259,15 @@ export default function ServicePageLayout({
         setError(dualUpload ? t('servicePage.errors.uploadDual', { label1: dualUploadLabels[0], label2: dualUploadLabels[1] }) : t('servicePage.errors.uploadSingle'));
         return;
       }
-      setStep(1.5);
+      
+      // Check if we have saved district and astrologer selections
+      if (selectedDistrict && selectedAstrologers.length > 0) {
+        // Skip directly to payment step
+        setStep(3);
+      } else {
+        // Normal flow - go to district selection
+        setStep(1.5);
+      }
     } else if (step === 1.5) {
       if (!selectedDistrict) {
         setError(t('servicePage.errors.selectDistrict'));
@@ -607,6 +618,36 @@ export default function ServicePageLayout({
                     {t('servicePage.uploadTitle', 'Upload Your Jathak')}
                   </Typography>
 
+                  {/* Show preserved selections */}
+                  {selectedDistrict && selectedAstrologers.length > 0 && (
+                    <Alert severity="info" sx={{ mb: 3 }}>
+                      <Typography variant="body2">
+                        <strong>{t('servicePage.preservedSelections', 'Your previous selections have been preserved:')}</strong>
+                      </Typography>
+                      <Typography variant="body2">
+                        {t('servicePage.district', 'District')}: {selectedDistrict}
+                      </Typography>
+                      <Typography variant="body2">
+                        {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
+                      </Typography>
+                      <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
+                        {t('servicePage.proceedToPayment', 'After uploading your files, you will proceed directly to payment.')}
+                      </Typography>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => {
+                          setSelectedDistrict('');
+                          setSelectedAstrologers([]);
+                          setError('');
+                        }}
+                        sx={{ mt: 1 }}
+                      >
+                        {t('servicePage.changeSelections', 'Change Selections')}
+                      </Button>
+                    </Alert>
+                  )}
+
                   {dualUpload ? (
                     <Grid container spacing={3}>
                       <Grid item xs={12} md={6}>
@@ -655,7 +696,10 @@ export default function ServicePageLayout({
                         textOverflow: 'ellipsis'
                       }}
                     >
-                      {t('servicePage.nextDistrict', 'Next: Select District')}
+                      {selectedDistrict && selectedAstrologers.length > 0 
+                        ? t('servicePage.nextPayment', 'Next: Payment') 
+                        : t('servicePage.nextDistrict', 'Next: Select District')
+                      }
                     </Button>
                   </Box>
                 </Box>
@@ -1087,6 +1131,19 @@ export default function ServicePageLayout({
                   >
                     {t('steps.payment', 'Payment')}
                   </Typography>
+
+                  {/* Show selection summary */}
+                  <Alert severity="success" sx={{ mb: 3 }}>
+                    <Typography variant="body2">
+                      <strong>{t('servicePage.selectedServices', 'Selected Services:')}</strong>
+                    </Typography>
+                    <Typography variant="body2">
+                      {t('servicePage.district', 'District')}: {selectedDistrict}
+                    </Typography>
+                    <Typography variant="body2">
+                      {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
+                    </Typography>
+                  </Alert>
 
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
                     <Box 
