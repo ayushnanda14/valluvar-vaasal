@@ -752,7 +752,7 @@ export default function ChatBox({ chatId, otherUser }) {
                                                     <Avatar
                                                         src={otherUser?.photoURL}
                                                         alt={otherUser?.displayName || 'User'}
-                                                        sx={{ width: 36, height: 36, mr: 1 }}
+                                                        sx={{ width: 54, height: 54, mr: 1 }}
                                                     />
                                                 )}
 
