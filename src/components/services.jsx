@@ -266,7 +266,7 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center">
+        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center" wrap="nowrap" sx={{ overflowX: 'auto' }}>
           {servicesList.map((service, index) => (
             <ServiceCard
               key={index}

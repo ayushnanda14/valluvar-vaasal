@@ -860,7 +860,7 @@ export default function ServicePageLayout({
                                 >
                                   <CardMedia
                                     component="img"
-                                      height="200px"
+                                    height="300px"
                                     image={astrologer.photoURL || '/images/default-avatar.png'}
                                     alt={astrologer.displayName}
                                       sx={{ 
