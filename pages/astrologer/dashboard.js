@@ -126,6 +126,8 @@ export default function AstrologerDashboard() {
 
           setNewReadingsCount(newChats.length);
 
+          setLoading(false);
+
           // Fetch revenue data
           const fetchRevenue = async () => {
             try {
