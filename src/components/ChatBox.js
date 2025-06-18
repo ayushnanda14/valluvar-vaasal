@@ -49,6 +49,8 @@ import {
 import FilePreviewModal from './FilePreviewModal';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
+import { doc, getDoc } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 
 export default function ChatBox({ chatId, otherUser }) {
     const { currentUser, hasRole } = useAuth();
@@ -94,6 +96,9 @@ export default function ChatBox({ chatId, otherUser }) {
     const [atBottom, setAtBottom] = useState(true);
     const lastMessageIdRef = useRef(null);
 
+    // 24-hour window control – allow sending only within 24 h for clients
+    const [sendAllowed, setSendAllowed] = useState(true);
+
     // Check if user is an astrologer
     useEffect(() => {
         const checkAstrologerRole = async () => {
@@ -115,6 +120,42 @@ export default function ChatBox({ chatId, otherUser }) {
         };
         checkAstrologerRole();
     }, [currentUser, hasRole]);
+
+    // Check 24-hour window for clients
+    useEffect(() => {
+        let intervalId;
+
+        const checkWindow = async () => {
+            if (!chatId || isAstrologer) {
+                // Astrologers are always allowed to send
+                setSendAllowed(true);
+                return;
+            }
+
+            try {
+                const chatDocSnap = await getDoc(doc(db, 'chats', chatId));
+                if (chatDocSnap.exists()) {
+                    const createdAt = chatDocSnap.data().createdAt?.toDate();
+                    if (createdAt) {
+                        const diff = Date.now() - createdAt.getTime();
+                        setSendAllowed(diff <= 24 * 60 * 60 * 1000);
+                    } else {
+                        // If no createdAt, allow by default
+                        setSendAllowed(true);
+                    }
+                }
+            } catch (err) {
+                console.error('[ChatBox] Error checking 24-hour window:', err);
+                setSendAllowed(true);
+            }
+        };
+
+        checkWindow();
+        // Re-evaluate every 5 minutes in case tab stays open
+        intervalId = setInterval(checkWindow, 5 * 60 * 1000);
+
+        return () => clearInterval(intervalId);
+    }, [chatId, isAstrologer]);
 
     // Load messages
     useEffect(() => {
@@ -419,28 +460,65 @@ export default function ChatBox({ chatId, otherUser }) {
 
     // Handle audio playback
     const handleAudioPlay = (messageId, audioUrl) => {
+        console.log('handleAudioPlay', messageId, audioUrl, audioRefs.current);
         const isPreview = messageId === 'preview';
         const currentAudioRef = audioRefs.current[messageId];
 
-        if (playingAudio === messageId) {
-            // Stop current audio
-            if (currentAudioRef) {
-                currentAudioRef.pause();
-            }
-            setPlayingAudio(null);
-        } else {
-            // Stop any currently playing audio (except preview)
-            if (playingAudio && playingAudio !== 'preview' && audioRefs.current[playingAudio]) {
-                audioRefs.current[playingAudio].pause();
-                audioRefs.current[playingAudio].currentTime = 0;
-                setAudioProgress(prev => ({ ...prev, [playingAudio]: 0 }));
+        // If the audio element is not yet in the DOM (user clicked very fast),
+        // create a temporary one so playback still works.
+        let audioEl = currentAudioRef;
+        if (!audioEl) {
+            if (!audioUrl) {
+                console.warn('[ChatBox] Audio element not ready and no URL provided for messageId:', messageId);
+                return;
             }
 
-            // Play new audio
-            if (currentAudioRef) {
-                currentAudioRef.play();
-                setPlayingAudio(messageId);
+            // Dynamically create an Audio element
+            audioEl = new Audio(audioUrl);
+            audioEl.preload = 'auto';
+
+            // Wire up progress and end listeners so UI stays in sync
+            audioEl.addEventListener('timeupdate', (e) => handleAudioProgress(messageId, e));
+            audioEl.addEventListener('ended', () => handleAudioEnd(messageId));
+
+            // Store in ref map so subsequent controls work normally
+            audioRefs.current[messageId] = audioEl;
+        }
+
+        // If the same audio is playing – pause/stop it
+        if (playingAudio === messageId) {
+            try {
+                audioEl.pause();
+            } catch (err) {
+                console.error('[ChatBox] Error pausing audio:', err);
             }
+            setPlayingAudio(null);
+            return;
+        }
+
+        // Stop any currently playing audio (except preview)
+        if (playingAudio && playingAudio !== 'preview' && audioRefs.current[playingAudio]) {
+            try {
+                audioRefs.current[playingAudio].pause();
+                audioRefs.current[playingAudio].currentTime = 0;
+            } catch (err) {
+                console.error('[ChatBox] Error stopping existing audio:', err);
+            }
+            setAudioProgress(prev => ({ ...prev, [playingAudio]: 0 }));
+        }
+
+        // Ensure the audio is reloaded (helps on some browsers)
+        try {
+            audioEl.load();
+            const playPromise = audioEl.play();
+            if (playPromise && typeof playPromise.catch === 'function') {
+                playPromise.catch(err => {
+                    console.error('[ChatBox] Audio play() error:', err);
+                });
+            }
+            setPlayingAudio(messageId);
+        } catch (err) {
+            console.error('[ChatBox] Error playing audio:', err);
         }
     };
 
@@ -837,11 +915,16 @@ export default function ChatBox({ chatId, otherUser }) {
                         p: 2,
                         borderTop: '1px solid #e0e0e0',
                         width: '100%',
-                        minHeight: '70px', // Fixed height to prevent wobble
+                        minHeight: '70px',
                         display: 'flex',
                         alignItems: 'center'
                     }}
                 >
+                    {(!isAstrologer && !sendAllowed) ? (
+                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
+                            You can no longer send messages in this conversation (24-hour window expired).
+                        </Typography>
+                    ) : (
                     <form
                         onSubmit={handleSendMessage}
                         style={{ width: '100%' }}
@@ -895,7 +978,7 @@ export default function ChatBox({ chatId, otherUser }) {
                                             size="small"
                                             value={newMessage}
                                             onChange={(e) => setNewMessage(e.target.value)}
-                                            disabled={sendingFile}
+                                            disabled={sendingFile || (!isAstrologer && !sendAllowed)}
                                             fullWidth
                                         />
                                     </Grid>
@@ -904,7 +987,7 @@ export default function ChatBox({ chatId, otherUser }) {
                                         <IconButton
                                             color="primary"
                                             type="submit"
-                                            disabled={!newMessage.trim() || sendingFile}
+                                            disabled={!newMessage.trim() || sendingFile || (!isAstrologer && !sendAllowed)}
                                         >
                                             <SendIcon />
                                         </IconButton>
@@ -1002,6 +1085,7 @@ export default function ChatBox({ chatId, otherUser }) {
                             )}
                         </Grid>
                     </form>
+                    )}
                 </Box>
             </Paper>
 
