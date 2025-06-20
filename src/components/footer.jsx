@@ -159,7 +159,7 @@ const Footer = () => {
                 <ListItem disablePadding>
                   <ListItemButton 
                     component={Link} 
-                    href="/feedback" 
+                    href="/testimonials" 
                     sx={{ 
                       color: theme.palette.secondary.main,
                       fontFamily: '"Cormorant Garamond", serif',

@@ -9,18 +9,21 @@ import {
   Avatar, 
   Rating,
   Skeleton,
-  useTheme 
+  useTheme,
+  Button
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import { useTranslation } from 'react-i18next';
+import Link from 'next/link';
 
 // Wrap MUI components with motion
 const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 const MotionCard = motion(Card);
+const MotionButton = motion(Button);
 
 const Testimonials = () => {
   const theme = useTheme();
@@ -313,6 +316,37 @@ const Testimonials = () => {
                 </Typography>
               </Box>
           )}
+        </Box>
+
+        <Box sx={{ textAlign: 'center', mt: 4 }}>
+          <MotionButton
+            component={Link}
+            href="/testimonials"
+            initial={{ opacity: 0, y: 30 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            viewport={{ once: true, amount: 0.5 }}
+            transition={{ duration: 0.6, ease: 'easeOut', delay: 0.1 }}
+            whileHover={{ scale: 1.05 }}
+            variant="contained"
+            sx={{
+              fontFamily: '"Playfair Display", serif',
+              textTransform: 'none',
+              px: 5,
+              py: 1.8,
+              fontSize: { xs: '1rem', md: '1.15rem' },
+              fontWeight: 700,
+              borderRadius: '40px',
+              background: 'linear-gradient(135deg, #FFB74D 0%, #FF7043 100%)',
+              color: '#fff',
+              boxShadow: '0px 6px 16px rgba(0,0,0,0.15)',
+              '&:hover': {
+                background: 'linear-gradient(135deg, #FFA726 0%, #FF5722 100%)',
+                boxShadow: '0px 8px 20px rgba(0,0,0,0.25)',
+              }
+            }}
+          >
+            {t('testimonials.shareExperience', 'Share Your Experience!')}
+          </MotionButton>
         </Box>
       </Container>
     </Box>
