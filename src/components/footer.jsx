@@ -283,7 +283,7 @@ const Footer = () => {
                       fontSize: '1rem'
                     }}
                   >
-                    Email: info@valluvarvaasal.com
+                    Email: valluvarvaasal@gmail.com
                   </Typography>
                   <Typography
                     variant="body2"
