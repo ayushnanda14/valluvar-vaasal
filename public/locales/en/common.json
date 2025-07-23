@@ -125,15 +125,18 @@
     "servicesDescription": "Discover our range of traditional Tamil astrological services, crafted with ancient wisdom to guide your life's journey.",
     "marriageMatching": {
       "title": "Marriage Matching",
-      "description": "Our expert astrologers analyze birth charts to determine compatibility between potential life partners, ensuring a harmonious and prosperous union based on ancient Tamil astrological principles."
+      "description": "Our expert astrologers analyze birth charts to determine compatibility between potential life partners, ensuring a harmonious and prosperous union based on ancient Tamil astrological principles.",
+      "cue": "Discover your compatibility"
     },
     "jathakPrediction": {
       "title": "Jathak Prediction",
-      "description": "Discover your life's path through our detailed Jathak predictions. We interpret celestial positions at your birth to reveal insights about career, relationships, health, and spiritual growth."
+      "description": "Discover your life's path through our detailed Jathak predictions. We interpret celestial positions at your birth to reveal insights about career, relationships, health, and spiritual growth.",
+      "cue": "Unveil your life's blueprint"
     },
     "jathakWriting": {
       "title": "Jathak Writing",
-      "description": "Preserve your astrological blueprint with our meticulously crafted Jathak writing service. Our scholars document your birth chart with traditional methods, creating a valuable heirloom for generations."
+      "description": "Preserve your astrological blueprint with our meticulously crafted Jathak writing service. Our scholars document your birth chart with traditional methods, creating a valuable heirloom for generations.",
+      "cue": "Create your celestial heirloom"
     }
   },
   "hero": {

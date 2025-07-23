@@ -279,7 +279,7 @@ export default function AstrologerDashboard() {
                 sx={{
                   cursor: 'pointer',
                   bgcolor: chat.lastMessage &&
-                    chat.lastMessage.senderId !== currentUser.uid &&
+                    chat.lastMessage.senderId !== currentUser?.uid &&
                     !chat.lastMessage.read ?
                     'rgba(25, 118, 210, 0.08)' : 'inherit'
                 }}

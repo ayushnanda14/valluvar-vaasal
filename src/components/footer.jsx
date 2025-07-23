@@ -52,8 +52,9 @@ const Footer = () => {
           justifyContent: { xs: 'center', md: 'space-between' }
         }}>
           {/* Brand/Logo Section */}
-          <Grid item xs={12} md={6} sx={{ 
-            display: 'flex', 
+          <Grid item xs={12} md={6} sx={{
+            display: 'flex',
+            width: '100%',
             flexDirection: 'column',
             alignItems: { xs: 'center', md: 'flex-start' }
           }}>
@@ -91,13 +92,13 @@ const Footer = () => {
             gap: 4
           }}>
             {/* Quick Links */}
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               flexDirection: 'column',
               alignItems: { xs: 'center', md: 'flex-start' }
             }}>
-              <Typography 
-                variant="h6" 
+              <Typography
+                variant="h6"
                 sx={{
                   fontFamily: '"Cinzel", serif',
                   fontSize: '1.1rem',
@@ -107,26 +108,26 @@ const Footer = () => {
               >
                 {t('footer.quickLinks')}
               </Typography>
-              <List sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
-                alignItems: { xs: 'center', md: 'flex-start' } 
+              <List sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                alignItems: { xs: 'center', md: 'flex-start' }
               }}>
                 <ListItem disablePadding>
-                  <ListItemButton 
-                    component={Link} 
-                    href="/about" 
-                    sx={{ 
+                  <ListItemButton
+                    component={Link}
+                    href="/about"
+                    sx={{
                       color: theme.palette.secondary.main,
                       fontFamily: '"Cormorant Garamond", serif',
                       fontSize: '0.7rem',
                       textDecoration: 'underline',
-                      '&:hover': { 
+                      '&:hover': {
                         color: theme.palette.primary.main,
                         backgroundColor: 'transparent'
                       },
-                      '&:visited': { 
-                        color: theme.palette.secondary.main 
+                      '&:visited': {
+                        color: theme.palette.secondary.main
                       },
                       padding: '0px'
                     }}
@@ -135,20 +136,20 @@ const Footer = () => {
                   </ListItemButton>
                 </ListItem>
                 <ListItem disablePadding>
-                  <ListItemButton 
-                    component={MuiLink} 
-                    onClick={scrollToServices} 
-                    sx={{ 
+                  <ListItemButton
+                    component={MuiLink}
+                    onClick={scrollToServices}
+                    sx={{
                       color: theme.palette.secondary.main,
                       fontFamily: '"Cormorant Garamond", serif',
                       fontSize: '0.7rem',
                       textDecoration: 'underline',
-                      '&:hover': { 
+                      '&:hover': {
                         color: theme.palette.primary.main,
                         backgroundColor: 'transparent'
                       },
-                      '&:visited': { 
-                        color: theme.palette.secondary.main 
+                      '&:visited': {
+                        color: theme.palette.secondary.main
                       },
                       padding: '0px'
                     }}
@@ -157,20 +158,20 @@ const Footer = () => {
                   </ListItemButton>
                 </ListItem>
                 <ListItem disablePadding>
-                  <ListItemButton 
-                    component={Link} 
-                    href="/testimonials" 
-                    sx={{ 
+                  <ListItemButton
+                    component={Link}
+                    href="/testimonials"
+                    sx={{
                       color: theme.palette.secondary.main,
                       fontFamily: '"Cormorant Garamond", serif',
                       fontSize: '0.7rem',
                       textDecoration: 'underline',
-                      '&:hover': { 
+                      '&:hover': {
                         color: theme.palette.primary.main,
                         backgroundColor: 'transparent'
                       },
-                      '&:visited': { 
-                        color: theme.palette.secondary.main 
+                      '&:visited': {
+                        color: theme.palette.secondary.main
                       },
                       padding: '0px'
                     }}
@@ -182,8 +183,8 @@ const Footer = () => {
             </Box>
 
             {/* Contact */}
-            <Box sx={{ 
-              display: 'flex', 
+            <Box sx={{
+              display: 'flex',
               flexDirection: 'column',
               alignItems: { xs: 'center', md: 'flex-start' }
             }}>
@@ -198,16 +199,16 @@ const Footer = () => {
               >
                 {t('footer.contact')}
               </Typography>
-              <Box sx={{ 
-                display: 'flex', 
-                flexDirection: 'column', 
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
                 gap: 2,
                 alignItems: { xs: 'center', md: 'flex-start' }
               }}>
                 {/* Cultural Hub Address */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 0.5,
                   alignItems: { xs: 'center', md: 'flex-start' }
                 }}>
@@ -237,9 +238,9 @@ const Footer = () => {
                 </Box>
 
                 {/* Office Address */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 0.5,
                   alignItems: { xs: 'center', md: 'flex-start' }
                 }}>
@@ -270,9 +271,9 @@ const Footer = () => {
                 </Box>
 
                 {/* Contact Information */}
-                <Box sx={{ 
-                  display: 'flex', 
-                  flexDirection: 'column', 
+                <Box sx={{
+                  display: 'flex',
+                  flexDirection: 'column',
                   gap: 0.5,
                   alignItems: { xs: 'center', md: 'flex-start' }
                 }}>
@@ -285,15 +286,26 @@ const Footer = () => {
                   >
                     Email: valluvarvaasal@gmail.com
                   </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '1rem'
-                    }}
-                  >
-                    Phone: +91 94887 36192
-                  </Typography>
+                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5 }}>
+
+                    <Typography
+                      variant="body2"
+                      sx={{
+                        fontFamily: '"Cormorant Garamond", serif',
+                        fontSize: '1rem'
+                      }}
+                    >
+                      Phone:
+                    </Typography>
+                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
+                        +91 94887 31792
+                      </Typography>
+                      <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
+                        +91 94887 36192
+                      </Typography>
+                    </Box>
+                  </Box>
                 </Box>
               </Box>
             </Box>

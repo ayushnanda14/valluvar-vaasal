@@ -129,7 +129,7 @@ export default function TestimonialsPage() {
                 </Box>
 
                 {/* Testimonials Component */}
-                <Testimonials />
+                <Testimonials isTestimonialsPage={true} />
 
                 {/* Submit Testimonial Section */}
                 <Box

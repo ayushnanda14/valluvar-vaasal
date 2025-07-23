@@ -15,13 +15,14 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
 import { useTranslation } from 'react-i18next';
+import { useAuth } from '../context/AuthContext';
 
 // Wrap MUI components with motion
 const MotionCard = motion(Card);
 const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 
-const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) => {
+const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay, isLoggedIn }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -38,72 +39,73 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
     imagePosition = 'center 20%'; // Lower focus point for desktop
   }
 
-  // Responsive image height
-  const imageHeight = isMobile ? 200 : isTablet ? 240 : 280;
+  // Dynamic heights to avoid extra white-space
+  const cardMinHeight = isLoggedIn
+    ? { xs: '240px', sm: '280px', md: '380px' }
+    : { xs: '300px', sm: '340px', md: '500px' };
+  const contentMinHeight = isLoggedIn
+    ? 'auto'
+    : { xs: '150px', sm: '170px', md: '220px' };
+  const contentJustify = isLoggedIn ? 'flex-start' : 'space-between';
 
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Link href={destinationUrl || '/'} passHref legacyBehavior>
-        <Box sx={{
-          display: 'flex',
-          justifyContent: 'center',
-          height: '100%',
-          cursor: 'pointer',
-          '&:hover': {
-            transform: 'translateY(-7px)',
-            transition: 'all 0.3s ease'
-          },
-          '&:not(:hover)': {
-            transform: 'translateY(0)',
-            transition: 'all 0.4s ease-out'
-          },
+      {/* <Link href={destinationUrl || '/'} passHref legacyBehavior> */}
+      <Box sx={{
+        display: 'flex',
+        justifyContent: 'center',
+        height: '100%',
+        cursor: 'pointer',
+        '&:hover': {
+          transform: 'translateY(-7px)',
           transition: 'all 0.3s ease'
-        }}>
-          <MotionCard
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
-            viewport={{ once: true, margin: "-100px" }}
-            sx={{
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
-              position: 'relative',
-              width: '100%',
-              minHeight: { xs: '400px', sm: '450px', md: '500px' }, // Responsive min height
-              '&:hover': {
-                boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
-                transform: 'translateY(-5px)',
-                transition: 'all 0.3s ease'
-              }
-            }}
-          >
-            <Box sx={{ position: 'relative' }}>
-              <CardMedia
-                component="img"
-                height={imageHeight}
-                image={imageSrc}
-                alt={title}
-                sx={{
-                  objectFit: 'cover',
-                  objectPosition: imagePosition,
-                  '&::after': {
-                    content: '""',
-                    position: 'absolute',
-                    bottom: 0,
-                    left: 0,
-                    width: '100%',
-                    height: '40%',
-                    background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
-                    zIndex: 1
-                  }
-                }}
-              />
-              <Box
-                sx={{
+        },
+        '&:not(:hover)': {
+          transform: 'translateY(0)',
+          transition: 'all 0.4s ease-out'
+        },
+        transition: 'all 0.3s ease'
+      }}>
+        <MotionCard
+          initial={{ opacity: 0, y: 50 }}
+          whileInView={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
+          viewport={{ once: true, margin: "-100px" }}
+          sx={{
+            height: '100%',
+            display: 'flex',
+            flexDirection: 'column',
+            borderRadius: '16px',
+            overflow: 'hidden',
+            boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
+            position: 'relative',
+            width: '100%',
+            minHeight: cardMinHeight, // Dynamic min height
+            maxWidth: isLoggedIn
+              ? { xs: '100%', sm: '100%', md: '380px' }
+              : { xs: '100%', sm: '100%', md: '500px' },
+            '&:hover': {
+              boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
+              transform: 'translateY(-5px)',
+              transition: 'all 0.3s ease'
+            }
+          }}
+        >
+          <Box sx={{ position: 'relative' }}>
+            <CardMedia
+              component="img"
+              image={imageSrc}
+              alt={title}
+              sx={{
+                // Make image occupy 50% of the card on mobile (xs and sm)
+                height: {
+                  xs: isLoggedIn ? (isTablet ? 240 : 300) : (isTablet ? 280 : 300),
+                  md: isLoggedIn ? (isTablet ? 240 : 300) : (isTablet ? 140 : 300)
+                },
+                objectFit: 'cover',
+                objectPosition: imagePosition,
+                '&::after': {
+                  content: '""',
                   position: 'absolute',
                   bottom: 0,
                   left: 0,
@@ -111,41 +113,55 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                   height: '40%',
                   background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
                   zIndex: 1
-                }}
-              />
-              <Typography
-                variant={isMobile ? "h6" : "h5"}
-                component="h3"
-                sx={{
-                  position: 'absolute',
-                  bottom: { xs: -5, sm: -8, md: -10 },
-                  left: 0,
-                  width: '100%',
-                  px: { xs: 2, sm: 2.5, md: 3 },
-                  fontFamily: '"Cinzel", serif',
-                  fontWeight: 600,
-                  color: theme.palette.secondary.dark,
-                  zIndex: 2,
-                  textShadow: '0 1px 2px rgba(255,255,255,0.8)',
-                  fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
-                  lineHeight: 1.2
-                }}
-              >
-                {title}
-              </Typography>
-            </Box>
+                }
+              }}
+            />
+            <Box
+              sx={{
+                position: 'absolute',
+                bottom: 0,
+                left: 0,
+                width: '100%',
+                height: '40%',
+                background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
+                zIndex: 1
+              }}
+            />
+            <Typography
+              variant={isMobile ? "h6" : "h5"}
+              component="h3"
+              sx={{
+                position: 'absolute',
+                bottom: { xs: -5, sm: -8, md: -10 },
+                left: 0,
+                width: '100%',
+                px: { xs: 2, sm: 2.5, md: 3 },
+                fontFamily: '"Cinzel", serif',
+                fontWeight: 600,
+                color: theme.palette.secondary.dark,
+                zIndex: 2,
+                textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+                fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
+                lineHeight: 1.2
+              }}
+            >
+              {title}
+            </Typography>
+          </Box>
 
-            <CardContent sx={{
-              flexGrow: 1,
-              pt: { xs: 3, sm: 3.5, md: 4 },
-              pb: 2,
-              px: { xs: 2, sm: 2.5, md: 3 },
-              background: theme.palette.background.paper,
-              display: 'flex',
-              flexDirection: 'column',
-              justifyContent: 'space-between',
-              minHeight: { xs: '180px', sm: '200px', md: '220px' } // Responsive content height
-            }}>
+          <CardContent sx={{
+            flexGrow: 1,
+            pt: { xs: 3, sm: 3.5, md: 4 },
+            pb: 2,
+            px: { xs: 2, sm: 2.5, md: 3 },
+            background: theme.palette.background.paper,
+            display: 'flex',
+            flexDirection: 'column',
+            justifyContent: contentJustify,
+            minHeight: contentMinHeight
+          }}>
+            {/* Show description only when logged OUT */}
+            {!isLoggedIn ? (
               <Typography
                 variant="body1"
                 sx={{
@@ -153,15 +169,30 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
                   color: theme.palette.secondary.main,
-                  overflow: 'hidden',
+                  // overflow: 'hidden',
                   display: '-webkit-box',
-                  WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
+                  // WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
                   WebkitBoxOrient: 'vertical',
                   lineHeight: 1.4
                 }}
               >
                 {description}
               </Typography>
+            ) : (
+              <Typography
+                variant="body1"
+                sx={{
+                  mb: 2,
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
+                  color: theme.palette.secondary.main,
+                  textAlign: 'left'
+                }}
+              >
+                {cue}
+              </Typography>
+            )}
+            {isLoggedIn && (
               <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'flex-start' }}>
                 <Link href={destinationUrl || '/'} passHref legacyBehavior>
                   <Button
@@ -186,10 +217,11 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
                   </Button>
                 </Link>
               </Box>
-            </CardContent>
-          </MotionCard>
-        </Box>
-      </Link>
+            )}
+          </CardContent>
+        </MotionCard>
+      </Box>
+      {/* </Link> */}
     </Grid>
   );
 };
@@ -197,11 +229,14 @@ const ServiceCard = ({ title, destinationUrl, description, imageSrc, delay }) =>
 const Services = () => {
   const theme = useTheme();
   const { t } = useTranslation('common');
+  const { currentUser } = useAuth();
+  const isLoggedIn = !!currentUser;
 
   const servicesList = [
     {
       title: t('services.marriageMatching.title'),
       description: t('services.marriageMatching.description'),
+      cue: t('services.marriageMatching.cue'),
       destinationUrl: "/services/marriage-matching",
       imageSrc: "/images/marriage-matching.png",
       delay: 0
@@ -209,6 +244,7 @@ const Services = () => {
     {
       title: t('services.jathakPrediction.title'),
       description: t('services.jathakPrediction.description'),
+      cue: t('services.jathakPrediction.cue'),
       destinationUrl: "/services/jathak-prediction",
       imageSrc: "/images/jathak-prediction.png",
       delay: 0.2
@@ -216,6 +252,7 @@ const Services = () => {
     {
       title: t('services.jathakWriting.title'),
       description: t('services.jathakWriting.description'),
+      cue: t('services.jathakWriting.cue'),
       destinationUrl: "/services/jathak-writing",
       imageSrc: "/images/jathak-writing.png",
       delay: 0.4
@@ -266,15 +303,34 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid container spacing={{ xs: 2, sm: 3, md: 4 }} justifyContent="center" wrap="nowrap" sx={{ overflowX: 'auto' }}>
+        <Grid
+          container
+          spacing={{ xs: 2, sm: 3, md: 4 }}
+          justifyContent="center"
+          wrap="nowrap"
+          sx={{
+            overflowX: 'auto',
+            overflowY: 'hidden',
+            flexDirection: {
+              xs: 'column', // mobile
+              sm: 'column', // small tablets
+              md: 'row',    // tablets and up
+              lg: 'row'
+            }
+          }}
+        >
           {servicesList.map((service, index) => (
             <ServiceCard
               key={index}
               title={service.title}
               destinationUrl={service.destinationUrl}
               description={service.description}
+              cue={service.cue}
               imageSrc={service.imageSrc}
               delay={service.delay}
+              isLoggedIn={isLoggedIn}
+              // Pass a prop to indicate mobile for image height adjustment
+              mobileImageHeight={true}
             />
           ))}
         </Grid>

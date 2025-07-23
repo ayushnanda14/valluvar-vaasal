@@ -25,7 +25,7 @@ const MotionTypography = motion(Typography);
 const MotionCard = motion(Card);
 const MotionButton = motion(Button);
 
-const Testimonials = () => {
+const Testimonials = ({ isTestimonialsPage }) => {
   const theme = useTheme();
   const [testimonials, setTestimonials] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -318,7 +318,7 @@ const Testimonials = () => {
           )}
         </Box>
 
-        <Box sx={{ textAlign: 'center', mt: 4 }}>
+        {!isTestimonialsPage && <Box sx={{ textAlign: 'center', mt: 4 }}>
           <MotionButton
             component={Link}
             href="/testimonials"
@@ -347,7 +347,7 @@ const Testimonials = () => {
           >
             {t('testimonials.shareExperience', 'Share Your Experience!')}
           </MotionButton>
-        </Box>
+        </Box>}
       </Container>
     </Box>
   );

@@ -710,7 +710,11 @@ export default function ChatBox({ chatId, otherUser }) {
         <>
             <Paper
                 sx={{
-                    height: '70vh',
+                    height: {
+                        xs: 'calc(100vh - 150px)',
+                        sm: 'calc(100vh - 180px)',
+                        md: '70vh'
+                    },
                     display: 'flex',
                     flexDirection: 'column',
                     width: '100%',
