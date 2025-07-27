@@ -228,5 +228,35 @@
     "photoTitle": "Profile Photo",
     "photoDescription": "Upload a clear, professional photo of yourself.",
     "uploadPhoto": "Upload Photo"
+  },
+  "feedback": {
+    "title": "How was your experience?",
+    "subtitle": "Your feedback helps us improve our services",
+    "ratingLabel": "Rate your experience:",
+    "commentPlaceholder": "Tell us about your experience (optional)",
+    "skipButton": "Skip",
+    "submitButton": "Submit Feedback",
+    "submittingButton": "Submitting...",
+    "helpTitle": "If you are not satisfied with the current conversation, let us know",
+    "contactAdminButton": "Contact Admin Support",
+    "ratingRequired": "Please provide a rating to submit feedback",
+    "thankYou": "Thank you for your feedback!",
+    "expiredMessage": "The 24-hour conversation window has passed.",
+    "yourRating": "Your rating:",
+    "yourComment": "Your comment:"
+  },
+  "chat": {
+    "serviceLabel": "Service:",
+    "consultation": "Consultation",
+    "astrologer": "Astrologer",
+    "admin": "Admin Support",
+    "adminSupport": "Admin Support",
+    "connectingToAdmin": "Connecting to Admin Support",
+    "adminWillRespond": "An admin will respond to your message shortly.",
+    "adminChatAvailable": "Admin chat available",
+    "clickToOpenAdminChat": "Click to open admin chat",
+    "expiredWithFeedback": "The 24-hour conversation window has passed.",
+    "expiredWithoutFeedback": "You can no longer send messages in this conversation (24-hour window expired).",
+    "thankYouForFeedback": "Thank you for your feedback!"
   }
 }

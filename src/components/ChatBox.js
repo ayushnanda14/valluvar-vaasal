@@ -8,11 +8,8 @@ import {
     Avatar,
     List,
     ListItem,
-    ListItemText,
-    ListItemAvatar,
     Button,
     CircularProgress,
-    Divider,
     Tooltip,
     Grid,
     Card,
@@ -38,21 +35,30 @@ import DeleteIcon from '@mui/icons-material/Delete';
 import FolderIcon from '@mui/icons-material/Folder';
 import ExpandMoreIcon from '@mui/icons-material/ExpandMore';
 import ExpandLessIcon from '@mui/icons-material/ExpandLess';
+import SupportIcon from '@mui/icons-material/Support';
+import CloseIcon from '@mui/icons-material/Close';
 import { useAuth } from '../context/AuthContext';
+import { useTranslation } from 'react-i18next';
 import {
     getChatMessages,
     sendTextMessage,
     sendFileMessage,
     sendVoiceMessage,
-    getChatFiles
+    getChatFiles,
+    getChatExpiryStatus,
+    submitFeedback
 } from '../services/chatService';
+import { doc, onSnapshot } from 'firebase/firestore';
+import { db } from '../firebase/firebaseConfig';
 import FilePreviewModal from './FilePreviewModal';
+import FeedbackPrompt from './FeedbackPrompt';
+import GenericModal from './GenericModal';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
-import { doc, getDoc } from 'firebase/firestore';
-import { db } from '../firebase/firebaseConfig';
 
-export default function ChatBox({ chatId, otherUser }) {
+
+export default function ChatBox({ chatId, otherUser, isAdminChat = false }) {
+    const { t } = useTranslation('common');
     const { currentUser, hasRole } = useAuth();
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
@@ -98,6 +104,20 @@ export default function ChatBox({ chatId, otherUser }) {
 
     // 24-hour window control – allow sending only within 24 h for clients
     const [sendAllowed, setSendAllowed] = useState(true);
+    const [chatExpiryStatus, setChatExpiryStatus] = useState(null);
+
+    // Admin chat state
+    const [adminChatId, setAdminChatId] = useState(null);
+    const [showAdminChatPrompt, setShowAdminChatPrompt] = useState(false);
+    const [adminChatAvailableForChat, setAdminChatAvailableForChat] = useState(new Set());
+
+    // Feedback modal state
+    const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
+    const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
+    const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
+    const [submittedFeedbackData, setSubmittedFeedbackData] = useState(null);
+    const [modalMode, setModalMode] = useState('feedback'); // 'feedback' or 'admin-chat'
+    const [issueResolved, setIssueResolved] = useState(false);
 
     // Check if user is an astrologer
     useEffect(() => {
@@ -129,33 +149,106 @@ export default function ChatBox({ chatId, otherUser }) {
             if (!chatId || isAstrologer) {
                 // Astrologers are always allowed to send
                 setSendAllowed(true);
+                setChatExpiryStatus(null);
+                return;
+            }
+
+            // For admin chats, don't check expiry (admin chats don't expire)
+            if (isAdminChat) {
+                setSendAllowed(true);
+                setChatExpiryStatus(null);
                 return;
             }
 
             try {
-                const chatDocSnap = await getDoc(doc(db, 'chats', chatId));
-                if (chatDocSnap.exists()) {
-                    const createdAt = chatDocSnap.data().createdAt?.toDate();
-                    if (createdAt) {
-                        const diff = Date.now() - createdAt.getTime();
-                        setSendAllowed(diff <= 24 * 60 * 60 * 1000);
+                console.log('Checking chat expiry status', chatId);
+                const expiryStatus = await getChatExpiryStatus(chatId);
+                setChatExpiryStatus(expiryStatus);
+                setSendAllowed(!expiryStatus.isExpired);
+
+                // If chat is expired, check for unresolved admin chats
+                if (expiryStatus.isExpired) {
+                    const { getUnresolvedAdminChats } = await import('../services/chatService');
+                    const unresolvedAdminChats = await getUnresolvedAdminChats(chatId);
+
+                    if (unresolvedAdminChats.length > 0) {
+                        // There are unresolved admin chats, show admin chat prompt
+                        setAdminChatAvailableForChat(prev => new Set([...prev, chatId]));
                     } else {
-                        // If no createdAt, allow by default
-                        setSendAllowed(true);
+                        // No unresolved admin chats, check feedback status
+                        if (!feedbackSubmitted) {
+                            // Show feedback modal if feedback hasn't been submitted
+                            setFeedbackModalOpen(true);
+                        }
+                        // If feedback is submitted, just show the expired message (no prompt needed)
                     }
                 }
             } catch (err) {
                 console.error('[ChatBox] Error checking 24-hour window:', err);
                 setSendAllowed(true);
+                setChatExpiryStatus(null);
             }
         };
 
         checkWindow();
-        // Re-evaluate every 5 minutes in case tab stays open
-        intervalId = setInterval(checkWindow, 5 * 60 * 1000);
+        // Re-evaluate every 30 seconds for more responsive updates
+        intervalId = setInterval(checkWindow, 30 * 1000);
 
         return () => clearInterval(intervalId);
-    }, [chatId, isAstrologer]);
+    }, [chatId, isAstrologer, feedbackSubmitted, isAdminChat]);
+
+    // Listen for chat document changes (like expiry extensions)
+    useEffect(() => {
+        if (!chatId || isAstrologer || isAdminChat) return;
+
+        let unsubscribe;
+        
+        const listenToChatChanges = async () => {
+            try {
+                const chatDocRef = doc(db, 'chats', chatId);
+                unsubscribe = onSnapshot(chatDocRef, (chatDoc) => {
+                    if (chatDoc.exists()) {
+                        const chatData = chatDoc.data();
+                        console.log('Chat document updated:', chatData);
+                        
+                        // Re-check expiry status when chat document changes
+                        const checkExpiryAfterUpdate = async () => {
+                            try {
+                                const expiryStatus = await getChatExpiryStatus(chatId);
+                                setChatExpiryStatus(expiryStatus);
+                                setSendAllowed(!expiryStatus.isExpired);
+                                
+                                // If chat is no longer expired, hide feedback modal and admin chat prompt
+                                if (!expiryStatus.isExpired) {
+                                    setFeedbackModalOpen(false);
+                                    setFeedbackSubmitted(false);
+                                    setAdminChatAvailableForChat(prev => {
+                                        const newSet = new Set(prev);
+                                        newSet.delete(chatId);
+                                        return newSet;
+                                    });
+                                }
+                            } catch (error) {
+                                console.error('Error checking expiry after chat update:', error);
+                            }
+                        };
+                        
+                        checkExpiryAfterUpdate();
+                    }
+                });
+            } catch (error) {
+                console.error('Error setting up chat document listener:', error);
+            }
+        };
+        
+        listenToChatChanges();
+        
+        return () => {
+            if (unsubscribe) {
+                unsubscribe();
+            }
+        };
+    }, [chatId, isAstrologer, isAdminChat]);
 
     // Load messages
     useEffect(() => {
@@ -165,14 +258,22 @@ export default function ChatBox({ chatId, otherUser }) {
             try {
                 setLoading(true);
 
-                // Use the real-time listener and store unsubscribe function
-                unsubscribe = getChatMessages(chatId, (messages) => {
-                    setMessages(messages);
-                    setLoading(false);
-
-                    // Scroll to bottom when messages change
-                    scrollToBottom();
-                });
+                // Use the appropriate message function based on chat type
+                if (isAdminChat) {
+                    const { getAdminClientChatMessages } = await import('../services/chatService');
+                    unsubscribe = getAdminClientChatMessages(chatId, (messages) => {
+                        setMessages(messages);
+                        setLoading(false);
+                        scrollToBottom();
+                    });
+                } else {
+                    // Use the real-time listener and store unsubscribe function
+                    unsubscribe = getChatMessages(chatId, (messages) => {
+                        setMessages(messages);
+                        setLoading(false);
+                        scrollToBottom();
+                    });
+                }
             } catch (error) {
                 console.error('Error in chat messages listener:', error);
                 setLoading(false);
@@ -216,7 +317,12 @@ export default function ChatBox({ chatId, otherUser }) {
                 messagesContainerRef.current.style.minWidth = `${containerWidth}px`;
             }
 
-            await sendTextMessage(chatId, currentUser.uid, newMessage);
+            if (isAdminChat) {
+                const { sendAdminClientMessage } = await import('../services/chatService');
+                await sendAdminClientMessage(chatId, currentUser.uid, newMessage);
+            } else {
+                await sendTextMessage(chatId, currentUser.uid, newMessage);
+            }
             setNewMessage('');
             scrollToBottom();
 
@@ -263,6 +369,100 @@ export default function ChatBox({ chatId, otherUser }) {
 
     const closeFilePreview = () => {
         setModalOpen(false);
+    };
+
+    // Handle feedback submission
+    const handleFeedbackSubmit = async (feedbackData) => {
+        try {
+            await submitFeedback(chatId, feedbackData);
+            setFeedbackSubmitted(true);
+            setSubmittedFeedbackData(feedbackData);
+            setFeedbackModalOpen(false);
+            // You could show a success message here
+        } catch (error) {
+            console.error('Error submitting feedback:', error);
+            // You could show an error message here
+        }
+    };
+
+    // Handle feedback skip
+    const handleFeedbackSkip = () => {
+        setFeedbackSubmitted(true);
+        setFeedbackModalOpen(false);
+    };
+
+    // Handle contact admin
+    // Handle clicking on admin chat system message
+    const handleAdminChatClick = async (adminChatId) => {
+        try {
+            setAdminChatId(adminChatId);
+            setModalMode('admin-chat');
+            setFeedbackModalOpen(true);
+        } catch (error) {
+            console.error('Error opening admin chat:', error);
+        }
+    };
+
+    // Check if admin chat issue is resolved
+    const checkIssueResolution = async () => {
+        if (!adminChatId) return;
+
+        try {
+            const { getUnresolvedAdminChats } = await import('../services/chatService');
+            const unresolvedChats = await getUnresolvedAdminChats(chatId);
+
+            if (unresolvedChats.length === 0) {
+                // Issue is resolved, don't show admin chat prompt
+                setIssueResolved(true);
+                setAdminChatAvailableForChat(prev => {
+                    const newSet = new Set(prev);
+                    newSet.delete(chatId);
+                    return newSet;
+                });
+            } else {
+                // Issue is not resolved, show admin chat prompt
+                setIssueResolved(false);
+                setAdminChatAvailableForChat(prev => new Set([...prev, chatId]));
+            }
+        } catch (error) {
+            console.error('Error checking issue resolution:', error);
+        }
+    };
+
+    const handleContactAdmin = async () => {
+        try {
+            // Check if admin chat already exists
+            const { getExistingAdminChat, createAdminClientChat } = await import('../services/chatService');
+            let adminChat = await getExistingAdminChat(chatId);
+
+            if (adminChat) {
+                // Use existing admin chat
+                setAdminChatId(adminChat.id);
+            } else {
+                // Create new admin-client chat
+                const newAdminChatId = await createAdminClientChat(chatId, currentUser.uid);
+                setAdminChatId(newAdminChatId);
+            }
+
+            // Set modal to admin chat mode and open it
+            setModalMode('admin-chat');
+            setFeedbackModalOpen(true);
+
+            // Remove this chat from admin chat available set
+            setAdminChatAvailableForChat(prev => {
+                const newSet = new Set(prev);
+                newSet.delete(chatId);
+                return newSet;
+            });
+
+            // Hide feedback modal if it was triggered from there
+            if (feedbackModalOpen && modalMode === 'feedback') {
+                setFeedbackSubmitted(true);
+            }
+        } catch (error) {
+            console.error('Error creating admin chat:', error);
+            // You might want to show an error message to the user
+        }
     };
 
     // Get file icon based on file type
@@ -646,7 +846,7 @@ export default function ChatBox({ chatId, otherUser }) {
         if (lastMessage.senderId !== currentUser?.uid && lastMessage.id !== lastMessageIdRef.current) {
             lastMessageIdRef.current = lastMessage.id;
             let content = lastMessage.text || 'New message';
-            
+
             // Handle single file reference
             if (lastMessage.fileReference?.name) {
                 content = `Sent a file: ${lastMessage.fileReference.name}`;
@@ -655,7 +855,7 @@ export default function ChatBox({ chatId, otherUser }) {
             else if (lastMessage.fileReferences && lastMessage.fileReferences.length > 0) {
                 content = `Sent ${lastMessage.fileReferences.length} file(s)`;
             }
-            
+
             setNewMessageContent(content);
             // If window not focused or not at bottom, show snackbar
             if (!windowFocused || !atBottom) {
@@ -687,7 +887,7 @@ export default function ChatBox({ chatId, otherUser }) {
     useEffect(() => {
         const loadChatFiles = async () => {
             if (!chatId) return;
-            
+
             try {
                 setLoadingFiles(true);
                 const files = await getChatFiles(chatId);
@@ -708,390 +908,550 @@ export default function ChatBox({ chatId, otherUser }) {
 
     return (
         <>
-            <Paper
-                sx={{
-                    height: {
-                        xs: 'calc(100vh - 150px)',
-                        sm: 'calc(100vh - 180px)',
-                        md: '70vh'
-                    },
-                    display: 'flex',
-                    flexDirection: 'column',
-                    width: '100%',
-                    maxWidth: '100%'
-                }}
-            >
-                {/* Files section header */}
-                <Box sx={{ borderBottom: '1px solid #e0e0e0', p: 1 }}>
-                    <Button
-                        startIcon={<FolderIcon />}
-                        endIcon={showFiles ? <ExpandLessIcon /> : <ExpandMoreIcon />}
-                        onClick={toggleFilesSection}
-                        size="small"
-                        sx={{ textTransform: 'none' }}
-                    >
-                        Files ({chatFiles.length})
-                    </Button>
-                    
-                    <Collapse in={showFiles}>
-                        <Box sx={{ mt: 1, maxHeight: '150px', overflow: 'auto' }}>
-                            {loadingFiles ? (
-                                <CircularProgress size={20} />
-                            ) : chatFiles.length > 0 ? (
-                                <Grid container spacing={1}>
-                                    {chatFiles.map((file) => (
-                                        <Grid item xs={12} sm={6} md={4} key={file.id}>
-                                            <Button
-                                                startIcon={getFileIcon(file.type)}
-                                                onClick={() => openFilePreview(file)}
-                                                size="small"
-                                                variant="outlined"
-                                                sx={{
-                                                    textTransform: 'none',
-                                                    justifyContent: 'flex-start',
-                                                    width: '100%',
-                                                    overflow: 'hidden',
-                                                    textOverflow: 'ellipsis'
-                                                }}
-                                            >
-                                                {file.name}
-                                            </Button>
-                                        </Grid>
-                                    ))}
-                                </Grid>
-                            ) : (
-                                <Typography variant="body2" color="text.secondary">
-                                    No files uploaded yet
-                                </Typography>
-                            )}
-                        </Box>
-                    </Collapse>
-                </Box>
-
-                {/* Messages area */}
-                <Box
-                    ref={messagesContainerRef}
+            {modalMode === 'admin-chat' && feedbackModalOpen ? (
+                <Paper
                     sx={{
-                        flex: 1,
-                        overflow: 'auto',
-                        p: 2,
+                        // height: {
+                        //     xs: 'calc(100vh - 150px)',
+                        //     sm: 'calc(100vh - 180px)',
+                        //     md: '70vh',
+                        // },
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
                         width: '100%',
-                        transition: 'none'
+                        maxWidth: '100%',
+                        position: 'relative',
+                        backgroundColor: 'transparent',
+                        boxShadow: 'none'
                     }}
                 >
-                    {loading ? (
-                        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                            <CircularProgress />
-                        </Box>
-                    ) : (
-                        <List>
-                            {messages.map((message) => {
-                                const isCurrentUser = message.senderId === currentUser.uid;
-                                const isSystem = message.senderId === 'system';
+                    {/* // Admin chat takes over the entire messages container */}
+                    <GenericModal
+                        open={feedbackModalOpen}
+                        onClose={() => {
+                            setFeedbackModalOpen(false);
+                            setModalMode('feedback');
+                            // Check if issue is resolved when closing admin chat
+                            checkIssueResolution();
+                        }}
+                        title={t('chat.adminSupport')}
+                        subtitle={t('chat.adminWillRespond')}
+                        maxWidth={false}
+                        fullWidth={true}
+                        inline={true}
+                    >
+                        <ChatBox
+                            chatId={adminChatId}
+                            otherUser={{
+                                displayName: t('chat.admin'),
+                                photoURL: null,
+                                uid: 'admin'
+                            }}
+                            isAdminChat={true}
+                        />
+                    </GenericModal>
+                </Paper>
+            ) : modalMode === 'feedback' && feedbackModalOpen ? (
+                <Paper
+                    sx={{
+                        height: '100%',
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        maxWidth: '100%',
+                        position: 'relative'
+                    }}
+                >
+                    <GenericModal
+                        open={feedbackModalOpen}
+                        onClose={() => setFeedbackModalOpen(false)}
+                        title={t('feedback.title')}
+                        subtitle={t('feedback.subtitle')}
+                        maxWidth="sm"
+                        fullWidth={true}
+                        inline={true}
+                    >
+                        <FeedbackPrompt
+                            onSubmit={handleFeedbackSubmit}
+                            onSkip={handleFeedbackSkip}
+                            onContactAdmin={handleContactAdmin}
+                            submittedFeedback={submittedFeedbackData}
+                        />
+                    </GenericModal>
+                </Paper>
+            ) : (
+                <Paper
+                    sx={{
+                        height: {
+                            xs: 'calc(100vh - 150px)',
+                            sm: 'calc(100vh - 180px)',
+                            md: '70vh'
+                        },
+                        display: 'flex',
+                        flexDirection: 'column',
+                        width: '100%',
+                        maxWidth: '100%',
+                        position: 'relative'
+                    }}
+                >
+                    {/* Files section header */}
+                    <Box sx={{ borderBottom: '1px solid #e0e0e0', p: 1 }}>
+                        <Button
+                            startIcon={<FolderIcon />}
+                            endIcon={showFiles ? <ExpandLessIcon /> : <ExpandMoreIcon />}
+                            onClick={toggleFilesSection}
+                            size="small"
+                            sx={{ textTransform: 'none' }}
+                        >
+                            Files ({chatFiles.length})
+                        </Button>
 
-                                return (
-                                    <ListItem
-                                        key={message.id}
-                                        sx={{
-                                            justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
-                                            alignItems: 'flex-start',
-                                            mb: 1,
-                                            px: 1
-                                        }}
-                                    >
-                                        {isSystem ? (
-                                            // System message
-                                            <Box
-                                                sx={{
-                                                    width: '100%',
-                                                    textAlign: 'center',
-                                                    my: 1
-                                                }}
-                                            >
-                                                <Paper
+                        <Collapse in={showFiles}>
+                            <Box sx={{ mt: 1, maxHeight: '150px', overflow: 'auto' }}>
+                                {loadingFiles ? (
+                                    <CircularProgress size={20} />
+                                ) : chatFiles.length > 0 ? (
+                                    <Grid container spacing={1}>
+                                        {chatFiles.map((file) => (
+                                            <Grid item xs={12} sm={6} md={4} key={file.id}>
+                                                <Button
+                                                    startIcon={getFileIcon(file.type)}
+                                                    onClick={() => openFilePreview(file)}
+                                                    size="small"
+                                                    variant="outlined"
                                                     sx={{
-                                                        display: 'inline-block',
-                                                        px: 2,
-                                                        py: 1,
-                                                        bgcolor: 'grey.100',
-                                                        maxWidth: '80%'
+                                                        textTransform: 'none',
+                                                        justifyContent: 'flex-start',
+                                                        width: '100%',
+                                                        overflow: 'hidden',
+                                                        textOverflow: 'ellipsis'
                                                     }}
                                                 >
-                                                    <Typography variant="body2">{message.text}</Typography>
-                                                </Paper>
-                                            </Box>
-                                        ) : (
-                                            // User message
-                                            <Box
+                                                    {file.name}
+                                                </Button>
+                                            </Grid>
+                                        ))}
+                                    </Grid>
+                                ) : (
+                                    <Typography variant="body2" color="text.secondary">
+                                        No files uploaded yet
+                                    </Typography>
+                                )}
+                            </Box>
+                        </Collapse>
+                    </Box>
+
+                    {/* Messages area */}
+                    <Box
+                        ref={messagesContainerRef}
+                        sx={{
+                            flex: 1,
+                            overflow: 'auto',
+                            p: 2,
+                            width: '100%',
+                            transition: 'none',
+                            position: 'relative',
+                            // minHeight: '500px', // Increased to 500px as requested
+                            // height: 'max-content'
+
+                        }}
+                    >
+                        <>
+                            {loading ? (
+                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                                    <CircularProgress />
+                                </Box>
+                            ) : (
+                                <List sx={{ height: '100%' }}>
+                                    {messages.map((message) => {
+                                        const isCurrentUser = message.senderId === currentUser.uid;
+                                        const isSystem = message.senderId === 'system';
+
+                                        return (
+                                            <ListItem
+                                                key={message.id}
                                                 sx={{
-                                                    display: 'flex',
-                                                    flexDirection: isCurrentUser ? 'row-reverse' : 'row',
+                                                    justifyContent: isCurrentUser ? 'flex-end' : 'flex-start',
                                                     alignItems: 'flex-start',
-                                                    maxWidth: '80%'
+                                                    mb: 1,
+                                                    px: 1
                                                 }}
                                             >
-                                                {!isCurrentUser && (
-                                                    <Avatar
-                                                        src={otherUser?.photoURL}
-                                                        alt={otherUser?.displayName || 'User'}
-                                                        sx={{ width: 54, height: 54, mr: 1 }}
-                                                    />
-                                                )}
-
-                                                <Box>
-                                                    {/* Voice message */}
-                                                    {message.type === 'voice' && message.voiceReference && (
-                                                        <Paper
-                                                            elevation={1}
-                                                            sx={{
-                                                                p: 1.5,
-                                                                bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
-                                                                color: isCurrentUser ? 'white' : 'inherit',
-                                                                borderRadius: '8px',
-                                                                minWidth: '200px'
-                                                            }}
-                                                        >
-                                                            {renderVoiceMessage(message)}
-                                                        </Paper>
-                                                    )}
-
-                                                    {/* File message */}
-                                                    {message.type === 'file' && message.fileReference && (
-                                                        renderFilePreview(message.fileReference)
-                                                    )}
-
-                                                    {/* Multiple file references (from initial upload) */}
-                                                    {message.fileReferences && message.fileReferences.length > 0 && (
-                                                        <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
-                                                            {message.fileReferences.map((fileRef, index) => (
-                                                                <Box key={index}>
-                                                                    {renderFilePreview(fileRef)}
-                                                                </Box>
-                                                            ))}
-                                                        </Box>
-                                                    )}
-
-                                                    {/* Text message */}
-                                                    {(!message.type || message.type === 'text') && (
-                                                        <Paper
-                                                            elevation={1}
-                                                            sx={{
-                                                                p: 1.5,
-                                                                bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
-                                                                color: isCurrentUser ? 'white' : 'inherit',
-                                                                borderRadius: '8px',
-                                                                maxWidth: '300px'
-                                                            }}
-                                                        >
-                                                            <Typography variant="body2">{message.text}</Typography>
-                                                        </Paper>
-                                                    )}
-
-                                                    <Typography
-                                                        variant="caption"
+                                                {isSystem ? (
+                                                    // System message
+                                                    <Box
                                                         sx={{
-                                                            display: 'block',
-                                                            mt: 0.5,
-                                                            ml: isCurrentUser ? 0 : 1,
-                                                            textAlign: isCurrentUser ? 'right' : 'left',
-                                                            color: 'text.secondary'
+                                                            width: '100%',
+                                                            textAlign: 'center',
+                                                            my: 1
                                                         }}
                                                     >
-                                                        {message.timestamp?.toDate().toLocaleTimeString([], {
-                                                            hour: '2-digit',
-                                                            minute: '2-digit'
-                                                        })}
-                                                    </Typography>
-                                                </Box>
-                                            </Box>
-                                        )}
-                                    </ListItem>
-                                );
-                            })}
-                            <div ref={messagesEndRef} />
-                        </List>
-                    )}
-                </Box>
+                                                        {message.isAdminChatLink ? (
+                                                            // Clickable admin chat system message
+                                                            <Paper
+                                                                sx={{
+                                                                    display: 'inline-block',
+                                                                    px: 2,
+                                                                    py: 1,
+                                                                    bgcolor: 'primary.light',
+                                                                    color: 'white',
+                                                                    maxWidth: '80%',
+                                                                    cursor: 'pointer',
+                                                                    '&:hover': {
+                                                                        bgcolor: 'primary.main'
+                                                                    }
+                                                                }}
+                                                                onClick={() => handleAdminChatClick(message.adminChatId)}
+                                                            >
+                                                                <Typography variant="body2" sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                                    <SupportIcon sx={{ fontSize: '1rem' }} />
+                                                                    {message.text}
+                                                                </Typography>
+                                                            </Paper>
+                                                        ) : (
+                                                            // Regular system message
+                                                            <Paper
+                                                                sx={{
+                                                                    display: 'inline-block',
+                                                                    px: 2,
+                                                                    py: 1,
+                                                                    bgcolor: 'grey.100',
+                                                                    maxWidth: '80%'
+                                                                }}
+                                                            >
+                                                                <Typography variant="body2">{message.text}</Typography>
+                                                            </Paper>
+                                                        )}
+                                                    </Box>
+                                                ) : (
+                                                    // User message
+                                                    <Box
+                                                        sx={{
+                                                            display: 'flex',
+                                                            flexDirection: isCurrentUser ? 'row-reverse' : 'row',
+                                                            alignItems: 'flex-start',
+                                                            maxWidth: '80%'
+                                                        }}
+                                                    >
+                                                        {!isCurrentUser && (
+                                                            <Avatar
+                                                                src={otherUser?.photoURL}
+                                                                alt={otherUser?.displayName || 'User'}
+                                                                sx={{ width: 54, height: 54, mr: 1 }}
+                                                            />
+                                                        )}
 
-                {/* Message input */}
-                <Box
-                    sx={{
-                        p: 2,
-                        borderTop: '1px solid #e0e0e0',
-                        width: '100%',
-                        minHeight: '70px',
-                        display: 'flex',
-                        alignItems: 'center'
-                    }}
-                >
-                    {(!isAstrologer && !sendAllowed) ? (
-                        <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', width: '100%' }}>
-                            You can no longer send messages in this conversation (24-hour window expired).
-                        </Typography>
-                    ) : (
-                    <form
-                        onSubmit={handleSendMessage}
-                        style={{ width: '100%' }}
-                    >
-                        <Grid
-                            container
-                            spacing={1}
-                            alignItems="center"
-                        // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
+                                                        <Box>
+                                                            {/* Voice message */}
+                                                            {message.type === 'voice' && message.voiceReference && (
+                                                                <Paper
+                                                                    elevation={1}
+                                                                    sx={{
+                                                                        p: 1.5,
+                                                                        bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
+                                                                        color: isCurrentUser ? 'white' : 'inherit',
+                                                                        borderRadius: '8px',
+                                                                        minWidth: '200px'
+                                                                    }}
+                                                                >
+                                                                    {renderVoiceMessage(message)}
+                                                                </Paper>
+                                                            )}
+
+                                                            {/* File message */}
+                                                            {message.type === 'file' && message.fileReference && (
+                                                                renderFilePreview(message.fileReference)
+                                                            )}
+
+                                                            {/* Multiple file references (from initial upload) */}
+                                                            {message.fileReferences && message.fileReferences.length > 0 && (
+                                                                <Box sx={{ display: 'flex', flexDirection: 'column', gap: 1 }}>
+                                                                    {message.fileReferences.map((fileRef, index) => (
+                                                                        <Box key={index}>
+                                                                            {renderFilePreview(fileRef)}
+                                                                        </Box>
+                                                                    ))}
+                                                                </Box>
+                                                            )}
+
+                                                            {/* Text message */}
+                                                            {(!message.type || message.type === 'text') && (
+                                                                <Paper
+                                                                    elevation={1}
+                                                                    sx={{
+                                                                        p: 1.5,
+                                                                        bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
+                                                                        color: isCurrentUser ? 'white' : 'inherit',
+                                                                        borderRadius: '8px',
+                                                                        maxWidth: '300px'
+                                                                    }}
+                                                                >
+                                                                    <Typography variant="body2">{message.text}</Typography>
+                                                                </Paper>
+                                                            )}
+
+                                                            <Typography
+                                                                variant="caption"
+                                                                sx={{
+                                                                    display: 'block',
+                                                                    mt: 0.5,
+                                                                    ml: isCurrentUser ? 0 : 1,
+                                                                    textAlign: isCurrentUser ? 'right' : 'left',
+                                                                    color: 'text.secondary'
+                                                                }}
+                                                            >
+                                                                {message.timestamp?.toDate().toLocaleTimeString([], {
+                                                                    hour: '2-digit',
+                                                                    minute: '2-digit'
+                                                                })}
+                                                            </Typography>
+                                                        </Box>
+                                                    </Box>
+                                                )}
+                                            </ListItem>
+                                        );
+                                    })}
+                                    <div ref={messagesEndRef} />
+                                </List>
+                            )}
+                        </>
+                    </Box>
+
+                    {/* Admin Chat Prompt */}
+                    {adminChatAvailableForChat.has(chatId) && !issueResolved && (
+                        <Box
+                            sx={{
+                                p: 2,
+                                borderTop: '1px solid #e0e0e0',
+                                bgcolor: 'primary.light',
+                                color: 'white',
+                                // position: 'sticky',
+                                // bottom: 0,
+                                zIndex: 10
+                            }}
                         >
-                            {!isRecording && !isRecordingComplete && (
-                                <Grid container spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'nowrap' }}>
+                            <Box
+                                sx={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    justifyContent: 'space-between',
+                                    cursor: 'pointer',
+                                    '&:hover': {
+                                        bgcolor: 'primary.main',
+                                        borderRadius: 1,
+                                        px: 1
+                                    }
+                                }}
+                                onClick={handleContactAdmin}
+                            >
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                    <Typography variant="body2">
+                                        {t('chat.adminChatAvailable')}
+                                    </Typography>
+                                </Box>
+                                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                                    {t('chat.clickToOpenAdminChat')}
+                                </Typography>
+                            </Box>
+                        </Box>
+                    )}
 
-                                    <Grid item>
-                                        <Box sx={{ display: 'flex', gap: 1 }}>
-                                            <input
-                                                type="file"
-                                                ref={fileInputRef}
-                                                style={{ display: 'none' }}
-                                                onChange={handleFileUpload}
-                                            />
-                                            <Tooltip title="Attach file">
+                    {/* Message input */}
+                    <Box
+                        sx={{
+                            p: 2,
+                            borderTop: '1px solid #e0e0e0',
+                            width: '100%',
+                            minHeight: '70px',
+                            display: 'flex',
+                            alignItems: 'center',
+                            bgcolor: 'background.paper',
+                            // position: 'sticky',
+                            // bottom: 0,
+                            zIndex: 5
+                        }}
+                    >
+                        {(!isAstrologer && !sendAllowed) ? (
+                            <Box sx={{ textAlign: 'center', width: '100%', p: 2 }}>
+                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                    {feedbackSubmitted ?
+                                        t('chat.expiredWithFeedback') :
+                                        t('chat.expiredWithoutFeedback')
+                                    }
+                                </Typography>
+                                {feedbackSubmitted && (
+                                    <Typography variant="caption" color="text.secondary">
+                                        {t('chat.thankYouForFeedback')}
+                                    </Typography>
+                                )}
+                            </Box>
+                        ) : (
+                            <form
+                                onSubmit={handleSendMessage}
+                                style={{ width: '100%' }}
+                            >
+                                <Grid
+                                    container
+                                    spacing={1}
+                                    alignItems="center"
+                                // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
+                                >
+                                    {!isRecording && !isRecordingComplete && (
+                                        <Grid container spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'nowrap' }}>
+
+                                            <Grid item>
+                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                    <input
+                                                        type="file"
+                                                        ref={fileInputRef}
+                                                        style={{ display: 'none' }}
+                                                        onChange={handleFileUpload}
+                                                    />
+                                                    <Tooltip title="Attach file">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={openFileSelector}
+                                                            disabled={sendingFile}
+                                                        >
+                                                            {sendingFile ? <CircularProgress size={24} /> : <AttachFileIcon />}
+                                                        </IconButton>
+                                                    </Tooltip>
+
+                                                    {/* Voice recording button - only for astrologers */}
+                                                    {/* {isAstrologer && ( */}
+                                                    <Tooltip title="Record voice message">
+                                                        <IconButton
+                                                            color="primary"
+                                                            onClick={startRecording}
+                                                            disabled={sendingFile}
+                                                        >
+                                                            <MicIcon />
+                                                        </IconButton>
+                                                    </Tooltip>
+                                                    {/* )} */}
+                                                </Box>
+                                            </Grid>
+
+                                            <Grid item sx={{ flex: 1 }}>
+                                                <TextField
+                                                    variant="outlined"
+                                                    placeholder="Type a message"
+                                                    size="small"
+                                                    value={newMessage}
+                                                    onChange={(e) => setNewMessage(e.target.value)}
+                                                    disabled={sendingFile || (!isAstrologer && !sendAllowed)}
+                                                    fullWidth
+                                                />
+                                            </Grid>
+
+                                            <Grid item sx={{ display: 'flex', justifyContent: 'flex-end' }}>
                                                 <IconButton
                                                     color="primary"
-                                                    onClick={openFileSelector}
-                                                    disabled={sendingFile}
+                                                    type="submit"
+                                                    disabled={!newMessage.trim() || sendingFile || (!isAstrologer && !sendAllowed)}
                                                 >
-                                                    {sendingFile ? <CircularProgress size={24} /> : <AttachFileIcon />}
+                                                    <SendIcon />
                                                 </IconButton>
-                                            </Tooltip>
+                                            </Grid>
+                                        </Grid>
+                                    )}
 
-                                            {/* Voice recording button - only for astrologers */}
-                                            {/* {isAstrologer && ( */}
-                                                <Tooltip title="Record voice message">
-                                                    <IconButton
-                                                        color="primary"
-                                                        onClick={startRecording}
-                                                        disabled={sendingFile}
-                                                    >
-                                                        <MicIcon />
-                                                    </IconButton>
-                                                </Tooltip>
-                                            {/* )} */}
-                                        </Box>
-                                    </Grid>
+                                    {/* Recording UI */}
+                                    {isRecording && (
+                                        <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                <IconButton
+                                                    color="error"
+                                                    onClick={stopRecording}
+                                                    size="small"
+                                                >
+                                                    <StopIcon />
+                                                </IconButton>
+                                                <Typography variant="body2" color="error">
+                                                    Recording... {formatTime(recordingTime)}
+                                                </Typography>
+                                            </Box>
+                                            <Box sx={{
+                                                display: 'flex',
+                                                alignItems: 'center',
+                                                gap: 0.5,
+                                                flex: 1,
+                                                justifyContent: 'center'
+                                            }}>
+                                                {[...Array(20)].map((_, i) => (
+                                                    <Box
+                                                        key={i}
+                                                        sx={{
+                                                            width: 3,
+                                                            height: soundWaveHeight,
+                                                            bgcolor: 'primary.main',
+                                                            borderRadius: 1,
+                                                            transition: 'height 0.1s ease-in-out'
+                                                        }}
+                                                    />
+                                                ))}
+                                            </Box>
+                                        </Grid>
+                                    )}
 
-                                    <Grid item sx={{ flex: 1 }}>
-                                        <TextField
-                                            variant="outlined"
-                                            placeholder="Type a message"
-                                            size="small"
-                                            value={newMessage}
-                                            onChange={(e) => setNewMessage(e.target.value)}
-                                            disabled={sendingFile || (!isAstrologer && !sendAllowed)}
-                                            fullWidth
-                                        />
-                                    </Grid>
-
-                                    <Grid item sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                        <IconButton
-                                            color="primary"
-                                            type="submit"
-                                            disabled={!newMessage.trim() || sendingFile || (!isAstrologer && !sendAllowed)}
-                                        >
-                                            <SendIcon />
-                                        </IconButton>
-                                    </Grid>
-                                </Grid>
-                            )}
-
-                            {/* Recording UI */}
-                            {isRecording && (
-                                <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                        <IconButton
-                                            color="error"
-                                            onClick={stopRecording}
-                                            size="small"
-                                        >
-                                            <StopIcon />
-                                        </IconButton>
-                                        <Typography variant="body2" color="error">
-                                            Recording... {formatTime(recordingTime)}
-                                        </Typography>
-                                    </Box>
-                                    <Box sx={{
-                                        display: 'flex',
-                                        alignItems: 'center',
-                                        gap: 0.5,
-                                        flex: 1,
-                                        justifyContent: 'center'
-                                    }}>
-                                        {[...Array(20)].map((_, i) => (
-                                            <Box
-                                                key={i}
-                                                sx={{
-                                                    width: 3,
-                                                    height: soundWaveHeight,
-                                                    bgcolor: 'primary.main',
-                                                    borderRadius: 1,
-                                                    transition: 'height 0.1s ease-in-out'
-                                                }}
+                                    {/* Recording preview UI */}
+                                    {isRecordingComplete && (
+                                        <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={() => {
+                                                        handleAudioPlay('preview', recordedAudio?.url)
+                                                    }}
+                                                    size="small"
+                                                >
+                                                    {playingAudio === 'preview' ? <PauseIcon /> : <PlayArrowIcon />}
+                                                </IconButton>
+                                                <Typography variant="body2">
+                                                    {formatTime(recordingTime)}
+                                                </Typography>
+                                                <Box sx={{ flex: 1 }}>
+                                                    <LinearProgress
+                                                        variant="determinate"
+                                                        value={previewAudioProgress} // Use previewAudioProgress for preview
+                                                        sx={{ height: 4, borderRadius: 2 }}
+                                                    />
+                                                </Box>
+                                            </Box>
+                                            <Box sx={{ display: 'flex', gap: 1 }}>
+                                                <IconButton
+                                                    color="error"
+                                                    onClick={deleteRecording}
+                                                    size="small"
+                                                >
+                                                    <DeleteIcon />
+                                                </IconButton>
+                                                <IconButton
+                                                    color="primary"
+                                                    onClick={handleVoiceMessageSend}
+                                                    disabled={sendingFile}
+                                                    size="small"
+                                                >
+                                                    {sendingFile ? <CircularProgress size={20} /> : <SendIcon />}
+                                                </IconButton>
+                                            </Box>
+                                            <audio
+                                                ref={el => audioRefs.current['preview'] = el}
+                                                src={recordedAudio?.url}
+                                                onTimeUpdate={(e) => handleAudioProgress('preview', e)}
+                                                onEnded={() => handleAudioEnd('preview')}
+                                                style={{ display: 'none' }}
                                             />
-                                        ))}
-                                    </Box>
+                                        </Grid>
+                                    )}
                                 </Grid>
-                            )}
+                            </form>
+                        )}
+                    </Box>
+                </Paper>
+            )}
 
-                            {/* Recording preview UI */}
-                            {isRecordingComplete && (
-                                <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                                        <IconButton
-                                            color="primary"
-                                            onClick={() => {
-                                                handleAudioPlay('preview', recordedAudio?.url)
-                                            }}
-                                            size="small"
-                                        >
-                                            {playingAudio === 'preview' ? <PauseIcon /> : <PlayArrowIcon />}
-                                        </IconButton>
-                                        <Typography variant="body2">
-                                            {formatTime(recordingTime)}
-                                        </Typography>
-                                        <Box sx={{ flex: 1 }}>
-                                            <LinearProgress
-                                                variant="determinate"
-                                                value={previewAudioProgress} // Use previewAudioProgress for preview
-                                                sx={{ height: 4, borderRadius: 2 }}
-                                            />
-                                        </Box>
-                                    </Box>
-                                    <Box sx={{ display: 'flex', gap: 1 }}>
-                                        <IconButton
-                                            color="error"
-                                            onClick={deleteRecording}
-                                            size="small"
-                                        >
-                                            <DeleteIcon />
-                                        </IconButton>
-                                        <IconButton
-                                            color="primary"
-                                            onClick={handleVoiceMessageSend}
-                                            disabled={sendingFile}
-                                            size="small"
-                                        >
-                                            {sendingFile ? <CircularProgress size={20} /> : <SendIcon />}
-                                        </IconButton>
-                                    </Box>
-                                    <audio
-                                        ref={el => audioRefs.current['preview'] = el}
-                                        src={recordedAudio?.url}
-                                        onTimeUpdate={(e) => handleAudioProgress('preview', e)}
-                                        onEnded={() => handleAudioEnd('preview')}
-                                        style={{ display: 'none' }}
-                                    />
-                                </Grid>
-                            )}
-                        </Grid>
-                    </form>
-                    )}
-                </Box>
-            </Paper>
 
             {/* File Preview Modal */}
             <FilePreviewModal
@@ -1099,6 +1459,9 @@ export default function ChatBox({ chatId, otherUser }) {
                 onClose={closeFilePreview}
                 file={previewFile}
             />
+
+
+
             {/* Snackbar for new messages */}
             <Snackbar
                 open={showNewMessageSnackbar}

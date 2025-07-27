@@ -37,6 +37,7 @@ export default function Messages() {
   const router = useRouter();
   const { currentUser } = useAuth();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobileChat = useMediaQuery('(max-width:900px)');
 
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
@@ -139,17 +140,19 @@ export default function Messages() {
 
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pt: { xs: 2, md: 4 }, pb: 6 }}>
         <Container maxWidth="xl">
-          <Typography
-            variant="h4"
-            component="h1"
-            sx={{
-              mb: 4,
-              fontFamily: '"Cormorant Garamond", serif',
-              textAlign: { xs: 'center', md: 'left' }
-            }}
-          >
-            {t('messages.yourReadings')}
-          </Typography>
+          {!isMobileChat && (
+            <Typography
+              variant="h4"
+              component="h1"
+              sx={{
+                mb: 1,
+                fontFamily: '"Cormorant Garamond", serif',
+                textAlign: { xs: 'center', md: 'left' }
+              }}
+            >
+              {t('messages.yourReadings')}
+            </Typography>
+          )}
 
           {loading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', py: 10 }}>
@@ -313,48 +316,70 @@ export default function Messages() {
               }}>
                 {selectedChat ? (
                   <Box>
-                    {/* Mobile Back Button */}
-                    {isMobile && (
-                      <Box sx={{ mb: 2 }}>
-                        <IconButton
-                          onClick={handleBackToList}
-                          sx={{
-                            mr: 1,
-                            bgcolor: 'background.paper',
-                            boxShadow: 1,
-                            '&:hover': { bgcolor: 'background.paper' }
-                          }}
-                          size="small"
-                        >
-                          <ArrowBackIcon />
-                        </IconButton>
-                      </Box>
-                    )}
-
                     {/* Chat Header */}
                     <Paper sx={{ p: 2, mb: 2, borderRadius: 2 }}>
-                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Avatar
-                          src={selectedChat.otherParticipant?.photoURL}
-                          alt={selectedChat.otherParticipant?.displayName}
-                          sx={{ width: 40, height: 40, mr: 2 }}
-                        >
-                          {selectedChat.otherParticipant?.displayName?.[0] || 'A'}
-                        </Avatar>
-                        <Box>
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              fontFamily: '"Cormorant Garamond", serif',
-                              fontWeight: 600
-                            }}
+                      <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+                        <Box sx={{ display: 'flex', alignItems: 'center', flex: 1 }}>
+                          {/* Back Button for Mobile */}
+                          {isMobileChat && (
+                            <IconButton
+                              onClick={handleBackToList}
+                              sx={{
+                                mr: 2,
+                                bgcolor: 'background.paper',
+                                boxShadow: 1,
+                                '&:hover': { bgcolor: 'background.paper' }
+                              }}
+                              size="small"
+                            >
+                              <ArrowBackIcon />
+                            </IconButton>
+                          )}
+
+                          <Avatar
+                            src={selectedChat.otherParticipant?.photoURL}
+                            alt={selectedChat.otherParticipant?.displayName}
+                            sx={{ width: 40, height: 40, mr: 2 }}
                           >
-                            {selectedChat.otherParticipant?.displayName || 'Astrologer'}
-                          </Typography>
-                          <Typography variant="body2" color="text.secondary">
-                            Service: {SERVICE_TYPES[selectedChat.serviceType] || 'Consultation'}
-                          </Typography>
+                            {selectedChat.otherParticipant?.displayName?.[0] || 'A'}
+                          </Avatar>
+                          <Box sx={{ flex: 1 }}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                fontFamily: '"Cormorant Garamond", serif',
+                                fontWeight: 600,
+                                fontSize: isMobileChat ? '1.1rem' : '1.25rem'
+                              }}
+                            >
+                              {selectedChat.otherParticipant?.displayName || t('chat.astrologer')}
+                            </Typography>
+                            <Typography
+                              variant="body2"
+                              color="text.secondary"
+                              sx={{ fontSize: isMobileChat ? '0.8rem' : '0.875rem' }}
+                            >
+                              {t('chat.serviceLabel')} {t(`services.${selectedChat.serviceType}.title`) || t('chat.consultation')}
+                            </Typography>
+                          </Box>
                         </Box>
+
+                        {/* Title for Mobile */}
+                        {isMobileChat && (
+                          <Box sx={{ textAlign: 'right' }}>
+                            <Typography
+                              variant="body2"
+                              sx={{
+                                fontFamily: '"Cormorant Garamond", serif',
+                                fontWeight: 500,
+                                fontSize: '0.9rem',
+                                color: 'text.secondary'
+                              }}
+                            >
+                              {t('messages.yourReadings')}
+                            </Typography>
+                          </Box>
+                        )}
                       </Box>
                     </Paper>
 

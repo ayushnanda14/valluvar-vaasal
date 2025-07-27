@@ -42,241 +42,221 @@ const Footer = () => {
         pb: 4
       }}
     >
-      <Container maxWidth="lg" >
+      <Container maxWidth="lg">
         <Grid container spacing={4} sx={{
           display: 'flex',
           flexDirection: { xs: 'column', md: 'row' },
           alignItems: 'flex-start',
           width: '100%',
-          textAlign: { xs: 'center', md: 'left' },
-          justifyContent: { xs: 'center', md: 'space-between' }
+          textAlign: { xs: 'left', md: 'left' },
+          justifyContent: { xs: 'flex-start', md: 'space-between' }
         }}>
-          {/* Brand/Logo Section */}
+          {/* Quick Links - Left Side */}
           <Grid item xs={12} md={6} sx={{
             display: 'flex',
-            width: '100%',
             flexDirection: 'column',
-            alignItems: { xs: 'center', md: 'flex-start' }
+            alignItems: { xs: 'flex-start', md: 'flex-start' },
+            width: {xs: '100%', md: 'auto'}
           }}>
             <Typography
               variant="h6"
               sx={{
                 fontFamily: '"Cinzel", serif',
-                fontWeight: 600,
-                letterSpacing: '1px',
+                fontSize: '1.1rem',
                 mb: 2,
-                color: theme.palette.primary.dark
+                color: theme.palette.secondary.dark
               }}
             >
-              {t('brand')}
+              {t('footer.quickLinks')}
             </Typography>
-            <Typography
-              variant="body2"
-              sx={{
-                mb: 3,
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: '1rem',
-                maxWidth: { xs: '100%', md: '90%' }
-              }}
-            >
-              {t('footer.description')}
-            </Typography>
+            <List sx={{
+              display: 'flex',
+              flexDirection: { xs: 'row', md: 'column' },
+              alignItems: { xs: 'flex-start', md: 'flex-start' },
+              gap: { xs: 2, md: 0 }
+            }}>
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={Link}
+                  href="/about"
+                  sx={{
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': {
+                      color: theme.palette.secondary.main
+                    },
+                    width: 'max-content',
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary={t('navbar.about')} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={MuiLink}
+                  onClick={scrollToServices}
+                  sx={{
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': {
+                      color: theme.palette.secondary.main
+                    },
+                    width: 'max-content',
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary={t('navbar.services')} />
+                </ListItemButton>
+              </ListItem>
+              <ListItem disablePadding>
+                <ListItemButton
+                  component={Link}
+                  href="/testimonials"
+                  sx={{
+                    color: theme.palette.secondary.main,
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.7rem',
+                    textDecoration: 'underline',
+                    '&:hover': {
+                      color: theme.palette.primary.main,
+                      backgroundColor: 'transparent'
+                    },
+                    '&:visited': {
+                      color: theme.palette.secondary.main
+                    },
+                    width: 'max-content',
+                    padding: '0px'
+                  }}
+                >
+                  <ListItemText primary={t('footer.feedback')} />
+                </ListItemButton>
+              </ListItem>
+            </List>
           </Grid>
 
+          {/* Contact Us - Right Side */}
           <Grid item xs={12} md={6} sx={{
             display: 'flex',
-            flexDirection: { xs: 'column', sm: 'row' },
-            justifyContent: { xs: 'center', sm: 'space-between' },
-            alignItems: { xs: 'center', sm: 'flex-start' },
-            width: { xs: '100%', md: 'auto' },
-            gap: 4
+            flexDirection: 'column',
+            alignItems: { xs: 'flex-start', md: 'flex-start' },
+            width: { xs: '100%', md: 'auto' }
           }}>
-            {/* Quick Links */}
+            <Typography
+              variant="h6"
+              sx={{
+                fontFamily: '"Cinzel", serif',
+                fontSize: '1.1rem',
+                mb: 2,
+                color: theme.palette.secondary.dark
+              }}
+            >
+              {t('footer.contact')}
+            </Typography>
             <Box sx={{
               display: 'flex',
-              flexDirection: 'column',
-              alignItems: { xs: 'center', md: 'flex-start' }
+              flexDirection: { xs: 'row' },
+              gap: { xs: 2, md: 3 },
+              alignItems: { xs: 'flex-start', md: 'flex-start' },
+              width: '100%'
             }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem',
-                  mb: 2,
-                  color: theme.palette.secondary.dark
-                }}
-              >
-                {t('footer.quickLinks')}
-              </Typography>
-              <List sx={{
-                display: 'flex',
-                flexDirection: 'column',
-                alignItems: { xs: 'center', md: 'flex-start' }
-              }}>
-                <ListItem disablePadding>
-                  <ListItemButton
-                    component={Link}
-                    href="/about"
-                    sx={{
-                      color: theme.palette.secondary.main,
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '0.7rem',
-                      textDecoration: 'underline',
-                      '&:hover': {
-                        color: theme.palette.primary.main,
-                        backgroundColor: 'transparent'
-                      },
-                      '&:visited': {
-                        color: theme.palette.secondary.main
-                      },
-                      padding: '0px'
-                    }}
-                  >
-                    <ListItemText primary={t('navbar.about')} />
-                  </ListItemButton>
-                </ListItem>
-                <ListItem disablePadding>
-                  <ListItemButton
-                    component={MuiLink}
-                    onClick={scrollToServices}
-                    sx={{
-                      color: theme.palette.secondary.main,
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '0.7rem',
-                      textDecoration: 'underline',
-                      '&:hover': {
-                        color: theme.palette.primary.main,
-                        backgroundColor: 'transparent'
-                      },
-                      '&:visited': {
-                        color: theme.palette.secondary.main
-                      },
-                      padding: '0px'
-                    }}
-                  >
-                    <ListItemText primary={t('navbar.services')} />
-                  </ListItemButton>
-                </ListItem>
-                <ListItem disablePadding>
-                  <ListItemButton
-                    component={Link}
-                    href="/testimonials"
-                    sx={{
-                      color: theme.palette.secondary.main,
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '0.7rem',
-                      textDecoration: 'underline',
-                      '&:hover': {
-                        color: theme.palette.primary.main,
-                        backgroundColor: 'transparent'
-                      },
-                      '&:visited': {
-                        color: theme.palette.secondary.main
-                      },
-                      padding: '0px'
-                    }}
-                  >
-                    <ListItemText primary={t('footer.feedback')} />
-                  </ListItemButton>
-                </ListItem>
-              </List>
-            </Box>
-
-            {/* Contact */}
-            <Box sx={{
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: { xs: 'center', md: 'flex-start' }
-            }}>
-              <Typography
-                variant="h6"
-                sx={{
-                  fontFamily: '"Cinzel", serif',
-                  fontSize: '1.1rem',
-                  mb: 2,
-                  color: theme.palette.secondary.dark
-                }}
-              >
-                {t('footer.contact')}
-              </Typography>
+              {/* Cultural Hub Address */}
               <Box sx={{
                 display: 'flex',
                 flexDirection: 'column',
-                gap: 2,
-                alignItems: { xs: 'center', md: 'flex-start' }
+                gap: 0.5,
+                alignItems: { xs: 'flex-start', md: 'flex-start' },
+                flex: 1
               }}>
-                {/* Cultural Hub Address */}
-                <Box sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 0.5,
-                  alignItems: { xs: 'center', md: 'flex-start' }
-                }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      color: theme.palette.primary.dark
-                    }}
-                  >
-                    Cultural Hub Address
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    Shri Kamba Kamatchi Amman Kovil, <br />
-                    Pachaikoppanpatti, Thirali, <br />
-                    Thirumangalam, Madurai, <br />
-                    Tamil Nadu 625704
-                  </Typography>
-                </Box>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: theme.palette.primary.dark
+                  }}
+                >
+                  Cultural Hub Address
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Shri Kamba Kamatchi Amman Kovil, <br />
+                  Pachaikoppanpatti, Thirali, <br />
+                  Thirumangalam, Madurai, <br />
+                  Tamil Nadu 625704
+                </Typography>
+              </Box>
 
-                {/* Office Address */}
-                <Box sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 0.5,
-                  alignItems: { xs: 'center', md: 'flex-start' }
-                }}>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '1rem',
-                      fontWeight: 600,
-                      color: theme.palette.primary.dark
-                    }}
-                  >
-                    Office Address
-                  </Typography>
-                  <Typography
-                    variant="body2"
-                    sx={{
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontSize: '0.9rem'
-                    }}
-                  >
-                    Valluvar Vaasal, <br />
-                    Kamba Kamatchi Jothida Nilaiyam, <br />
-                    5/35/16A, Kamaraj Nagar West, Ward 15, <br />
-                    Palaiyampatti (Post), Aruppukottai (Tk), <br />
-                    Viruthunagar (Dt) - 626101
-                  </Typography>
-                </Box>
+              {/* Office Address */}
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5,
+                alignItems: { xs: 'flex-start', md: 'flex-start' },
+                flex: 1
+              }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem',
+                    fontWeight: 600,
+                    color: theme.palette.primary.dark
+                  }}
+                >
+                  Office Address
+                </Typography>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '0.9rem'
+                  }}
+                >
+                  Valluvar Vaasal, <br />
+                  Kamba Kamatchi Jothida Nilaiyam, <br />
+                  5/35/16A, Kamaraj Nagar West, Ward 15, <br />
+                  Palaiyampatti (Post), Aruppukottai (Tk), <br />
+                  Viruthunagar (Dt) - 626101
+                </Typography>
+              </Box>
 
-                {/* Contact Information */}
-                <Box sx={{
-                  display: 'flex',
-                  flexDirection: 'column',
-                  gap: 0.5,
-                  alignItems: { xs: 'center', md: 'flex-start' }
-                }}>
+              {/* Contact Information */}
+              <Box sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                gap: 0.5,
+                alignItems: { xs: 'flex-start', md: 'flex-start' },
+                flex: 1
+              }}>
+                <Typography
+                  variant="body2"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontSize: '1rem'
+                  }}
+                >
+                  Email: valluvarvaasal@gmail.com
+                </Typography>
+                <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5 }}>
                   <Typography
                     variant="body2"
                     sx={{
@@ -284,27 +264,15 @@ const Footer = () => {
                       fontSize: '1rem'
                     }}
                   >
-                    Email: valluvarvaasal@gmail.com
+                    Phone:
                   </Typography>
-                  <Box sx={{ display: 'flex', flexDirection: 'row', gap: 0.5 }}>
-
-                    <Typography
-                      variant="body2"
-                      sx={{
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1rem'
-                      }}
-                    >
-                      Phone:
+                  <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                    <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
+                      +91 94887 31792
                     </Typography>
-                    <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
-                      <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
-                        +91 94887 31792
-                      </Typography>
-                      <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
-                        +91 94887 36192
-                      </Typography>
-                    </Box>
+                    <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif', fontSize: '0.9rem' }}>
+                      +91 94887 36192
+                    </Typography>
                   </Box>
                 </Box>
               </Box>

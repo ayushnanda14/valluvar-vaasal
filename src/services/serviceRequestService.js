@@ -86,6 +86,10 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
     const userData = userDoc.data();
     const astrologerData = astrologerDoc.data();
     
+    // Calculate expiry timestamp (24 hours from now)
+    const expiryTimestamp = new Date();
+    expiryTimestamp.setHours(expiryTimestamp.getHours() + 24);
+    
     // Create the chat
     const chatRef = await addDoc(collection(db, 'chats'), {
       participants: [userId, astrologerId],
@@ -106,6 +110,14 @@ const createConversation = async (userId, astrologerId, serviceRequestId, servic
       status: 'active',
       createdAt: serverTimestamp(),
       updatedAt: serverTimestamp(),
+      expiryTimestamp: serverTimestamp(expiryTimestamp),
+      // Admin fields - will be assigned automatically or manually
+      adminId: null,
+      adminAssignmentHistory: [],
+      // Feedback fields
+      feedback: null,
+      // Extension history
+      extensionHistory: [],
       lastMessage: {
         text: `New ${SERVICE_TYPES[serviceType]} service request`,
         timestamp: serverTimestamp(),

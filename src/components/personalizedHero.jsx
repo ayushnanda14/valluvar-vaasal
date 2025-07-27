@@ -295,19 +295,37 @@ const PersonalizedHero = () => {
                 boxShadow: '0px 4px 20px rgba(0, 0, 0, 0.05)'
               }}
             >
-              <Typography
-                variant="h5"
-                gutterBottom
-                sx={{
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontWeight: 600,
-                  color: theme.palette.secondary.dark,
-                  mb: 2,
-                  fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.5rem' }
-                }}
-              >
-                {currentUser ? t('personalizedHero.readingsTitle') : t('personalizedHero.testimonialsTitle')}
-              </Typography>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+                <Typography
+                  variant="h5"
+                  sx={{
+                    fontFamily: '"Cormorant Garamond", serif',
+                    fontWeight: 600,
+                    color: theme.palette.secondary.dark,
+                    fontSize: { xs: '1.2rem', sm: '1.3rem', md: '1.5rem' }
+                  }}
+                >
+                  {currentUser ? t('personalizedHero.readingsTitle') : t('personalizedHero.testimonialsTitle')}
+                </Typography>
+                
+                {currentUser && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    size="small"
+                    onClick={scrollToServices}
+                    sx={{
+                      fontFamily: '"Cinzel", serif',
+                      textTransform: 'none',
+                      fontSize: { xs: '0.75rem', md: '0.875rem' },
+                      py: 0.5,
+                      px: 1.5
+                    }}
+                  >
+                    {t('personalizedHero.newReadingButton')}
+                  </Button>
+                )}
+              </Box>
 
               <Divider sx={{ mb: 2 }} />
 

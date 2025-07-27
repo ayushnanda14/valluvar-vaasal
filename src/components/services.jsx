@@ -76,14 +76,17 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
             display: 'flex',
             flexDirection: 'column',
             borderRadius: '16px',
-            overflow: 'hidden',
+            // overflow: 'hidden',
             boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
             position: 'relative',
             width: '100%',
             minHeight: cardMinHeight, // Dynamic min height
+            minWidth: isLoggedIn
+              ? { xs: '90vw', sm: '380px', md: '380px' }
+              : 'auto',
             maxWidth: isLoggedIn
               ? { xs: '100%', sm: '100%', md: '380px' }
-              : { xs: '100%', sm: '100%', md: '500px' },
+              : 'auto',
             '&:hover': {
               boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
               transform: 'translateY(-5px)',
@@ -309,8 +312,10 @@ const Services = () => {
           justifyContent="center"
           wrap="nowrap"
           sx={{
+            width: { xs: '100%', md: '110%'},
+            padding: '10px',
             overflowX: 'auto',
-            overflowY: 'hidden',
+            // overflowY: 'hidden',
             flexDirection: {
               xs: 'column', // mobile
               sm: 'column', // small tablets

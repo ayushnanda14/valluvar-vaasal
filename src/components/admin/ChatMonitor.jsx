@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { 
-  Box, 
-  Typography, 
-  Paper, 
+import {
+  Box,
+  Typography,
+  Paper,
   Button,
   Table,
   TableBody,
@@ -21,7 +21,22 @@ import {
   Link,
   Grid,
   Divider,
-  LinearProgress
+  LinearProgress,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  TextField,
+  Select,
+  MenuItem,
+  FormControl,
+  InputLabel,
+  Switch,
+  FormControlLabel,
+  Alert,
+  Rating,
+  Card,
+  CardContent
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
@@ -33,44 +48,89 @@ import VideoFileIcon from '@mui/icons-material/VideoFile';
 import AudioFileIcon from '@mui/icons-material/AudioFile';
 import PlayArrowIcon from '@mui/icons-material/PlayArrow';
 import PauseIcon from '@mui/icons-material/Pause';
-import { collection, query, where, orderBy, onSnapshot, doc } from 'firebase/firestore';
+import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
+import VisibilityIcon from '@mui/icons-material/Visibility';
+import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
+import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import SupportIcon from '@mui/icons-material/Support';
+import { collection, query, where, orderBy, onSnapshot, doc, getDocs, getDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import FilePreviewModal from '../FilePreviewModal';
 import { SERVICE_TYPES } from '@/utils/constants';
+import {
+  getAllAdmins,
+  autoAssignAdminToChat,
+  getAdminWorkload
+} from '../../services/adminService';
+import {
+  assignAdminToChat,
+  extendChatExpiry,
+  toggleFeedbackVisibility,
+  getChatExpiryStatus
+} from '../../services/chatService';
 
-const ChatMonitor = ({ userId }) => {
+const ChatMonitor = ({ userId, userType }) => {
   const theme = useTheme();
+
+  // Debug log to check if userId is available
+  useEffect(() => {
+    console.log('ChatMonitor userId:', userId);
+  }, [userId]);
+
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
   const messagesContainerRef = useRef(null);
   const messagesEndRef = useRef(null);
-  
+
   // Modal state for file preview
   const [modalOpen, setModalOpen] = useState(false);
   const [previewFile, setPreviewFile] = useState(null);
-  
+
   // Voice message playback states
   const [playingAudio, setPlayingAudio] = useState(null);
   const [audioProgress, setAudioProgress] = useState({});
   const audioRefs = useRef({});
-  
+
+  // Admin features state
+  const [admins, setAdmins] = useState([]);
+  const [adminAssignmentDialog, setAdminAssignmentDialog] = useState(false);
+  const [extensionDialog, setExtensionDialog] = useState(false);
+  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [extensionHours, setExtensionHours] = useState(24);
+  const [loadingAdminAction, setLoadingAdminAction] = useState(false);
+  const [chatExpiryStatus, setChatExpiryStatus] = useState(null);
+
+  // Admin-client chat state
+  const [adminChats, setAdminChats] = useState({}); // Map of mainChatId -> adminChatId
+  const [showAdminChat, setShowAdminChat] = useState(false);
+  const [selectedAdminChatId, setSelectedAdminChatId] = useState(null);
+  const [adminChatMessages, setAdminChatMessages] = useState([]);
+  const [loadingAdminChat, setLoadingAdminChat] = useState(false);
+  const [adminMessageText, setAdminMessageText] = useState('');
+  const [sendingAdminMessage, setSendingAdminMessage] = useState(false);
+  const adminChatMessagesEndRef = useRef(null);
+
+  // Admin notifications state
+  const [notifications, setNotifications] = useState([]);
+  const [showNotifications, setShowNotifications] = useState(false);
+
   // Effect for fetching chats list with real-time updates
   useEffect(() => {
     let unsubscribe;
-    
+
     const fetchChats = async () => {
       try {
         setLoading(true);
-        
+
         // Build the query based on whether we have a userId filter
         let q;
         const chatsRef = collection(db, 'chats');
-        
-        if (userId) {
+
+        if (userId && userType !== 'admin') {
           // If userId is provided, filter chats where the user is either client or astrologer
           q = query(
-            chatsRef, 
+            chatsRef,
             where('participants', 'array-contains', userId),
             orderBy('updatedAt', 'desc')
           );
@@ -78,18 +138,51 @@ const ChatMonitor = ({ userId }) => {
           // Otherwise, get all chats
           q = query(chatsRef, orderBy('updatedAt', 'desc'));
         }
-        
+
         // Set up real-time listener
-        unsubscribe = onSnapshot(q, (querySnapshot) => {
+        unsubscribe = onSnapshot(q, async (querySnapshot) => {
           const chatsList = [];
-          querySnapshot.forEach((doc) => {
-            chatsList.push({
+
+          // Process each chat and fetch user data
+          for (const doc of querySnapshot.docs) {
+            const chatData = doc.data();
+            const chat = {
               id: doc.id,
-              ...doc.data()
-            });
-          });
-          
+              ...chatData
+            };
+
+            // Try to fetch user names if not already available
+            if (!chat.clientName && chat.clientId) {
+              try {
+                const clientDocRef = doc(db, 'users', chat.clientId);
+                const clientDoc = await getDoc(clientDocRef);
+                if (clientDoc.exists()) {
+                  const clientData = clientDoc.data();
+                  chat.clientName = clientData.displayName || clientData.email || 'Unknown Client';
+                }
+              } catch (error) {
+                console.error('Error fetching client data:', error);
+              }
+            }
+
+            if (!chat.astrologerName && chat.astrologerId) {
+              try {
+                const astrologerDocRef = doc(db, 'users', chat.astrologerId);
+                const astrologerDoc = await getDoc(astrologerDocRef);
+                if (astrologerDoc.exists()) {
+                  const astrologerData = astrologerDoc.data();
+                  chat.astrologerName = astrologerData.displayName || astrologerData.email || 'Unknown Astrologer';
+                }
+              } catch (error) {
+                console.error('Error fetching astrologer data:', error);
+              }
+            }
+
+            chatsList.push(chat);
+          }
+
           setChats(chatsList);
+          console.log('Chats loaded:', chatsList);
           setLoading(false);
         }, (error) => {
           console.error('Error in chats listener:', error);
@@ -100,9 +193,9 @@ const ChatMonitor = ({ userId }) => {
         setLoading(false);
       }
     };
-    
+
     fetchChats();
-    
+
     // Clean up listener when component unmounts
     return () => {
       if (unsubscribe) {
@@ -110,25 +203,25 @@ const ChatMonitor = ({ userId }) => {
       }
     };
   }, [userId]);
-  
+
   // Effect for fetching selected chat messages with real-time updates
   useEffect(() => {
     let messagesUnsubscribe;
-    
+
     const fetchChatMessages = async (chatId) => {
       if (!chatId) return;
-      
+
       try {
         // Get messages subcollection with real-time updates
         const messagesRef = collection(db, 'chats', chatId, 'messages');
         const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
-        
+
         messagesUnsubscribe = onSnapshot(messagesQuery, (messagesSnapshot) => {
           const messages = messagesSnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
           }));
-          
+
           // Get the chat document for metadata
           const chatDocRef = doc(db, 'chats', chatId);
           const chatUnsubscribe = onSnapshot(chatDocRef, (chatDoc) => {
@@ -138,28 +231,32 @@ const ChatMonitor = ({ userId }) => {
                 id: chatDoc.id,
                 messages: messages
               });
-              
+
               // Scroll to bottom after the messages are loaded
               scrollToBottom();
             }
           });
-          
+
+          // Store the original messagesUnsubscribe function
+          const originalMessagesUnsubscribe = messagesUnsubscribe;
+
           // Update the cleanup function to unsubscribe from both listeners
           messagesUnsubscribe = () => {
             chatUnsubscribe();
-            messagesUnsubscribe();
+            originalMessagesUnsubscribe();
           };
         });
       } catch (error) {
         console.error('Error setting up chat messages listener:', error);
       }
     };
-    
+
     // If there's a selected chat ID, fetch its messages
+    console.log('selectedChat', selectedChat);
     if (selectedChat?.id) {
       fetchChatMessages(selectedChat.id);
     }
-    
+
     // Clean up listener when component unmounts or selected chat changes
     return () => {
       if (messagesUnsubscribe) {
@@ -167,7 +264,7 @@ const ChatMonitor = ({ userId }) => {
       }
     };
   }, [selectedChat?.id]);
-  
+
   // Scroll to bottom of messages
   const scrollToBottom = () => {
     setTimeout(() => {
@@ -177,28 +274,427 @@ const ChatMonitor = ({ userId }) => {
       }
     }, 100);
   };
-  
+
   const handleSelectChat = (chat) => {
     setSelectedChat(chat);
   };
-  
+
   const handleBackToChats = () => {
     setSelectedChat(null);
   };
-  
+
   const openFilePreview = (fileData) => {
     setPreviewFile(fileData);
     setModalOpen(true);
   };
-  
+
   const closeFilePreview = () => {
     setModalOpen(false);
+  };
+
+  // Load admins for assignment
+  useEffect(() => {
+    const loadAdmins = async () => {
+      try {
+        const adminsList = await getAllAdmins();
+        setAdmins(adminsList);
+      } catch (error) {
+        console.error('Error loading admins:', error);
+      }
+    };
+
+    loadAdmins();
+  }, []);
+
+  // Listen for admin-client chat notifications
+  useEffect(() => {
+    if (!userId) return; // Only listen if we have a specific admin user
+
+    let unsubscribe;
+
+    const listenForAdminChats = async () => {
+      try {
+        // Query admin-client chats where this admin is assigned
+        const adminChatsQuery = query(
+          collection(db, 'adminClientChats'),
+          where('adminId', '==', userId),
+          where('status', '==', 'active'),
+          orderBy('createdAt', 'desc')
+        );
+
+        unsubscribe = onSnapshot(adminChatsQuery, (querySnapshot) => {
+          const newNotifications = [];
+
+          querySnapshot.forEach((doc) => {
+            const chatData = doc.data();
+            // Check if this is a new chat (created in the last 5 minutes)
+            const chatTime = chatData.createdAt?.toDate() || new Date();
+            const fiveMinutesAgo = new Date(Date.now() - 5 * 60 * 1000);
+
+            if (chatTime > fiveMinutesAgo) {
+              newNotifications.push({
+                id: doc.id,
+                type: 'new_admin_chat',
+                message: `New client support request from ${chatData.clientName || 'Client'}`,
+                chatId: doc.id,
+                mainChatId: chatData.mainChatId,
+                timestamp: chatData.createdAt,
+                read: false
+              });
+            }
+          });
+
+          if (newNotifications.length > 0) {
+            setNotifications(prev => [...newNotifications, ...prev]);
+            setShowNotifications(true);
+          }
+        });
+      } catch (error) {
+        console.error('Error listening for admin chat notifications:', error);
+      }
+    };
+
+    listenForAdminChats();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [userId]);
+
+  // Listen for new messages in admin-client chats
+  useEffect(() => {
+    if (!userId) return;
+
+    let unsubscribe;
+
+    const listenForNewMessages = async () => {
+      try {
+        // Get all admin-client chats for this admin
+        const adminChatsQuery = query(
+          collection(db, 'adminClientChats'),
+          where('adminId', '==', userId),
+          where('status', '==', 'active')
+        );
+
+        const adminChatsSnapshot = await getDocs(adminChatsQuery);
+
+        // Set up listeners for each admin chat's messages
+        const unsubscribers = [];
+
+        adminChatsSnapshot.forEach((chatDoc) => {
+          const messagesQuery = query(
+            collection(db, 'adminClientChats', chatDoc.id, 'messages'),
+            orderBy('timestamp', 'desc'),
+            where('senderId', '!=', userId) // Only listen for messages not from this admin
+          );
+
+          const unsubscribe = onSnapshot(messagesQuery, (messagesSnapshot) => {
+            messagesSnapshot.docChanges().forEach((change) => {
+              if (change.type === 'added') {
+                const messageData = change.doc.data();
+                const messageTime = messageData.timestamp?.toDate() || new Date();
+                const oneMinuteAgo = new Date(Date.now() - 60 * 1000);
+
+                // Only notify for very recent messages (last minute)
+                if (messageTime > oneMinuteAgo && messageData.senderId !== userId) {
+                  const newNotification = {
+                    id: `${chatDoc.id}_${change.doc.id}`,
+                    type: 'new_message',
+                    message: `New message from client in support chat`,
+                    chatId: chatDoc.id,
+                    mainChatId: chatDoc.data().mainChatId,
+                    timestamp: messageData.timestamp,
+                    read: false
+                  };
+
+                  setNotifications(prev => [newNotification, ...prev]);
+                  setShowNotifications(true);
+                }
+              }
+            });
+          });
+
+          unsubscribers.push(unsubscribe);
+        });
+
+        unsubscribe = () => {
+          unsubscribers.forEach(unsub => unsub());
+        };
+      } catch (error) {
+        console.error('Error listening for new admin chat messages:', error);
+      }
+    };
+
+    listenForNewMessages();
+
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
+  }, [userId]);
+
+  // Load admin-client chats for all main chats
+  useEffect(() => {
+    const loadAdminChats = async () => {
+      try {
+        const adminChatsQuery = query(
+          collection(db, 'adminClientChats'),
+          where('status', '==', 'active')
+        );
+
+        const adminChatsSnapshot = await getDocs(adminChatsQuery);
+        const adminChatsMap = {};
+
+        adminChatsSnapshot.forEach((doc) => {
+          const chatData = doc.data();
+          if (chatData.mainChatId) {
+            adminChatsMap[chatData.mainChatId] = {
+              id: doc.id,
+              ...chatData
+            };
+          }
+        });
+
+        setAdminChats(adminChatsMap);
+        console.log('Admin chats loaded:', adminChatsMap);
+      } catch (error) {
+        console.error('Error loading admin chats:', error);
+      }
+    };
+
+    loadAdminChats();
+  }, [chats]); // Reload when chats change
+
+  // Get chat expiry status
+  useEffect(() => {
+    const loadExpiryStatus = async () => {
+      if (selectedChat?.id) {
+        try {
+          const status = await getChatExpiryStatus(selectedChat.id);
+          setChatExpiryStatus(status);
+        } catch (error) {
+          console.error('Error loading expiry status:', error);
+        }
+      }
+    };
+
+    loadExpiryStatus();
+  }, [selectedChat?.id]);
+
+  // Handle admin assignment
+  const handleAssignAdmin = async () => {
+    if (!selectedChat?.id || !selectedAdmin) return;
+
+    setLoadingAdminAction(true);
+    try {
+      await assignAdminToChat(selectedChat.id, selectedAdmin, 'manual');
+      setAdminAssignmentDialog(false);
+      setSelectedAdmin('');
+      // Refresh the selected chat to show updated admin
+      const updatedChat = { ...selectedChat, adminId: selectedAdmin };
+      setSelectedChat(updatedChat);
+    } catch (error) {
+      console.error('Error assigning admin:', error);
+    } finally {
+      setLoadingAdminAction(false);
+    }
+  };
+
+  // Handle auto-assign admin
+  const handleAutoAssignAdmin = async () => {
+    if (!selectedChat?.id) return;
+
+    setLoadingAdminAction(true);
+    try {
+      const assignedAdmin = await autoAssignAdminToChat(selectedChat.id);
+      setAdminAssignmentDialog(false);
+      // Refresh the selected chat to show updated admin
+      const updatedChat = { ...selectedChat, adminId: assignedAdmin.id };
+      setSelectedChat(updatedChat);
+    } catch (error) {
+      console.error('Error auto-assigning admin:', error);
+    } finally {
+      setLoadingAdminAction(false);
+    }
+  };
+
+  // Handle chat extension
+  const handleExtendChat = async () => {
+    if (!selectedChat?.id) return;
+
+    setLoadingAdminAction(true);
+    try {
+      await extendChatExpiry(selectedChat.id, extensionHours, 'admin');
+      setExtensionDialog(false);
+      setExtensionHours(24);
+      // Refresh expiry status
+      const status = await getChatExpiryStatus(selectedChat.id);
+      setChatExpiryStatus(status);
+    } catch (error) {
+      console.error('Error extending chat:', error);
+    } finally {
+      setLoadingAdminAction(false);
+    }
+  };
+
+  // Handle feedback visibility toggle
+  const handleToggleFeedbackVisibility = async (visible) => {
+    if (!selectedChat?.id) return;
+
+    try {
+      await toggleFeedbackVisibility(selectedChat.id, visible);
+      // Refresh the selected chat
+      const updatedChat = {
+        ...selectedChat,
+        feedback: {
+          ...selectedChat.feedback,
+          visibleToAstrologer: visible
+        }
+      };
+      setSelectedChat(updatedChat);
+    } catch (error) {
+      console.error('Error toggling feedback visibility:', error);
+    }
+  };
+
+  // Handle opening admin-client chat
+  const handleOpenAdminChat = (mainChatId) => {
+    const adminChat = adminChats[mainChatId];
+    if (adminChat) {
+      setSelectedAdminChatId(adminChat.id);
+      setShowAdminChat(true);
+      loadAdminChatMessages(adminChat.id);
+    }
+  };
+
+  // Load admin chat messages
+  const loadAdminChatMessages = async (adminChatId) => {
+    if (!adminChatId) return;
+
+    try {
+      setLoadingAdminChat(true);
+
+      const messagesRef = collection(db, 'adminClientChats', adminChatId, 'messages');
+      const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
+
+      const unsubscribe = onSnapshot(messagesQuery, (messagesSnapshot) => {
+        const messages = messagesSnapshot.docs.map(doc => ({
+          id: doc.id,
+          ...doc.data()
+        }));
+
+        setAdminChatMessages(messages);
+        setLoadingAdminChat(false);
+
+        // Scroll to bottom after messages load
+        setTimeout(() => {
+          if (adminChatMessagesEndRef.current) {
+            adminChatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      });
+
+      // Store unsubscribe function for cleanup
+      return unsubscribe;
+    } catch (error) {
+      console.error('Error loading admin chat messages:', error);
+      setLoadingAdminChat(false);
+    }
+  };
+
+  // Send admin message to client
+  const sendAdminMessage = async (messageText) => {
+    if (!selectedAdminChatId || !messageText.trim() || !userId) {
+      console.error('Missing required data:', { selectedAdminChatId, messageText, userId });
+      return;
+    }
+
+    try {
+      setSendingAdminMessage(true);
+      const messagesRef = collection(db, 'adminClientChats', selectedAdminChatId, 'messages');
+      await addDoc(messagesRef, {
+        text: messageText.trim(),
+        senderId: userId,
+        timestamp: serverTimestamp(),
+        type: 'text'
+      });
+      setAdminMessageText(''); // Clear input after sending
+    } catch (error) {
+      console.error('Error sending admin message:', error);
+    } finally {
+      setSendingAdminMessage(false);
+    }
+  };
+
+  // Handle admin message form submission
+  const handleAdminMessageSubmit = (e) => {
+    e.preventDefault();
+    if (adminMessageText.trim()) {
+      sendAdminMessage(adminMessageText);
+    }
+  };
+
+  // Handle resolving admin chat
+  const handleResolveAdminChat = async () => {
+    if (!selectedAdminChatId) return;
+
+    try {
+      setLoadingAdminAction(true);
+
+      // Mark admin chat as resolved
+      const { markAdminChatResolved } = await import('../../services/chatService');
+      await markAdminChatResolved(selectedAdminChatId);
+
+      // Add a system message to indicate resolution
+      const messagesRef = collection(db, 'adminClientChats', selectedAdminChatId, 'messages');
+      await addDoc(messagesRef, {
+        text: 'This support conversation has been resolved by the admin.',
+        senderId: 'system',
+        timestamp: serverTimestamp(),
+        type: 'text'
+      });
+
+      // Close the admin chat panel
+      handleCloseAdminChat();
+
+      // Refresh admin chats list
+      const adminChatsQuery = query(
+        collection(db, 'adminClientChats'),
+        where('status', '==', 'active')
+      );
+      const adminChatsSnapshot = await getDocs(adminChatsQuery);
+      const adminChatsMap = {};
+      adminChatsSnapshot.forEach((doc) => {
+        const chatData = doc.data();
+        if (chatData.mainChatId) {
+          adminChatsMap[chatData.mainChatId] = {
+            id: doc.id,
+            ...chatData
+          };
+        }
+      });
+      setAdminChats(adminChatsMap);
+
+    } catch (error) {
+      console.error('Error resolving admin chat:', error);
+    } finally {
+      setLoadingAdminAction(false);
+    }
+  };
+
+  // Handle closing admin-client chat
+  const handleCloseAdminChat = () => {
+    setShowAdminChat(false);
+    setSelectedAdminChatId(null);
   };
 
   // Helper function to get appropriate icon for file type
   const getFileIcon = (fileType) => {
     if (!fileType) return <InsertDriveFileIcon />;
-    
+
     if (fileType.startsWith('image/')) {
       return <ImageIcon />;
     } else if (fileType === 'application/pdf') {
@@ -211,7 +707,7 @@ const ChatMonitor = ({ userId }) => {
       return <DescriptionIcon />;
     }
   };
-  
+
   // Handle audio playback
   const handleAudioPlay = (messageId, audioUrl) => {
     const currentAudioRef = audioRefs.current[messageId];
@@ -324,7 +820,7 @@ const ChatMonitor = ({ userId }) => {
       </Box>
     );
   }
-  
+
   if (selectedChat) {
     return (
       <Box>
@@ -335,13 +831,26 @@ const ChatMonitor = ({ userId }) => {
         >
           Back to All Chats
         </Button>
-        
+
+        {/* Admin Chat Button */}
+        {adminChats[selectedChat.id] && (
+          <Button
+            variant="contained"
+            color="warning"
+            startIcon={<SupportIcon />}
+            onClick={() => handleOpenAdminChat(selectedChat.id)}
+            sx={{ mb: 2, ml: 2 }}
+          >
+            Open Admin Support Chat
+          </Button>
+        )}
+
         <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <Avatar sx={{ mr: 1 }}>
               <PersonIcon />
             </Avatar>
-            <Box>
+            <Box sx={{ flex: 1 }}>
               <Typography variant="h6">
                 {selectedChat.clientName || 'Client'} and {selectedChat.astrologerName || 'Astrologer'}
               </Typography>
@@ -351,203 +860,581 @@ const ChatMonitor = ({ userId }) => {
               <Typography variant="body2" color="text.secondary">
                 Started: {selectedChat.createdAt?.toDate().toLocaleString() || 'Unknown date'}
               </Typography>
+              {chatExpiryStatus && (
+                <Typography variant="body2" color="text.secondary">
+                  Status: {chatExpiryStatus.isExpired ? 'Expired' : 'Active'}
+                  {!chatExpiryStatus.isExpired && chatExpiryStatus.timeUntilExpiry > 0 && (
+                    ` (${Math.floor(chatExpiryStatus.timeUntilExpiry / (1000 * 60 * 60))}h ${Math.floor((chatExpiryStatus.timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60))}m remaining)`
+                  )}
+                </Typography>
+              )}
+            </Box>
+
+            {/* Admin Action Buttons */}
+            <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+              {/* Admin Assignment */}
+              <Tooltip title="Assign Admin">
+                <IconButton
+                  color="primary"
+                  onClick={() => setAdminAssignmentDialog(true)}
+                  disabled={loadingAdminAction}
+                >
+                  <AdminPanelSettingsIcon />
+                </IconButton>
+              </Tooltip>
+
+              {/* Chat Extension */}
+              <Tooltip title="Extend Chat">
+                <IconButton
+                  color="primary"
+                  onClick={() => setExtensionDialog(true)}
+                  disabled={loadingAdminAction}
+                >
+                  <AccessTimeIcon />
+                </IconButton>
+              </Tooltip>
+
+              {/* Feedback Visibility Toggle */}
+              {selectedChat.feedback && (
+                <Tooltip title={selectedChat.feedback.visibleToAstrologer ? "Hide from Astrologer" : "Show to Astrologer"}>
+                  <IconButton
+                    color="primary"
+                    onClick={() => handleToggleFeedbackVisibility(!selectedChat.feedback.visibleToAstrologer)}
+                    disabled={loadingAdminAction}
+                  >
+                    {selectedChat.feedback.visibleToAstrologer ? <VisibilityIcon /> : <VisibilityOffIcon />}
+                  </IconButton>
+                </Tooltip>
+              )}
             </Box>
           </Box>
-        </Paper>
-        
-        {/* ChatBox-style Messages Container */}
-        <Paper 
-          sx={{ 
-            height: '70vh', 
-            display: 'flex', 
-            flexDirection: 'column',
-            width: '100%',
-            maxWidth: '100%'
-          }}
-        >
-          <Box 
-            ref={messagesContainerRef} 
-            sx={{ 
-              flex: 1, 
-              overflow: 'auto', 
-              p: 2,
-              width: '100%',
-              transition: 'none'
-            }}
-          >
-            {selectedChat.messages && selectedChat.messages.length > 0 ? (
-              <List>
-                {selectedChat.messages.map((message, index) => {
-                  const isClient = message.senderId === selectedChat.clientId;
-                  const isSystem = message.senderId === 'system';
-                  const senderName = isClient 
-                    ? selectedChat.clientName || 'Client' 
-                    : isSystem 
-                      ? 'System' 
-                      : selectedChat.astrologerName || 'Astrologer';
-                  
-                  return (
-                    <ListItem
-                      key={index}
-                      sx={{
-                        flexDirection: 'column',
-                        alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
-                        p: 1
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          maxWidth: '80%',
-                          display: 'flex',
-                          flexDirection: 'column',
-                          alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
-                          width: '100%'
-                        }}
-                      >
-                        {/* Sender name */}
-                        <Typography 
-                          variant="caption" 
-                          sx={{ 
-                            mb: 0.5,
-                            fontWeight: 'medium',
-                            color: isSystem ? 'text.secondary' : 'primary.main'
-                          }}
-                        >
-                          {senderName}
-                        </Typography>
-                        
-                        {/* Message bubble */}
-                        <Paper
-                          elevation={0}
-                          sx={{
-                            p: 2,
-                            borderRadius: 2,
-                            bgcolor: isSystem 
-                              ? 'background.paper'
-                              : isClient 
-                                ? '#f0f0f0' 
-                                : theme.palette.primary.light,
-                            color: isSystem 
-                              ? 'text.secondary'
-                              : isClient 
-                                ? 'text.primary' 
-                                : 'white',
-                            border: isSystem ? '1px dashed #ccc' : 'none',
-                            width: 'fit-content',
-                            maxWidth: '100%'
-                          }}
-                        >
-                          {/* Voice message */}
-                          {message.type === 'voice' && message.voiceReference && (
-                            renderVoiceMessage(message)
-                          )}
 
-                          {/* Message text (only show if not a voice message) */}
-                          {message.type !== 'voice' && (
-                            <Typography variant="body1">{message.text}</Typography>
-                          )}
-                          
-                          {/* Single file reference */}
-                          {message.fileReference && (
-                            <Box sx={{ mt: 1 }}>
-                              <Button
-                                startIcon={getFileIcon(message.fileReference.type)}
-                                size="small"
-                                variant="text"
-                                onClick={() => openFilePreview(message.fileReference)}
-                                sx={{ 
-                                  color: theme.palette.primary.main,
-                                  textDecoration: 'underline',
-                                  textTransform: 'none'
-                                }}
-                              >
-                                {message.fileReference.name}
-                              </Button>
-                            </Box>
-                          )}
-                          
-                          {/* Multiple file references */}
-                          {message.fileReferences && message.fileReferences.length > 0 && (
-                            <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column' }}>
-                              {message.fileReferences.map((fileRef, fileIndex) => (
-                                <Button
-                                  key={fileIndex}
-                                  startIcon={getFileIcon(fileRef.type)}
-                                  size="small"
-                                  variant="text"
-                                  onClick={() => openFilePreview(fileRef)}
-                                  sx={{ 
-                                    color: theme.palette.primary.main,
-                                    textDecoration: 'underline',
-                                    textTransform: 'none',
-                                    justifyContent: 'flex-start',
-                                    mb: 0.5
-                                  }}
-                                >
-                                  {fileRef.name}
-                                </Button>
-                              ))}
-                            </Box>
-                          )}
-                        </Paper>
-                        
-                        {/* Timestamp */}
-                        <Typography 
-                          variant="caption" 
-                          color="text.secondary"
-                          sx={{ mt: 0.5 }}
-                        >
-                          {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
-                        </Typography>
-                      </Box>
-                    </ListItem>
-                  );
-                })}
-                <div ref={messagesEndRef} />
-              </List>
-            ) : (
-              <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                <Typography variant="body1" color="text.secondary">
-                  No messages in this conversation
+          {/* Admin Assignment Status */}
+          {selectedChat.adminId && (
+            <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
+              <Typography variant="body2" color="white">
+                Assigned Admin: {admins.find(a => a.id === selectedChat.adminId)?.displayName || 'Unknown'}
+              </Typography>
+            </Box>
+          )}
+
+          {/* Feedback Display */}
+          {selectedChat.feedback && (
+            <Box sx={{ mt: 1, p: 1, bgcolor: 'background.paper', borderRadius: 1, border: '1px solid #e0e0e0' }}>
+              <Typography variant="body2" fontWeight="bold" gutterBottom>
+                Client Feedback:
+              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
+                <Rating value={selectedChat.feedback.rating} readOnly size="small" />
+                <Typography variant="body2" sx={{ ml: 1 }}>
+                  {selectedChat.feedback.rating}/5 stars
                 </Typography>
               </Box>
-            )}
-          </Box>
-          
-          {/* Admin message footer - shows this is monitoring mode */}
-          <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', bgcolor: '#f9f9f9' }}>
-            <Typography 
-              variant="body2" 
-              color="text.secondary" 
-              sx={{ textAlign: 'center', fontStyle: 'italic' }}
-            >
-              Admin monitoring mode - Read only
-            </Typography>
-          </Box>
+              {selectedChat.feedback.comment && (
+                <Typography variant="body2" color="text.secondary">
+                  "{selectedChat.feedback.comment}"
+                </Typography>
+              )}
+              <Typography variant="caption" color="text.secondary">
+                Submitted: {selectedChat.feedback.submittedAt?.toDate().toLocaleString()}
+              </Typography>
+            </Box>
+          )}
         </Paper>
-        
+
+        {/* Chat Display Area */}
+        <Box sx={{ display: 'flex', gap: 2, height: '70vh' }}>
+          {/* Main Chat */}
+          <Paper
+            sx={{
+              flex: showAdminChat ? 1 : 1,
+              display: 'flex',
+              flexDirection: 'column',
+              width: '100%',
+              maxWidth: '100%'
+            }}
+          >
+            <Box
+              ref={messagesContainerRef}
+              sx={{
+                flex: 1,
+                overflow: 'auto',
+                p: 2,
+                width: '100%',
+                transition: 'none'
+              }}
+            >
+              {selectedChat.messages && selectedChat.messages.length > 0 ? (
+                <List>
+                  {selectedChat.messages.map((message, index) => {
+                    const isClient = message.senderId === selectedChat.clientId;
+                    const isSystem = message.senderId === 'system';
+                    const senderName = isClient
+                      ? selectedChat.clientName || 'Client'
+                      : isSystem
+                        ? 'System'
+                        : selectedChat.astrologerName || 'Astrologer';
+
+                    return (
+                      <ListItem
+                        key={index}
+                        sx={{
+                          flexDirection: 'column',
+                          alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
+                          p: 1
+                        }}
+                      >
+                        <Box
+                          sx={{
+                            maxWidth: '80%',
+                            display: 'flex',
+                            flexDirection: 'column',
+                            alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
+                            width: '100%'
+                          }}
+                        >
+                          {/* Sender name */}
+                          <Typography
+                            variant="caption"
+                            sx={{
+                              mb: 0.5,
+                              fontWeight: 'medium',
+                              color: isSystem ? 'text.secondary' : 'primary.main'
+                            }}
+                          >
+                            {senderName}
+                          </Typography>
+
+                          {/* Message bubble */}
+                          <Paper
+                            elevation={0}
+                            sx={{
+                              p: 2,
+                              borderRadius: 2,
+                              bgcolor: isSystem
+                                ? 'background.paper'
+                                : isClient
+                                  ? '#f0f0f0'
+                                  : theme.palette.primary.light,
+                              color: isSystem
+                                ? 'text.secondary'
+                                : isClient
+                                  ? 'text.primary'
+                                  : 'white',
+                              border: isSystem ? '1px dashed #ccc' : 'none',
+                              width: 'fit-content',
+                              maxWidth: '100%'
+                            }}
+                          >
+                            {/* Voice message */}
+                            {message.type === 'voice' && message.voiceReference && (
+                              renderVoiceMessage(message)
+                            )}
+
+                            {/* Message text (only show if not a voice message) */}
+                            {message.type !== 'voice' && (
+                              <Typography variant="body1">{message.text}</Typography>
+                            )}
+
+                            {/* Single file reference */}
+                            {message.fileReference && (
+                              <Box sx={{ mt: 1 }}>
+                                <Button
+                                  startIcon={getFileIcon(message.fileReference.type)}
+                                  size="small"
+                                  variant="text"
+                                  onClick={() => openFilePreview(message.fileReference)}
+                                  sx={{
+                                    color: theme.palette.primary.main,
+                                    textDecoration: 'underline',
+                                    textTransform: 'none'
+                                  }}
+                                >
+                                  {message.fileReference.name}
+                                </Button>
+                              </Box>
+                            )}
+
+                            {/* Multiple file references */}
+                            {message.fileReferences && message.fileReferences.length > 0 && (
+                              <Box sx={{ mt: 1, display: 'flex', flexDirection: 'column' }}>
+                                {message.fileReferences.map((fileRef, fileIndex) => (
+                                  <Button
+                                    key={fileIndex}
+                                    startIcon={getFileIcon(fileRef.type)}
+                                    size="small"
+                                    variant="text"
+                                    onClick={() => openFilePreview(fileRef)}
+                                    sx={{
+                                      color: theme.palette.primary.main,
+                                      textDecoration: 'underline',
+                                      textTransform: 'none',
+                                      justifyContent: 'flex-start',
+                                      mb: 0.5
+                                    }}
+                                  >
+                                    {fileRef.name}
+                                  </Button>
+                                ))}
+                              </Box>
+                            )}
+                          </Paper>
+
+                          {/* Timestamp */}
+                          <Typography
+                            variant="caption"
+                            color="text.secondary"
+                            sx={{ mt: 0.5 }}
+                          >
+                            {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                          </Typography>
+                        </Box>
+                      </ListItem>
+                    );
+                  })}
+                  <div ref={messagesEndRef} />
+                </List>
+              ) : (
+                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                  <Typography variant="body1" color="text.secondary">
+                    No messages in this conversation
+                  </Typography>
+                </Box>
+              )}
+            </Box>
+
+            {/* Admin message footer - shows this is monitoring mode */}
+            <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', bgcolor: '#f9f9f9' }}>
+              <Typography
+                variant="body2"
+                color="text.secondary"
+                sx={{ textAlign: 'center', fontStyle: 'italic' }}
+              >
+                Admin monitoring mode - Read only
+              </Typography>
+            </Box>
+          </Paper>
+
+          {/* Admin Chat Panel */}
+          {showAdminChat && selectedAdminChatId && (
+            <Paper
+              sx={{
+                flex: 1,
+                display: 'flex',
+                flexDirection: 'column',
+                width: '100%',
+                maxWidth: '100%'
+              }}
+            >
+              <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
+                    Admin Support Chat
+                  </Typography>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    <Button
+                      size="small"
+                      variant="contained"
+                      color="success"
+                      onClick={handleResolveAdminChat}
+                      disabled={loadingAdminAction}
+                      sx={{
+                        bgcolor: 'success.main',
+                        color: 'white',
+                        '&:hover': { bgcolor: 'success.dark' },
+                        '&:disabled': { bgcolor: 'grey.400' }
+                      }}
+                    >
+                      {loadingAdminAction ? 'Resolving...' : 'Resolve'}
+                    </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleCloseAdminChat}
+                      sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
+                    >
+                      Close
+                    </Button>
+                  </Box>
+                </Box>
+              </Box>
+
+              <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
+                {loadingAdminChat ? (
+                  <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
+                    <CircularProgress />
+                  </Box>
+                ) : adminChatMessages.length > 0 ? (
+                  <List>
+                    {adminChatMessages.map((message, index) => {
+                      const isClient = message.senderId !== userId;
+                      const isSystem = message.senderId === 'system';
+                      const senderName = isClient
+                        ? 'Client'
+                        : isSystem
+                          ? 'System'
+                          : 'Admin';
+
+                      return (
+                        <ListItem
+                          key={index}
+                          sx={{
+                            flexDirection: 'column',
+                            alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
+                            p: 1
+                          }}
+                        >
+                          <Box
+                            sx={{
+                              maxWidth: '80%',
+                              display: 'flex',
+                              flexDirection: 'column',
+                              alignItems: isClient ? 'flex-start' : isSystem ? 'center' : 'flex-end',
+                              width: '100%'
+                            }}
+                          >
+                            {/* Sender name */}
+                            <Typography
+                              variant="caption"
+                              sx={{
+                                mb: 0.5,
+                                fontWeight: 'medium',
+                                color: isSystem ? 'text.secondary' : 'primary.main'
+                              }}
+                            >
+                              {senderName}
+                            </Typography>
+
+                            {/* Message bubble */}
+                            <Paper
+                              elevation={0}
+                              sx={{
+                                p: 2,
+                                borderRadius: 2,
+                                bgcolor: isSystem
+                                  ? 'background.paper'
+                                  : isClient
+                                    ? '#f0f0f0'
+                                    : theme.palette.warning.light,
+                                color: isSystem
+                                  ? 'text.secondary'
+                                  : isClient
+                                    ? 'text.primary'
+                                    : 'white',
+                                border: isSystem ? '1px dashed #ccc' : 'none',
+                                width: 'fit-content',
+                                maxWidth: '100%'
+                              }}
+                            >
+                              <Typography variant="body1">{message.text}</Typography>
+                            </Paper>
+
+                            {/* Timestamp */}
+                            <Typography
+                              variant="caption"
+                              color="text.secondary"
+                              sx={{ mt: 0.5 }}
+                            >
+                              {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                            </Typography>
+                          </Box>
+                        </ListItem>
+                      );
+                    })}
+                    <div ref={adminChatMessagesEndRef} />
+                  </List>
+                ) : (
+                  <Typography variant="body2" color="text.secondary" sx={{ textAlign: 'center', py: 4 }}>
+                    No messages in admin support chat yet.
+                  </Typography>
+                )}
+              </Box>
+
+              {/* Admin Message Input */}
+              <Box sx={{ p: 2, borderTop: '1px solid #e0e0e0', bgcolor: 'background.paper' }}>
+                {!userId ? (
+                  <Typography variant="body2" color="error" sx={{ textAlign: 'center', py: 2 }}>
+                    Error: Admin user ID not available. Cannot send messages.
+                  </Typography>
+                ) : (
+                  <form onSubmit={handleAdminMessageSubmit}>
+                    <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                      <TextField
+                        fullWidth
+                        size="small"
+                        placeholder="Type your message to the client..."
+                        value={adminMessageText}
+                        onChange={(e) => setAdminMessageText(e.target.value)}
+                        disabled={sendingAdminMessage}
+                        variant="outlined"
+                      />
+                      <Button
+                        type="submit"
+                        variant="contained"
+                        color="warning"
+                        disabled={!adminMessageText.trim() || sendingAdminMessage || !userId}
+                        sx={{ minWidth: 'auto', px: 2 }}
+                      >
+                        {sendingAdminMessage ? <CircularProgress size={20} /> : 'Send'}
+                      </Button>
+                    </Box>
+                  </form>
+                )}
+              </Box>
+            </Paper>
+          )}
+        </Box>
+
         {/* File Preview Modal */}
         <FilePreviewModal
           open={modalOpen}
           onClose={closeFilePreview}
           file={previewFile}
         />
+
+        {/* Admin Assignment Dialog */}
+        <Dialog open={adminAssignmentDialog} onClose={() => setAdminAssignmentDialog(false)}>
+          <DialogTitle>Assign Admin to Chat</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Choose an admin to assign to this chat, or use auto-assignment.
+            </Typography>
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Select Admin</InputLabel>
+              <Select
+                value={selectedAdmin}
+                onChange={(e) => setSelectedAdmin(e.target.value)}
+                label="Select Admin"
+              >
+                {admins.map((admin) => (
+                  <MenuItem key={admin.id} value={admin.id}>
+                    {admin.displayName || admin.email}
+                  </MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Auto-assignment will choose the least busy admin automatically.
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setAdminAssignmentDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAutoAssignAdmin}
+              disabled={loadingAdminAction}
+              color="primary"
+            >
+              {loadingAdminAction ? 'Assigning...' : 'Auto Assign'}
+            </Button>
+            <Button
+              onClick={handleAssignAdmin}
+              disabled={!selectedAdmin || loadingAdminAction}
+              variant="contained"
+            >
+              {loadingAdminAction ? 'Assigning...' : 'Assign Selected'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Chat Extension Dialog */}
+        <Dialog open={extensionDialog} onClose={() => setExtensionDialog(false)}>
+          <DialogTitle>Extend Chat Duration</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Extend the chat expiry time to allow continued communication.
+            </Typography>
+
+            <TextField
+              fullWidth
+              type="number"
+              label="Extension Hours"
+              value={extensionHours}
+              onChange={(e) => setExtensionHours(Number(e.target.value))}
+              inputProps={{ min: 1, max: 168 }} // 1 hour to 1 week
+              sx={{ mb: 2 }}
+            />
+
+            <Alert severity="info">
+              Current expiry: {chatExpiryStatus?.isExpired ? 'Expired' : 'Active'}
+              {!chatExpiryStatus?.isExpired && chatExpiryStatus?.timeUntilExpiry > 0 && (
+                ` (${Math.floor(chatExpiryStatus.timeUntilExpiry / (1000 * 60 * 60))}h ${Math.floor((chatExpiryStatus.timeUntilExpiry % (1000 * 60 * 60)) / (1000 * 60))}m remaining)`
+              )}
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => setExtensionDialog(false)}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleExtendChat}
+              disabled={loadingAdminAction}
+              variant="contained"
+            >
+              {loadingAdminAction ? 'Extending...' : 'Extend Chat'}
+            </Button>
+          </DialogActions>
+        </Dialog>
       </Box>
     );
   }
-  
+
   return (
     <Box>
-      <Typography 
-        variant="h5" 
-        sx={{ 
-          fontFamily: '"Playfair Display", serif', 
-          mb: 2 
+      {/* Admin Notifications */}
+      {showNotifications && notifications.length > 0 && (
+        <Paper sx={{ mb: 2, p: 2, bgcolor: 'primary.light', color: 'white' }}>
+          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+            <Typography variant="h6" sx={{ fontWeight: 600 }}>
+              New Support Requests ({notifications.length})
+            </Typography>
+            <Button
+              size="small"
+              variant="outlined"
+              onClick={() => setShowNotifications(false)}
+              sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
+            >
+              Dismiss
+            </Button>
+          </Box>
+          <List dense>
+            {notifications.slice(0, 3).map((notification) => (
+              <ListItem key={notification.id} sx={{ py: 0.5 }}>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
+                  <SupportIcon sx={{ fontSize: '1rem' }} />
+                  <Typography variant="body2" sx={{ flex: 1 }}>
+                    {notification.message}
+                  </Typography>
+                  <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                    {notification.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
+                  </Typography>
+                </Box>
+              </ListItem>
+            ))}
+            {notifications.length > 3 && (
+              <ListItem sx={{ py: 0.5 }}>
+                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
+                  +{notifications.length - 3} more notifications
+                </Typography>
+              </ListItem>
+            )}
+          </List>
+        </Paper>
+      )}
+
+      <Typography
+        variant="h5"
+        sx={{
+          fontFamily: '"Playfair Display", serif',
+          mb: 2
         }}
       >
         Client-Astrologer Conversations
       </Typography>
-      
+
       {chats.length === 0 ? (
         <Typography variant="body1" sx={{ textAlign: 'center', py: 4 }}>
           No conversations found
@@ -560,51 +1447,113 @@ const ChatMonitor = ({ userId }) => {
                 <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Admin</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {chats.map((chat) => (
-                <TableRow 
-                  key={chat.id}
-                  hover
-                  onClick={() => handleSelectChat(chat)}
-                  sx={{ cursor: 'pointer' }}
-                >
-                  {console.log(chat)}
-                  <TableCell>{chat.clientName || 'Unknown'}</TableCell>
-                  <TableCell>{chat.astrologerName || 'Unknown'}</TableCell>
-                  <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General'}</TableCell>
-                  <TableCell>
-                    {chat.updatedAt?.toDate().toLocaleString() || 'Unknown'}
-                  </TableCell>
-                  <TableCell>
-                    <Chip 
-                      label={chat.status || 'Active'} 
-                      color={
-                        chat.status === 'completed' ? 'success' :
-                        chat.status === 'inactive' ? 'default' :
-                        'primary'
-                      }
-                      size="small"
-                    />
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outlined"
-                      size="small"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        handleSelectChat(chat);
-                      }}
-                    >
-                      View
-                    </Button>
-                  </TableCell>
-                </TableRow>
-              ))}
+              {chats.map((chat) => {
+                const hasAdminChat = adminChats[chat.id];
+                return (
+                  <TableRow
+                    key={chat.id}
+                    hover
+                    onClick={() => handleSelectChat(chat)}
+                    sx={{ cursor: 'pointer' }}
+                  >
+                    <TableCell>
+                      {chat.clientName || chat.clientId || 'Unknown Client'}
+                    </TableCell>
+                    <TableCell>
+                      {chat.astrologerName || chat.astrologerId || 'Unknown Astrologer'}
+                    </TableCell>
+                    <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General'}</TableCell>
+                    <TableCell>
+                      {chat.adminId ? (
+                        <Chip
+                          label={admins.find(a => a.id === chat.adminId)?.displayName || 'Unknown Admin'}
+                          color="primary"
+                          size="small"
+                          icon={<AdminPanelSettingsIcon />}
+                        />
+                      ) : (
+                        <Chip
+                          label="Unassigned"
+                          color="default"
+                          size="small"
+                          variant="outlined"
+                        />
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {chat.updatedAt?.toDate().toLocaleString() || 'Unknown'}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
+                        <Chip
+                          label={chat.status || 'Active'}
+                          color={
+                            chat.status === 'completed' ? 'success' :
+                              chat.status === 'inactive' ? 'default' :
+                                'primary'
+                          }
+                          size="small"
+                        />
+                        {chat.feedback && (
+                          <Tooltip title="Has Feedback">
+                            <Chip
+                              label="Feedback"
+                              color="secondary"
+                              size="small"
+                              icon={<VisibilityIcon />}
+                            />
+                          </Tooltip>
+                        )}
+                        {hasAdminChat && (
+                          <Tooltip title="Admin Support Chat">
+                            <Chip
+                              label="Admin Chat"
+                              color="warning"
+                              size="small"
+                              icon={<SupportIcon />}
+                            />
+                          </Tooltip>
+                        )}
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          variant="outlined"
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleSelectChat(chat);
+                          }}
+                        >
+                          View
+                        </Button>
+                        {/* {hasAdminChat && (
+                          <Button
+                            variant="contained"
+                            size="small"
+                            color="warning"
+                            startIcon={<SupportIcon />}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleOpenAdminChat(chat.id);
+                            }}
+                          >
+                            Admin Chat
+                          </Button>
+                        )} */}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                );
+              })}
             </TableBody>
           </Table>
         </TableContainer>

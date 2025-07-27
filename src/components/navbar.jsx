@@ -35,6 +35,7 @@ const Navbar = () => {
   const { t } = useTranslation('common');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  const isMobileNav = useMediaQuery('(max-width:900px)');
   const router = useRouter();
   const { currentUser, logout, hasRole, userRoles } = useAuth();
 
@@ -127,8 +128,97 @@ const Navbar = () => {
           borderBottom: 'none'
         }}
       >
-        <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '0' }}>
-          {isMobile ? (
+        <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '5px' }}>
+          {isMobileNav ? (
+            // Single container mobile layout
+            <Box sx={{ 
+              display: 'flex', 
+              justifyContent: 'space-between', 
+              alignItems: 'center', 
+              width: '100%', 
+              py: 1,
+              px: 2
+            }}>
+              {/* Left side - Blank div for future logo */}
+              <Box sx={{ width: 40, height: 40 }} />
+
+              {/* Center - Title */}
+              <Link href="/" passHref legacyBehavior>
+                <Typography 
+                  component="a" 
+                  variant="h5" 
+                  sx={{ 
+                    fontFamily: '"Cinzel", serif', 
+                    fontWeight: 600, 
+                    letterSpacing: '1px', 
+                    textDecoration: 'none', 
+                    color: 'inherit',
+                    fontSize: '1.3rem',
+                    position: 'absolute',
+                    left: '50%',
+                    transform: 'translateX(-50%)'
+                  }}
+                >
+                  {t('brand')}
+                </Typography>
+              </Link>
+
+              {/* Right side - Language Selector and Profile Icon */}
+              <Box sx={{ 
+                display: 'flex', 
+                alignItems: 'center', 
+                gap: 1
+              }}>
+                <LanguageSwitcher />
+                {currentUser ? (
+                  <IconButton
+                    onClick={handleProfileClick}
+                    size='small'
+                    sx={{ 
+                      border: `2px solid ${theme.palette.primary.main}`, 
+                      p: '4px'
+                    }}
+                  >
+                    {currentUser.photoURL ? (
+                      <Avatar src={currentUser.photoURL} sx={{ width: 32, height: 32 }} />
+                    ) : (
+                      <Avatar sx={{ 
+                        width: 32, 
+                        height: 32, 
+                        bgcolor: theme.palette.primary.main, 
+                        color: theme.palette.primary.contrastText, 
+                        fontFamily: '"Cinzel", serif', 
+                        fontWeight: 500, 
+                        fontSize: '0.9rem' 
+                      }}>
+                        {getUserInitials()}
+                      </Avatar>
+                    )}
+                  </IconButton>
+                ) : (
+                  <Link href="/login" passHref legacyBehavior>
+                    <Button 
+                      component="a" 
+                      variant="contained" 
+                      color="primary" 
+                      size="small"
+                      sx={{ 
+                        textTransform: 'none', 
+                        fontFamily: '"Cinzel", serif', 
+                        fontWeight: 500, 
+                        px: 2, 
+                        py: 0.5,
+                        fontSize: '0.8rem'
+                      }}
+                    >
+                      {t('auth.signIn')}
+                    </Button>
+                  </Link>
+                )}
+              </Box>
+            </Box>
+          ) : isMobile ? (
+            // Original mobile layout for screens between md and 900px
             <>
               <Box sx={{ display: 'flex', justifyContent: 'center', width: '100%', py: 1 }}>
                 <Link href="/" passHref legacyBehavior>

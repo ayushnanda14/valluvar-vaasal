@@ -1088,7 +1088,7 @@ export default function AdminDashboard() {
               {tabValue === 1 && renderTestimonialsTab()}
               {tabValue === 2 && renderRevenueTab()}
               {tabValue === 3 && renderAstrologersTab()}
-              {tabValue === 4 && <ChatMonitor />}
+              {tabValue === 4 && <ChatMonitor userId={currentUser?.uid} userType={'admin'} />}
             </>
           )}
         </Container>
