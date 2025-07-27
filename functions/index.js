@@ -104,3 +104,173 @@ exports.createRazorpayOrder = onCall(
             throw new HttpsError('internal', errorMessage, error.code); // Include error code if available
         }
     });
+
+// Razorpay refund function
+exports.processRefund = functions.https.onCall(async (data, context) => {
+  // Check if user is authenticated and is an admin
+  if (!context.auth) {
+    throw new functions.https.HttpsError('unauthenticated', 'User must be authenticated');
+  }
+
+  const { uid } = context.auth;
+  
+  // Check if user is admin
+  const adminDoc = await admin.firestore().collection('users').doc(uid).get();
+  if (!adminDoc.exists || !adminDoc.data().roles?.admin) {
+    throw new functions.https.HttpsError('permission-denied', 'Only admins can process refunds');
+  }
+
+  const { 
+    paymentId, 
+    amount, 
+    reason, 
+    chatId, 
+    clientId,
+    refundType = 'full' // 'full' or 'partial'
+  } = data;
+
+  if (!paymentId || !amount || !reason || !chatId || !clientId) {
+    throw new functions.https.HttpsError('invalid-argument', 'Missing required parameters');
+  }
+
+  try {
+    // Initialize Razorpay
+    const Razorpay = require('razorpay');
+    const razorpay = new Razorpay({
+      key_id: process.env.RAZORPAY_KEY_ID,
+      key_secret: process.env.RAZORPAY_KEY_SECRET,
+    });
+
+    // Get payment details from Razorpay
+    const payment = await razorpay.payments.fetch(paymentId);
+    
+    if (!payment) {
+      throw new functions.https.HttpsError('not-found', 'Payment not found');
+    }
+
+    // Check if payment is already refunded
+    if (payment.status === 'refunded') {
+      throw new functions.https.HttpsError('failed-precondition', 'Payment is already refunded');
+    }
+
+    // Check refund time limit (7 days)
+    const paymentDate = new Date(payment.created_at * 1000);
+    const currentDate = new Date();
+    const daysDifference = (currentDate - paymentDate) / (1000 * 60 * 60 * 24);
+    
+    if (daysDifference > 7) {
+      throw new functions.https.HttpsError('failed-precondition', 'Refunds can only be processed within 7 days of payment');
+    }
+
+    // Validate refund amount
+    const paymentAmount = payment.amount; // Amount in paise
+    const refundAmount = amount * 100; // Convert to paise
+    
+    if (refundAmount > paymentAmount) {
+      throw new functions.https.HttpsError('invalid-argument', 'Refund amount cannot exceed payment amount');
+    }
+
+    // Process refund through Razorpay
+    const refundData = {
+      amount: refundAmount,
+      speed: 'normal', // or 'optimum'
+      notes: {
+        reason: reason,
+        processed_by: uid,
+        chat_id: chatId,
+        refund_type: refundType
+      }
+    };
+
+    const refund = await razorpay.payments.refund(paymentId, refundData);
+
+    // Store refund record in Firestore
+    const refundRecord = {
+      paymentId: paymentId,
+      refundId: refund.id,
+      amount: amount,
+      refundAmount: refund.amount / 100, // Convert from paise
+      reason: reason,
+      refundType: refundType,
+      processedBy: uid,
+      chatId: chatId,
+      clientId: clientId,
+      status: refund.status,
+      processedAt: admin.firestore.FieldValue.serverTimestamp(),
+      notes: refund.notes,
+      razorpayRefundData: refund
+    };
+
+    await admin.firestore().collection('refunds').add(refundRecord);
+
+    // Update payment record with refund info
+    await admin.firestore().collection('payments')
+      .where('razorpay_payment_id', '==', paymentId)
+      .get()
+      .then(snapshot => {
+        if (!snapshot.empty) {
+          const paymentDoc = snapshot.docs[0];
+          paymentDoc.ref.update({
+            refundStatus: refund.status,
+            refundAmount: amount,
+            refundedAt: admin.firestore.FieldValue.serverTimestamp(),
+            refundReason: reason
+          });
+        }
+      });
+
+    // Add system message to admin chat about refund
+    const adminChatQuery = await admin.firestore().collection('adminClientChats')
+      .where('mainChatId', '==', chatId)
+      .where('status', '==', 'active')
+      .limit(1)
+      .get();
+
+    if (!adminChatQuery.empty) {
+      const adminChatDoc = adminChatQuery.docs[0];
+      await adminChatDoc.ref.collection('messages').add({
+        text: `Refund processed: ₹${amount} (${refundType}). Reason: ${reason}`,
+        senderId: 'system',
+        timestamp: admin.firestore.FieldValue.serverTimestamp(),
+        type: 'text',
+        refundInfo: {
+          amount: amount,
+          reason: reason,
+          refundType: refundType,
+          status: refund.status
+        }
+      });
+    }
+
+    // Add notification to client about refund
+    const clientNotification = {
+      type: 'refund',
+      title: 'Refund Processed',
+      message: `Your refund of ₹${amount} has been processed. Reason: ${reason}`,
+      amount: amount,
+      reason: reason,
+      refundType: refundType,
+      timestamp: admin.firestore.FieldValue.serverTimestamp(),
+      read: false
+    };
+
+    await admin.firestore().collection('users').doc(clientId).collection('notifications').add(clientNotification);
+
+    return {
+      success: true,
+      refundId: refund.id,
+      amount: amount,
+      status: refund.status,
+      message: `Refund of ₹${amount} processed successfully`
+    };
+
+  } catch (error) {
+    console.error('Refund processing error:', error);
+    
+    if (error.code === 'functions.https.HttpsError') {
+      throw error;
+    }
+    
+    throw new functions.https.HttpsError('internal', `Refund processing failed: ${error.message}`);
+  }
+});

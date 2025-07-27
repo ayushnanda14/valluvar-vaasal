@@ -16,7 +16,6 @@ import {
   CircularProgress
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
 import { useRouter } from 'next/router';
 import { useAuth } from '../src/context/AuthContext';
 import { getOrCreateRecaptcha } from '../src/context/AuthContext';
@@ -437,14 +436,10 @@ export default function Login() {
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               <Typography variant="body2">
                 Don't have an account?{' '}
-                <Link href="/signup" passHref>
-                  <MuiLink color="primary">Sign up</MuiLink>
-                </Link>
+                <MuiLink href="/signup" color="primary">Sign up</MuiLink>
               </Typography>
               <Typography variant="body2" sx={{ mt: 1 }}>
-                <Link href="/reset-password" passHref>
-                  <MuiLink color="primary">Forgot password?</MuiLink>
-                </Link>
+                <MuiLink href="/reset-password" color="primary">Forgot password?</MuiLink>
               </Typography>
             </Box>
           </MotionPaper>

@@ -56,10 +56,12 @@ import {
   updateDoc,
   deleteDoc,
   getDoc,
-  serverTimestamp
+  serverTimestamp,
+  onSnapshot
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
+import { createSupportSignupLink, getAllSignupLinks } from '../../src/services/adminService';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
@@ -144,6 +146,16 @@ export default function AdminDashboard() {
   const [astrologerServices, setAstrologerServices] = useState({});
   const [astrologerPricing, setAstrologerPricing] = useState({});
   const [servicesLoading, setServicesLoading] = useState(false);
+  
+  // Support user management state
+  const [signupLinks, setSignupLinks] = useState([]);
+  const [newSignupLink, setNewSignupLink] = useState('');
+  const [creatingLink, setCreatingLink] = useState(false);
+  
+  // Real-time listener state
+  const [signupLinksListener, setSignupLinksListener] = useState(null);
+  const [supportUsersListener, setSupportUsersListener] = useState(null);
+  const [supportUsersLoading, setSupportUsersLoading] = useState(false);
 
   // Add state for feedback messages
   const [errorMessage, setErrorMessage] = useState('');
@@ -168,8 +180,8 @@ export default function AdminDashboard() {
       try {
         setLoading(true);
 
-        if (tabValue === 0) {
-          // Users tab
+        if (tabValue === 0 || tabValue === 4) {
+          // Users tab or Support Users tab
           const usersData = await getAllUsers();
           setUsers(usersData);
         } else if (tabValue === 1) {
@@ -241,6 +253,124 @@ export default function AdminDashboard() {
       getAstrologers();
     }
   }, [tabValue]);
+
+  // Real-time listener for signup links
+  useEffect(() => {
+    if (tabValue === 4) {
+      // Clean up existing listener
+      if (signupLinksListener) {
+        signupLinksListener();
+      }
+
+      // Set up real-time listener for signup links
+      const signupLinksRef = collection(db, 'signupLinks');
+      const signupLinksQuery = query(signupLinksRef, orderBy('createdAt', 'desc'));
+      
+      const unsubscribe = onSnapshot(signupLinksQuery, (querySnapshot) => {
+        const links = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          links.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+            expiresAt: data.expiresAt?.toDate ? data.expiresAt.toDate() : data.expiresAt
+          });
+        });
+        setSignupLinks(links);
+      }, (error) => {
+        console.error('Error listening to signup links:', error);
+      });
+
+      setSignupLinksListener(() => unsubscribe);
+    } else {
+      // Clean up listener when not on support users tab
+      if (signupLinksListener) {
+        signupLinksListener();
+        setSignupLinksListener(null);
+      }
+    }
+
+    return () => {
+      if (signupLinksListener) {
+        signupLinksListener();
+      }
+    };
+  }, [tabValue, signupLinksListener]);
+
+  // Real-time listener for support users
+  useEffect(() => {
+    if (tabValue === 4) {
+      // Clean up existing listener
+      if (supportUsersListener) {
+        supportUsersListener();
+      }
+
+      // Set loading state
+      setSupportUsersLoading(true);
+
+      // Set up real-time listener for support users
+      const usersRef = collection(db, 'users');
+      const supportUsersQuery = query(
+        usersRef, 
+        where('roles', 'array-contains', 'support'),
+        orderBy('createdAt', 'desc')
+      );
+      
+      const unsubscribe = onSnapshot(supportUsersQuery, (querySnapshot) => {
+        const supportUsers = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          supportUsers.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+          });
+        });
+        
+        // Update the users state with new support users data
+        setUsers(prevUsers => {
+          // Remove existing support users
+          const nonSupportUsers = prevUsers.filter(user => !user.roles?.includes('support'));
+          // Add new support users
+          return [...nonSupportUsers, ...supportUsers];
+        });
+        
+        // Clear loading state
+        setSupportUsersLoading(false);
+      }, (error) => {
+        console.error('Error listening to support users:', error);
+        setSupportUsersLoading(false);
+      });
+
+      setSupportUsersListener(() => unsubscribe);
+    } else {
+      // Clean up listener when not on support users tab
+      if (supportUsersListener) {
+        supportUsersListener();
+        setSupportUsersListener(null);
+      }
+      setSupportUsersLoading(false);
+    }
+
+    return () => {
+      if (supportUsersListener) {
+        supportUsersListener();
+      }
+    };
+  }, [tabValue, supportUsersListener]);
+
+  // Cleanup effect for all listeners
+  useEffect(() => {
+    return () => {
+      if (signupLinksListener) {
+        signupLinksListener();
+      }
+      if (supportUsersListener) {
+        supportUsersListener();
+      }
+    };
+  }, [signupLinksListener, supportUsersListener]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -444,6 +574,9 @@ export default function AdminDashboard() {
               </ToggleButton>
               <ToggleButton value="admin">
                 Admins
+              </ToggleButton>
+              <ToggleButton value="support">
+                Support
               </ToggleButton>
             </ToggleButtonGroup>
           </Box>
@@ -1025,6 +1158,189 @@ export default function AdminDashboard() {
     }
   };
 
+  // Support user management functions
+  const handleCreateSignupLink = async () => {
+    try {
+      setCreatingLink(true);
+      const link = await createSupportSignupLink(currentUser.uid);
+      setNewSignupLink(link.url);
+      setSignupLinks([link, ...signupLinks]);
+      setSuccessMessage('Support signup link created successfully');
+    } catch (error) {
+      console.error('Error creating signup link:', error);
+      setErrorMessage('Failed to create signup link');
+    } finally {
+      setCreatingLink(false);
+    }
+  };
+
+  const copyToClipboard = (text) => {
+    navigator.clipboard.writeText(text);
+    setSuccessMessage('Link copied to clipboard');
+  };
+
+  const renderSupportUsersTab = () => (
+    <Box>
+      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
+        <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif' }}>
+          Support User Management
+        </Typography>
+        <Button
+          variant="contained"
+          color="primary"
+          onClick={handleCreateSignupLink}
+          disabled={creatingLink}
+          startIcon={creatingLink ? <CircularProgress size={20} /> : null}
+        >
+          {creatingLink ? 'Creating...' : 'Create Signup Link'}
+        </Button>
+      </Box>
+
+      {newSignupLink && (
+        <Alert severity="success" sx={{ mb: 3 }}>
+          <Typography variant="body2" sx={{ mb: 1 }}>
+            Support signup link created successfully! Share this link with potential support users.
+          </Typography>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <TextField
+              value={newSignupLink}
+              fullWidth
+              size="small"
+              InputProps={{ readOnly: true }}
+            />
+            <Button
+              variant="outlined"
+              size="small"
+              onClick={() => copyToClipboard(newSignupLink)}
+            >
+              Copy
+            </Button>
+          </Box>
+        </Alert>
+      )}
+
+      <Paper elevation={0} sx={{ p: 3 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Recent Signup Links
+        </Typography>
+        {signupLinks.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography variant="body1" color="text.secondary">
+              No signup links created yet
+            </Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Link ID</TableCell>
+                  <TableCell>Created By</TableCell>
+                  <TableCell>Created At</TableCell>
+                  <TableCell>Expires At</TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {signupLinks.map((link) => (
+                  <TableRow key={link.id}>
+                    <TableCell>{link.id}</TableCell>
+                    <TableCell>{link.createdBy}</TableCell>
+                    <TableCell>
+                      {link.createdAt instanceof Date ? link.createdAt.toLocaleString() : 'Unknown'}
+                    </TableCell>
+                    <TableCell>
+                      {link.expiresAt instanceof Date ? link.expiresAt.toLocaleString() : 'Unknown'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={link.used ? 'Used' : 'Active'}
+                        color={link.used ? 'default' : 'success'}
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Button
+                        variant="outlined"
+                        size="small"
+                        onClick={() => copyToClipboard(`${typeof window !== 'undefined' ? window.location.origin : ''}/signup/support?token=${link.id}`)}
+                        disabled={link.used}
+                      >
+                        Copy Link
+                      </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+
+      <Paper elevation={0} sx={{ p: 3, mt: 3 }}>
+        <Typography variant="h6" sx={{ mb: 2 }}>
+          Support Users
+        </Typography>
+        
+        {supportUsersLoading ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <CircularProgress size={24} />
+            <Typography variant="body2" sx={{ mt: 1, color: 'text.secondary' }}>
+              Loading support users...
+            </Typography>
+          </Box>
+        ) : (
+          <TableContainer>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Name</TableCell>
+                  <TableCell>Email</TableCell>
+                  <TableCell>Phone</TableCell>
+                  <TableCell>Gender</TableCell>
+                  <TableCell>Address</TableCell>
+                  <TableCell>Date of Birth</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+                             <TableBody>
+                 {users.filter(user => user.roles?.includes('support')).length === 0 ? (
+                   <TableRow>
+                     <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                       <Typography variant="body2" color="text.secondary">
+                         No support users found
+                       </Typography>
+                     </TableCell>
+                   </TableRow>
+                 ) : (
+                   users.filter(user => user.roles?.includes('support')).map((user) => (
+                     <TableRow key={user.id}>
+                       <TableCell>{user.displayName || 'N/A'}</TableCell>
+                       <TableCell>{user.email || 'N/A'}</TableCell>
+                       <TableCell>{user.phoneNumber || 'N/A'}</TableCell>
+                       <TableCell>{user.gender || 'N/A'}</TableCell>
+                       <TableCell>{user.address || 'N/A'}</TableCell>
+                       <TableCell>{user.dateOfBirth || 'N/A'}</TableCell>
+                       <TableCell>
+                         <IconButton
+                           size="small"
+                           onClick={(e) => handleOpenActionMenu(e, user)}
+                         >
+                           <MoreVertIcon />
+                         </IconButton>
+                       </TableCell>
+                     </TableRow>
+                   ))
+                 )}
+               </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Paper>
+    </Box>
+  );
+
   return (
     <ProtectedRoute requiredRoles={['admin']}>
       <Head>
@@ -1074,6 +1390,7 @@ export default function AdminDashboard() {
               <Tab label="Testimonials" />
               <Tab label="Revenue" />
               <Tab label="Astrologers" />
+              <Tab label="Support Users" />
               <Tab label="Chat Monitor" />
             </Tabs>
           </Paper>
@@ -1088,7 +1405,8 @@ export default function AdminDashboard() {
               {tabValue === 1 && renderTestimonialsTab()}
               {tabValue === 2 && renderRevenueTab()}
               {tabValue === 3 && renderAstrologersTab()}
-              {tabValue === 4 && <ChatMonitor userId={currentUser?.uid} userType={'admin'} />}
+              {tabValue === 4 && renderSupportUsersTab()}
+              {tabValue === 5 && <ChatMonitor userId={currentUser?.uid} userType={'admin'} />}
             </>
           )}
         </Container>

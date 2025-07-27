@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useTranslation } from 'react-i18next';
 import {
   Button,
@@ -20,6 +20,14 @@ const LanguageSwitcher = () => {
   const isMobile = useMediaQuery(theme.breakpoints.down('md')); // detect mobile
   const [anchorEl, setAnchorEl] = useState(null);
   const open = Boolean(anchorEl);
+
+  // Set the correct language after hydration
+  useEffect(() => {
+    const savedLng = localStorage.getItem('i18nextLng');
+    if (savedLng && ['en', 'ta'].includes(savedLng)) {
+      i18n.changeLanguage(savedLng);
+    }
+  }, [i18n]);
 
   // Static labels for language names (unchanged by translation)
   const languages = {

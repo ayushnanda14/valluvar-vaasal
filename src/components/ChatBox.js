@@ -57,7 +57,7 @@ import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 
 
-export default function ChatBox({ chatId, otherUser, isAdminChat = false }) {
+export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false }) {
     const { t } = useTranslation('common');
     const { currentUser, hasRole } = useAuth();
     const [messages, setMessages] = useState([]);
@@ -1258,20 +1258,21 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false }) {
                     )}
 
                     {/* Message input */}
-                    <Box
-                        sx={{
-                            p: 2,
-                            borderTop: '1px solid #e0e0e0',
-                            width: '100%',
-                            minHeight: '70px',
-                            display: 'flex',
-                            alignItems: 'center',
-                            bgcolor: 'background.paper',
-                            // position: 'sticky',
-                            // bottom: 0,
-                            zIndex: 5
-                        }}
-                    >
+                    {!disableInput && (
+                        <Box
+                            sx={{
+                                p: 2,
+                                borderTop: '1px solid #e0e0e0',
+                                width: '100%',
+                                minHeight: '70px',
+                                display: 'flex',
+                                alignItems: 'center',
+                                bgcolor: 'background.paper',
+                                // position: 'sticky',
+                                // bottom: 0,
+                                zIndex: 5
+                            }}
+                        >
                         {(!isAstrologer && !sendAllowed) ? (
                             <Box sx={{ textAlign: 'center', width: '100%', p: 2 }}>
                                 <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
@@ -1449,6 +1450,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false }) {
                             </form>
                         )}
                     </Box>
+                    )}
                 </Paper>
             )}
 

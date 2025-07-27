@@ -15,13 +15,19 @@ import { useAuth } from '../src/context/AuthContext';
 export default function ServiceSuccess() {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const { currentUser, loading, authInitialized } = useAuth();
   
   useEffect(() => {
-    if (!currentUser) {
+    // Only redirect if auth is initialized
+    if (authInitialized && !currentUser) {
       router.push('/login');
     }
-  }, [currentUser, router]);
+  }, [currentUser, router, authInitialized]);
+  
+  // If loading or auth not initialized, show nothing
+  if (loading || !authInitialized) {
+    return null;
+  }
   
   return (
     <>

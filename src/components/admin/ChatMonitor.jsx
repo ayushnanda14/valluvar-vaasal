@@ -56,14 +56,17 @@ import SupportIcon from '@mui/icons-material/Support';
 import { collection, query, where, orderBy, onSnapshot, doc, getDocs, getDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
 import FilePreviewModal from '../FilePreviewModal';
+import RefundDialog from '../RefundDialog';
 import { SERVICE_TYPES } from '@/utils/constants';
 import {
   getAllAdmins,
   autoAssignAdminToChat,
-  getAdminWorkload
+  getAdminWorkload,
+  getAllAssignableUsers
 } from '../../services/adminService';
 import {
   assignAdminToChat,
+  assignSupportUserToChat,
   extendChatExpiry,
   toggleFeedbackVisibility,
   getChatExpiryStatus
@@ -94,9 +97,10 @@ const ChatMonitor = ({ userId, userType }) => {
 
   // Admin features state
   const [admins, setAdmins] = useState([]);
+  const [assignableUsers, setAssignableUsers] = useState({ admins: [], supportUsers: [], allUsers: [] });
   const [adminAssignmentDialog, setAdminAssignmentDialog] = useState(false);
   const [extensionDialog, setExtensionDialog] = useState(false);
-  const [selectedAdmin, setSelectedAdmin] = useState('');
+  const [selectedUser, setSelectedUser] = useState('');
   const [extensionHours, setExtensionHours] = useState(24);
   const [loadingAdminAction, setLoadingAdminAction] = useState(false);
   const [chatExpiryStatus, setChatExpiryStatus] = useState(null);
@@ -114,6 +118,10 @@ const ChatMonitor = ({ userId, userType }) => {
   // Admin notifications state
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+
+  // Refund dialog state
+  const [refundDialogOpen, setRefundDialogOpen] = useState(false);
+  const [paymentInfo, setPaymentInfo] = useState(null);
 
   // Effect for fetching chats list with real-time updates
   useEffect(() => {
@@ -292,18 +300,19 @@ const ChatMonitor = ({ userId, userType }) => {
     setModalOpen(false);
   };
 
-  // Load admins for assignment
+  // Load assignable users for assignment
   useEffect(() => {
-    const loadAdmins = async () => {
+    const loadAssignableUsers = async () => {
       try {
-        const adminsList = await getAllAdmins();
-        setAdmins(adminsList);
+        const users = await getAllAssignableUsers();
+        setAssignableUsers(users);
+        setAdmins(users.admins); // Keep for backward compatibility
       } catch (error) {
-        console.error('Error loading admins:', error);
+        console.error('Error loading assignable users:', error);
       }
     };
 
-    loadAdmins();
+    loadAssignableUsers();
   }, []);
 
   // Listen for admin-client chat notifications
@@ -484,20 +493,30 @@ const ChatMonitor = ({ userId, userType }) => {
     loadExpiryStatus();
   }, [selectedChat?.id]);
 
-  // Handle admin assignment
-  const handleAssignAdmin = async () => {
-    if (!selectedChat?.id || !selectedAdmin) return;
+  // Handle user assignment
+  const handleAssignUser = async () => {
+    if (!selectedChat?.id || !selectedUser) return;
 
     setLoadingAdminAction(true);
     try {
-      await assignAdminToChat(selectedChat.id, selectedAdmin, 'manual');
+      const selectedUserData = assignableUsers.allUsers.find(user => user.id === selectedUser);
+      
+      if (selectedUserData.userType === 'admin') {
+        await assignAdminToChat(selectedChat.id, selectedUser, 'manual');
+        // Refresh the selected chat to show updated admin
+        const updatedChat = { ...selectedChat, adminId: selectedUser };
+        setSelectedChat(updatedChat);
+      } else if (selectedUserData.userType === 'support') {
+        await assignSupportUserToChat(selectedChat.id, selectedUser, 'manual');
+        // Refresh the selected chat to show updated support user
+        const updatedChat = { ...selectedChat, supportUserId: selectedUser };
+        setSelectedChat(updatedChat);
+      }
+      
       setAdminAssignmentDialog(false);
-      setSelectedAdmin('');
-      // Refresh the selected chat to show updated admin
-      const updatedChat = { ...selectedChat, adminId: selectedAdmin };
-      setSelectedChat(updatedChat);
+      setSelectedUser('');
     } catch (error) {
-      console.error('Error assigning admin:', error);
+      console.error('Error assigning user:', error);
     } finally {
       setLoadingAdminAction(false);
     }
@@ -689,7 +708,31 @@ const ChatMonitor = ({ userId, userType }) => {
   const handleCloseAdminChat = () => {
     setShowAdminChat(false);
     setSelectedAdminChatId(null);
+    setAdminChatMessages([]);
+    setAdminMessageText('');
   };
+
+  // Load payment info for selected chat
+  useEffect(() => {
+    const loadPaymentInfo = async () => {
+      if (!selectedChat?.id) {
+        setPaymentInfo(null);
+        return;
+      }
+
+      try {
+        const { getPaymentForChat } = await import('../../services/refundService');
+        console.log('selectedChat', selectedChat);
+        const payment = await getPaymentForChat(selectedChat.id);
+        setPaymentInfo(payment);
+      } catch (error) {
+        console.error('Error loading payment info:', error);
+        setPaymentInfo(null);
+      }
+    };
+
+    loadPaymentInfo();
+  }, [selectedChat?.id]);
 
   // Helper function to get appropriate icon for file type
   const getFileIcon = (fileType) => {
@@ -909,14 +952,21 @@ const ChatMonitor = ({ userId, userType }) => {
             </Box>
           </Box>
 
-          {/* Admin Assignment Status */}
-          {selectedChat.adminId && (
-            <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
-              <Typography variant="body2" color="white">
-                Assigned Admin: {admins.find(a => a.id === selectedChat.adminId)?.displayName || 'Unknown'}
-              </Typography>
-            </Box>
-          )}
+                        {/* Assignment Status */}
+              {selectedChat.adminId && (
+                <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
+                  <Typography variant="body2" color="white">
+                    Assigned Admin: {admins.find(a => a.id === selectedChat.adminId)?.displayName || 'Unknown'}
+                  </Typography>
+                </Box>
+              )}
+              {selectedChat.supportUserId && (
+                <Box sx={{ mt: 1, p: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
+                  <Typography variant="body2" color="white">
+                    Assigned Support: {assignableUsers.supportUsers.find(s => s.id === selectedChat.supportUserId)?.displayName || 'Unknown'}
+                  </Typography>
+                </Box>
+              )}
 
           {/* Feedback Display */}
           {selectedChat.feedback && (
@@ -1126,38 +1176,60 @@ const ChatMonitor = ({ userId, userType }) => {
                 maxWidth: '100%'
               }}
             >
-              <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
-                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                          <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                <Box>
                   <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
                     Admin Support Chat
                   </Typography>
-                  <Box sx={{ display: 'flex', gap: 1 }}>
+                  {paymentInfo && (
+                    <Typography variant="caption" sx={{ color: 'white', opacity: 0.8 }}>
+                      Payment: ₹{paymentInfo.amount} • {paymentInfo.timestamp?.toDate().toLocaleDateString()}
+                    </Typography>
+                  )}
+                </Box>
+                <Box sx={{ display: 'flex', gap: 1 }}>
+                  {paymentInfo && (
                     <Button
                       size="small"
                       variant="contained"
-                      color="success"
-                      onClick={handleResolveAdminChat}
-                      disabled={loadingAdminAction}
+                      color="info"
+                      onClick={() => setRefundDialogOpen(true)}
                       sx={{
-                        bgcolor: 'success.main',
+                        bgcolor: 'info.main',
                         color: 'white',
-                        '&:hover': { bgcolor: 'success.dark' },
-                        '&:disabled': { bgcolor: 'grey.400' }
+                        '&:hover': { bgcolor: 'info.dark' }
                       }}
                     >
-                      {loadingAdminAction ? 'Resolving...' : 'Resolve'}
+                      Refund
                     </Button>
-                    <Button
-                      size="small"
-                      variant="outlined"
-                      onClick={handleCloseAdminChat}
-                      sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
-                    >
-                      Close
-                    </Button>
-                  </Box>
+                  )}
+                  <Button
+                    size="small"
+                    variant="contained"
+                    color="success"
+                    onClick={handleResolveAdminChat}
+                    disabled={loadingAdminAction}
+                    sx={{
+                      bgcolor: 'success.main',
+                      color: 'white',
+                      '&:hover': { bgcolor: 'success.dark' },
+                      '&:disabled': { bgcolor: 'grey.400' }
+                    }}
+                  >
+                    {loadingAdminAction ? 'Resolving...' : 'Resolve'}
+                  </Button>
+                  <Button
+                    size="small"
+                    variant="outlined"
+                    onClick={handleCloseAdminChat}
+                    sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
+                  >
+                    Close
+                  </Button>
                 </Box>
               </Box>
+            </Box>
 
               <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
                 {loadingAdminChat ? (
@@ -1285,38 +1357,54 @@ const ChatMonitor = ({ userId, userType }) => {
           )}
         </Box>
 
-        {/* File Preview Modal */}
-        <FilePreviewModal
-          open={modalOpen}
-          onClose={closeFilePreview}
-          file={previewFile}
-        />
+                  {/* File Preview Modal */}
+          <FilePreviewModal
+            open={modalOpen}
+            onClose={closeFilePreview}
+            file={previewFile}
+          />
 
-        {/* Admin Assignment Dialog */}
+          {/* Refund Dialog */}
+          <RefundDialog
+            open={refundDialogOpen}
+            onClose={() => setRefundDialogOpen(false)}
+            chatId={selectedChat?.id}
+            clientId={selectedChat?.clientId}
+          />
+
+        {/* User Assignment Dialog */}
         <Dialog open={adminAssignmentDialog} onClose={() => setAdminAssignmentDialog(false)}>
-          <DialogTitle>Assign Admin to Chat</DialogTitle>
+          <DialogTitle>Assign Support to Chat</DialogTitle>
           <DialogContent>
             <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-              Choose an admin to assign to this chat, or use auto-assignment.
+              Choose a user to assign to this chat. Support users can transcribe voice notes and respond on behalf of astrologers.
             </Typography>
 
             <FormControl fullWidth sx={{ mb: 2 }}>
-              <InputLabel>Select Admin</InputLabel>
+              <InputLabel>Select User</InputLabel>
               <Select
-                value={selectedAdmin}
-                onChange={(e) => setSelectedAdmin(e.target.value)}
-                label="Select Admin"
+                value={selectedUser}
+                onChange={(e) => setSelectedUser(e.target.value)}
+                label="Select User"
               >
-                {admins.map((admin) => (
-                  <MenuItem key={admin.id} value={admin.id}>
-                    {admin.displayName || admin.email}
+                {assignableUsers.allUsers.map((user) => (
+                  <MenuItem key={user.id} value={user.id}>
+                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                      {user.displayName || user.email}
+                      <Chip
+                        label={user.userType}
+                        size="small"
+                        color={user.userType === 'admin' ? 'primary' : 'warning'}
+                        variant="outlined"
+                      />
+                    </Box>
                   </MenuItem>
                 ))}
               </Select>
             </FormControl>
 
             <Alert severity="info" sx={{ mb: 2 }}>
-              Auto-assignment will choose the least busy admin automatically.
+              Support users can transcribe voice notes and respond on behalf of astrologers.
             </Alert>
           </DialogContent>
           <DialogActions>
@@ -1324,15 +1412,8 @@ const ChatMonitor = ({ userId, userType }) => {
               Cancel
             </Button>
             <Button
-              onClick={handleAutoAssignAdmin}
-              disabled={loadingAdminAction}
-              color="primary"
-            >
-              {loadingAdminAction ? 'Assigning...' : 'Auto Assign'}
-            </Button>
-            <Button
-              onClick={handleAssignAdmin}
-              disabled={!selectedAdmin || loadingAdminAction}
+              onClick={handleAssignUser}
+              disabled={!selectedUser || loadingAdminAction}
               variant="contained"
             >
               {loadingAdminAction ? 'Assigning...' : 'Assign Selected'}

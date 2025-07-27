@@ -667,3 +667,125 @@ export const getChatExpiryStatus = async (chatId) => {
         throw error;
     }
 }; 
+
+// Assign a support user to a chat
+export const assignSupportUserToChat = async (chatId, supportUserId, assignedBy) => {
+    try {
+        const supportAssignment = {
+            supportUserId,
+            assignedBy,
+            assignedAt: new Date().toISOString()
+        };
+        
+        await updateDoc(doc(db, 'chats', chatId), {
+            supportUserId,
+            supportAssignmentHistory: arrayUnion(supportAssignment),
+            updatedAt: serverTimestamp()
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Error assigning support user to chat:', error);
+        throw error;
+    }
+};
+
+// Send message on behalf of astrologer (for support users)
+export const sendMessageOnBehalfOfAstrologer = async (chatId, messageText, supportUserId) => {
+    try {
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (!chatDoc.exists()) {
+            throw new Error('Chat not found');
+        }
+        
+        const chatData = chatDoc.data();
+        const astrologerId = chatData.astrologerId;
+        
+        if (!astrologerId) {
+            throw new Error('No astrologer found for this chat');
+        }
+        
+        // Add message to chat
+        const messagesRef = collection(db, 'chats', chatId, 'messages');
+        await addDoc(messagesRef, {
+            text: messageText,
+            senderId: astrologerId, // Message appears to come from astrologer
+            actualSenderId: supportUserId, // Track who actually sent it
+            timestamp: serverTimestamp(),
+            type: 'text',
+            sentBySupport: true
+        });
+        
+        // Update chat's last message
+        await updateDoc(doc(db, 'chats', chatId), {
+            lastMessage: messageText,
+            lastMessageTime: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Error sending message on behalf of astrologer:', error);
+        throw error;
+    }
+};
+
+// Send message to astrologer (for support users)
+export const sendMessageToAstrologer = async (chatId, messageText, supportUserId) => {
+    try {
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (!chatDoc.exists()) {
+            throw new Error('Chat not found');
+        }
+        
+        const chatData = chatDoc.data();
+        const astrologerId = chatData.astrologerId;
+        
+        if (!astrologerId) {
+            throw new Error('No astrologer found for this chat');
+        }
+        
+        // Add message to chat
+        const messagesRef = collection(db, 'chats', chatId, 'messages');
+        await addDoc(messagesRef, {
+            text: messageText,
+            senderId: supportUserId, // Message appears to come from support user
+            timestamp: serverTimestamp(),
+            type: 'text',
+            sentToAstrologer: true
+        });
+        
+        // Update chat's last message
+        await updateDoc(doc(db, 'chats', chatId), {
+            lastMessage: messageText,
+            lastMessageTime: serverTimestamp(),
+            updatedAt: serverTimestamp()
+        });
+        
+        return true;
+    } catch (error) {
+        console.error('Error sending message to astrologer:', error);
+        throw error;
+    }
+};
+
+// Get chats assigned to a support user
+export const getSupportUserAssignedChats = async (supportUserId) => {
+    try {
+        const chatsQuery = query(
+            collection(db, 'chats'),
+            where('supportUserId', '==', supportUserId),
+            orderBy('updatedAt', 'desc')
+        );
+        
+        const querySnapshot = await getDocs(chatsQuery);
+        
+        return querySnapshot.docs.map(doc => ({
+            id: doc.id,
+            ...doc.data()
+        }));
+    } catch (error) {
+        console.error('Error getting support user assigned chats:', error);
+        throw error;
+    }
+}; 

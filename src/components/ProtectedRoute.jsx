@@ -1,15 +1,16 @@
 import React, { useEffect } from 'react';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { Box, Typography, Button, Container } from '@mui/material';
+import { Box, Typography, Button, Container, CircularProgress } from '@mui/material';
 
 const ProtectedRoute = ({ children, requiredRoles = [] }) => {
-  const { currentUser, userRoles, loading } = useAuth();
+  const { currentUser, userRoles, loading, authInitialized } = useAuth();
   const router = useRouter();
-  
+
   useEffect(() => {
-    // If not loading and no user, redirect to login
-    if (!loading && !currentUser) {
+    // Only redirect if auth is initialized and no user
+    if (authInitialized && !currentUser) {
+      console.log('ProtectedRoute: Redirecting to login - no user found');
       router.push('/login?redirect=' + router.asPath);
     }
     
@@ -17,15 +18,23 @@ const ProtectedRoute = ({ children, requiredRoles = [] }) => {
     if (currentUser && requiredRoles.length > 0) {
       const hasRequiredRole = requiredRoles.some(role => userRoles.includes(role));
       if (!hasRequiredRole) {
-        // Don't redirect, we'll show an unauthorized message
-        console.log('User does not have required roles');
+        console.log('User does not have required roles:', userRoles, 'Required:', requiredRoles);
       }
     }
-  }, [currentUser, loading, requiredRoles, router, userRoles]);
+  }, [currentUser, authInitialized, requiredRoles, router, userRoles]);
   
-  // If loading, show nothing
-  if (loading) {
-    return null;
+  // If loading or auth not initialized, show loading spinner
+  if (loading || !authInitialized) {
+    return (
+      <Box sx={{ 
+        display: 'flex', 
+        justifyContent: 'center', 
+        alignItems: 'center', 
+        minHeight: '100vh' 
+      }}>
+        <CircularProgress />
+      </Box>
+    );
   }
   
   // If no user, show nothing (will redirect)

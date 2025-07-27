@@ -8,7 +8,8 @@ import {
   getDoc,
   updateDoc,
   serverTimestamp,
-  arrayUnion
+  arrayUnion,
+  addDoc
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { assignAdminToChat } from './chatService';
@@ -197,6 +198,146 @@ export const getAdminStats = async (adminId) => {
     };
   } catch (error) {
     console.error('Error getting admin stats:', error);
+    throw error;
+  }
+}; 
+
+// Get all support users
+export const getAllSupportUsers = async () => {
+  try {
+    const supportQuery = query(
+      collection(db, 'users'),
+      where('roles', 'array-contains', 'support'),
+      orderBy('displayName', 'asc')
+    );
+    
+    const querySnapshot = await getDocs(supportQuery);
+    
+    return querySnapshot.docs.map(doc => ({
+      id: doc.id,
+      ...doc.data()
+    }));
+  } catch (error) {
+    console.error('Error getting all support users:', error);
+    throw new Error(`Failed to get support users: ${error.message}`);
+  }
+};
+
+// Get all users who can be assigned to chats (admins + support)
+export const getAllAssignableUsers = async () => {
+  try {
+    const [admins, supportUsers] = await Promise.all([
+      getAllAdmins(),
+      getAllSupportUsers()
+    ]);
+    
+    return {
+      admins,
+      supportUsers,
+      allUsers: [
+        ...admins.map(admin => ({ ...admin, userType: 'admin' })),
+        ...supportUsers.map(support => ({ ...support, userType: 'support' }))
+      ]
+    };
+  } catch (error) {
+    console.error('Error getting assignable users:', error);
+    throw error;
+  }
+};
+
+// Create support user signup link
+export const createSupportSignupLink = async (createdBy) => {
+  try {
+    const linkData = {
+      type: 'support_signup',
+      createdBy,
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
+      used: false
+    };
+    
+    const linkRef = await addDoc(collection(db, 'signupLinks'), linkData);
+    
+    return {
+      id: linkRef.id,
+      url: `/signup/support?token=${linkRef.id}`,
+      ...linkData
+    };
+  } catch (error) {
+    console.error('Error creating support signup link:', error);
+    throw error;
+  }
+};
+
+// Validate support signup link
+export const validateSupportSignupLink = async (token) => {
+  try {
+    const linkDoc = await getDoc(doc(db, 'signupLinks', token));
+    
+    if (!linkDoc.exists()) {
+      throw new Error('Invalid signup link');
+    }
+    
+    const linkData = linkDoc.data();
+    
+    if (linkData.used) {
+      throw new Error('This signup link has already been used');
+    }
+    
+    if (linkData.type !== 'support_signup') {
+      throw new Error('Invalid link type');
+    }
+    
+    const now = new Date();
+    const expiresAt = linkData.expiresAt?.toDate ? linkData.expiresAt.toDate() : linkData.expiresAt;
+    
+    if (now > expiresAt) {
+      throw new Error('This signup link has expired');
+    }
+    
+    return linkData;
+  } catch (error) {
+    console.error('Error validating support signup link:', error);
+    throw error;
+  }
+};
+
+// Mark signup link as used
+export const markSignupLinkAsUsed = async (token) => {
+  try {
+    await updateDoc(doc(db, 'signupLinks', token), {
+      used: true,
+      usedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error marking signup link as used:', error);
+    throw error;
+  }
+};
+
+// Get all signup links
+export const getAllSignupLinks = async () => {
+  try {
+    const linksQuery = query(
+      collection(db, 'signupLinks'),
+      orderBy('createdAt', 'desc')
+    );
+    
+    const querySnapshot = await getDocs(linksQuery);
+    
+    return querySnapshot.docs.map(doc => {
+      const data = doc.data();
+      return {
+        id: doc.id,
+        ...data,
+        // Ensure createdAt is properly handled
+        createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+        // Ensure expiresAt is properly handled
+        expiresAt: data.expiresAt?.toDate ? data.expiresAt.toDate() : data.expiresAt
+      };
+    });
+  } catch (error) {
+    console.error('Error getting signup links:', error);
     throw error;
   }
 }; 

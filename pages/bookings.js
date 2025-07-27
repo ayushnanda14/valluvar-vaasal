@@ -34,6 +34,7 @@ import CurrencyRupeeIcon from '@mui/icons-material/CurrencyRupee';
 import { collection, query, where, getDocs, orderBy, getDoc, doc, limit } from 'firebase/firestore';
 import { db } from '../src/firebase/firebaseConfig';
 import { useTranslation } from 'react-i18next';
+import { getRefundHistory } from '../src/services/refundService';
 
 // Helper to generate Razorpay payment link
 const getRazorpayPaymentLink = (paymentId) => {
@@ -114,7 +115,7 @@ export default function Bookings() {
             }
           }
 
-          // If client is viewing, try to fetch Razorpay payment ID
+          // If client is viewing, try to fetch Razorpay payment ID and refund info
           if (isClient && bookingData.serviceRequestId) {
             try {
               const paymentsQuery = query(
@@ -127,7 +128,22 @@ export default function Bookings() {
               const paymentSnapshot = await getDocs(paymentsQuery);
               if (!paymentSnapshot.empty) {
                 const paymentData = paymentSnapshot.docs[0].data();
-                bookingData.razorpayPaymentId = paymentData.razorpay_payment_id; 
+                bookingData.razorpayPaymentId = paymentData.razorpay_payment_id;
+                bookingData.paymentAmount = paymentData.amount;
+                bookingData.paymentTimestamp = paymentData.timestamp;
+                bookingData.refundStatus = paymentData.refundStatus;
+                bookingData.refundAmount = paymentData.refundAmount;
+                bookingData.refundReason = paymentData.refundReason;
+                
+                // Get refund history
+                if (paymentData.razorpay_payment_id) {
+                  try {
+                    const refundHistory = await getRefundHistory(paymentData.razorpay_payment_id);
+                    bookingData.refundHistory = refundHistory;
+                  } catch (refundError) {
+                    console.error('Error fetching refund history:', refundError);
+                  }
+                }
               }
             } catch (paymentError) {
               console.error('Error fetching payment details for booking:', bookingData.id, paymentError);
@@ -470,6 +486,60 @@ export default function Bookings() {
                     </Box>
                   </Box>
                 </Grid>
+                
+                {/* Refund Information */}
+                {selectedBooking.refundStatus && (
+                  <>
+                    <Grid item xs={12}>
+                      <Divider sx={{ my: 2 }} />
+                    </Grid>
+                    <Grid item xs={12}>
+                      <Box sx={{ mb: 2 }}>
+                        <Typography variant="subtitle2" color="text.secondary" gutterBottom>
+                          Refund Information
+                        </Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 1 }}>
+                          <Typography variant="body2">Refund Amount:</Typography>
+                          <Typography variant="body2" color="warning.main" fontWeight="medium">
+                            ₹{selectedBooking.refundAmount}
+                          </Typography>
+                        </Box>
+                        {selectedBooking.refundReason && (
+                          <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                            <Typography variant="body2">Reason:</Typography>
+                            <Typography variant="body2" color="text.secondary">
+                              {selectedBooking.refundReason}
+                            </Typography>
+                          </Box>
+                        )}
+                        {selectedBooking.refundHistory && selectedBooking.refundHistory.length > 0 && (
+                          <Box sx={{ mt: 2 }}>
+                            <Typography variant="caption" color="text.secondary" gutterBottom>
+                              Refund History:
+                            </Typography>
+                            {selectedBooking.refundHistory.map((refund, index) => (
+                              <Box key={refund.id} sx={{ mt: 1, p: 1, bgcolor: 'grey.50', borderRadius: 1 }}>
+                                <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 0.5 }}>
+                                  <Typography variant="caption" fontWeight="medium">
+                                    ₹{refund.refundAmount || refund.amount}
+                                  </Typography>
+                                  <Chip 
+                                    label={refund.status} 
+                                    size="small" 
+                                    color={refund.status === 'processed' ? 'success' : 'warning'}
+                                  />
+                                </Box>
+                                <Typography variant="caption" color="text.secondary">
+                                  {refund.reason} • {refund.processedAt?.toDate().toLocaleDateString()}
+                                </Typography>
+                              </Box>
+                            ))}
+                          </Box>
+                        )}
+                      </Box>
+                    </Grid>
+                  </>
+                )}
               </Grid>
             </DialogContent>
             <DialogActions>

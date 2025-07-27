@@ -56,6 +56,8 @@ export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
   const [userRoles, setUserRoles] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [authInitialized, setAuthInitialized] = useState(false);
+  const [isClient, setIsClient] = useState(false);
 
   // ---- 🔐  Auth helpers -------------------------------------------------
   const signupWithEmail = async (email, password, displayName, roles = ['client']) => {
@@ -161,22 +163,66 @@ export function AuthProvider({ children }) {
   };
 
   useEffect(() => {
+    // Mark that we're on the client side
+    setIsClient(true);
+  }, []);
+
+  useEffect(() => {
+    // Only set up auth listeners on the client side
+    if (!isClient) return;
+
+    // Set up auth state listener
     const unsub = onAuthStateChanged(auth, async user => {
+      console.log('Auth state changed:', user ? 'User found' : 'No user');
+      
       setCurrentUser(user);
+      
       if (user) {
-        const snap = await getDoc(doc(db, 'users', user.uid));
-        setUserRoles(snap.exists() ? snap.data().roles || [] : []);
+        try {
+          const snap = await getDoc(doc(db, 'users', user.uid));
+          const roles = snap.exists() ? snap.data().roles || [] : [];
+          console.log('User roles loaded:', roles);
+          setUserRoles(roles);
+        } catch (error) {
+          console.error('Error fetching user roles:', error);
+          setUserRoles([]);
+        }
       } else {
+        console.log('No user, clearing roles');
         setUserRoles([]);
       }
+      
       setLoading(false);
+      setAuthInitialized(true);
     });
+
+    // Also check if there's already a user session
+    const checkCurrentUser = async () => {
+      try {
+        const currentUser = auth.currentUser;
+        if (currentUser) {
+          console.log('Found existing user session:', currentUser.uid);
+          setCurrentUser(currentUser);
+          
+          const snap = await getDoc(doc(db, 'users', currentUser.uid));
+          const roles = snap.exists() ? snap.data().roles || [] : [];
+          setUserRoles(roles);
+        }
+      } catch (error) {
+        console.error('Error checking current user:', error);
+      }
+    };
+    
+    checkCurrentUser();
+    
     return () => unsub();
-  }, []);
+  }, [isClient]);
 
   const value = {
     currentUser,
     userRoles,
+    loading: isClient ? loading : true,
+    authInitialized: isClient ? authInitialized : false,
     signupWithEmail,
     sendVerificationCode,
     verifyCodeAndSignUp,
@@ -188,7 +234,7 @@ export function AuthProvider({ children }) {
     getAllUsers
   };
 
-  return <AuthContext.Provider value={value}>{!loading && children}</AuthContext.Provider>;
+  return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }
 
 // 👉 Export the singleton‑helper so other modules (e.g. Login page) can grab

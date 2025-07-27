@@ -13,24 +13,32 @@ import AstrologerVerificationManager from '../../src/components/admin/Astrologer
 export default function AdminAstrologersPage() {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser, hasRole } = useAuth();
+  const { currentUser, hasRole, loading, authInitialized } = useAuth();
   
   // Check if user is logged in and is an admin
   useEffect(() => {
-    if (!currentUser) {
-      router.push('/login?redirect=/admin/astrologers');
-      return;
-    }
-    
-    const checkRole = async () => {
-      const isAdmin = await hasRole('admin');
-      if (!isAdmin) {
-        router.push('/dashboard');
+    // Only check if auth is initialized
+    if (authInitialized) {
+      if (!currentUser) {
+        router.push('/login?redirect=/admin/astrologers');
+        return;
       }
-    };
-    
-    checkRole();
-  }, [currentUser, hasRole, router]);
+      
+      const checkRole = async () => {
+        const isAdmin = await hasRole('admin');
+        if (!isAdmin) {
+          router.push('/dashboard');
+        }
+      };
+      
+      checkRole();
+    }
+  }, [currentUser, hasRole, router, authInitialized]);
+  
+  // If loading or auth not initialized, show nothing
+  if (loading || !authInitialized) {
+    return null;
+  }
   
   if (!currentUser) {
     return null; // Don't render anything until we check authentication

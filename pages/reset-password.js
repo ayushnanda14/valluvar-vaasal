@@ -147,19 +147,18 @@ export default function ResetPassword() {
                 </Button>
 
                 <Box sx={{ mt: 4, textAlign: 'center' }}>
-                  <Link href="/login" passHref legacyBehavior>
-                    <MuiLink
-                      underline="hover"
-                      sx={{
-                        color: theme.palette.primary.main,
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1rem',
-                        fontWeight: 600
-                      }}
-                    >
-                      Back to Login
-                    </MuiLink>
-                  </Link>
+                  <MuiLink
+                    href="/login"
+                    underline="hover"
+                    sx={{
+                      color: theme.palette.primary.main,
+                      fontFamily: '"Cormorant Garamond", serif',
+                      fontSize: '1rem',
+                      fontWeight: 600
+                    }}
+                  >
+                    Back to Login
+                  </MuiLink>
                 </Box>
               </Box>
             </MotionPaper>

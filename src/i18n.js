@@ -12,13 +12,9 @@ const resources = {
 
 // Function to get saved language from localStorage
 const getInitialLanguage = () => {
-  if (typeof window !== 'undefined') {
-    const savedLng = localStorage.getItem('i18nextLng');
-    if (savedLng && resources[savedLng]) { // Check if saved language is valid/supported
-      return savedLng;
-    }
-  }
-  return 'ta'; // Default to Tamil if nothing valid is saved or not in browser
+  // Default to English for consistent server/client rendering
+  // Language will be changed on client side after hydration
+  return 'en';
 };
 
 i18n

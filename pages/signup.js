@@ -500,15 +500,18 @@ Note for developers: You need to enable Phone Authentication in the Firebase Con
               )}
 
               <Box sx={{ textAlign: 'center', mt: 2, mb: 3 }}>
-                <Link href="/login" passHref sx={{
-                  color: theme.palette.primary.main,
-                  textDecoration: 'none',
-                  '&:hover': {
-                    textDecoration: 'underline'
-                  }
-                }}>
+                <MuiLink
+                  href="/login"
+                  sx={{
+                    color: theme.palette.primary.main,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
                   Already have an account? Sign in
-                </Link>
+                </MuiLink>
               </Box>
 
               <Box sx={{

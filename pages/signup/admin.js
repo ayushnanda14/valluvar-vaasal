@@ -233,20 +233,19 @@ export default function AdminSignup() {
               </form>
               
               <Box sx={{ textAlign: 'center', mt: 2 }}>
-                <Link href="/login" passHref>
-                  <MuiLink 
-                    variant="body2"
-                    sx={{ 
-                      color: theme.palette.primary.main,
-                      textDecoration: 'none',
-                      '&:hover': {
-                        textDecoration: 'underline'
-                      }
-                    }}
-                  >
-                    Already have an account? Sign in
-                  </MuiLink>
-                </Link>
+                <MuiLink 
+                  href="/login"
+                  variant="body2"
+                  sx={{ 
+                    color: theme.palette.primary.main,
+                    textDecoration: 'none',
+                    '&:hover': {
+                      textDecoration: 'underline'
+                    }
+                  }}
+                >
+                  Already have an account? Sign in
+                </MuiLink>
               </Box>
             </Paper>
           </Container>
