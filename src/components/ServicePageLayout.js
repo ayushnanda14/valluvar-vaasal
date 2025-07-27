@@ -731,22 +731,42 @@ export default function ServicePageLayout({
                         onChange={(e) => setSelectedDistrict(e.target.value)}
                       >
                         <MenuItem value="" disabled><em>Select a District</em></MenuItem>
-                        {TAMIL_NADU_DISTRICTS.map((dist) => {
-                          const isAvailable = availableDistricts.has(dist);
-                          return (
-                            <MenuItem key={dist} value={dist} disabled={!isAvailable}>
-                              {dist}
-                              {!isAvailable && (
-                                <MuiChip 
-                                  label={t('districts.comingSoon', 'Service Coming Soon')} 
-                                  size="small" 
-                                  variant="outlined" 
-                                  sx={{ ml: 1, opacity: 0.7 }}
-                                />
-                              )}
-                            </MenuItem>
-                          );
-                        })}
+                        {(() => {
+                          // Separate available and unavailable districts
+                          const availableDistrictsList = [];
+                          const unavailableDistrictsList = [];
+                          
+                          TAMIL_NADU_DISTRICTS.forEach((dist) => {
+                            const isAvailable = availableDistricts.has(dist);
+                            if (isAvailable) {
+                              availableDistrictsList.push(dist);
+                            } else {
+                              unavailableDistrictsList.push(dist);
+                            }
+                          });
+                          
+                          // Sort both lists alphabetically
+                          availableDistrictsList.sort();
+                          unavailableDistrictsList.sort();
+                          
+                          // Combine and render
+                          return [...availableDistrictsList, ...unavailableDistrictsList].map((dist) => {
+                            const isAvailable = availableDistricts.has(dist);
+                            return (
+                              <MenuItem key={dist} value={dist} disabled={!isAvailable}>
+                                {dist}
+                                {!isAvailable && (
+                                  <MuiChip 
+                                    label={t('districts.comingSoon', 'Service Coming Soon')} 
+                                    size="small" 
+                                    variant="outlined" 
+                                    sx={{ ml: 1, opacity: 0.7 }}
+                                  />
+                                )}
+                              </MenuItem>
+                            );
+                          });
+                        })()}
                       </Select>
                     </FormControl>
                   )}
