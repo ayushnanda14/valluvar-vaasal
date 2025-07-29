@@ -16,6 +16,7 @@ const theme = createTheme({
     background: {
       default: '#FFF8E1', // Very light amber background
       paper: '#FFFAF0',   // Floral white for paper elements
+      support: '#FFFFC5', // Very light amber background
     },
     text: {
       primary: '#2C1810', // Darker brown for better contrast

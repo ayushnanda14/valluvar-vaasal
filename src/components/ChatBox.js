@@ -57,9 +57,9 @@ import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 
 
-export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false }) {
+export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null }) {
     const { t } = useTranslation('common');
-    const { currentUser, hasRole } = useAuth();
+    const { currentUser, hasRole, userRoles } = useAuth();
     const [messages, setMessages] = useState([]);
     const [loading, setLoading] = useState(true);
     const [newMessage, setNewMessage] = useState('');
@@ -202,7 +202,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
         if (!chatId || isAstrologer || isAdminChat) return;
 
         let unsubscribe;
-        
+
         const listenToChatChanges = async () => {
             try {
                 const chatDocRef = doc(db, 'chats', chatId);
@@ -210,14 +210,14 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                     if (chatDoc.exists()) {
                         const chatData = chatDoc.data();
                         console.log('Chat document updated:', chatData);
-                        
+
                         // Re-check expiry status when chat document changes
                         const checkExpiryAfterUpdate = async () => {
                             try {
                                 const expiryStatus = await getChatExpiryStatus(chatId);
                                 setChatExpiryStatus(expiryStatus);
                                 setSendAllowed(!expiryStatus.isExpired);
-                                
+
                                 // If chat is no longer expired, hide feedback modal and admin chat prompt
                                 if (!expiryStatus.isExpired) {
                                     setFeedbackModalOpen(false);
@@ -232,7 +232,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                 console.error('Error checking expiry after chat update:', error);
                             }
                         };
-                        
+
                         checkExpiryAfterUpdate();
                     }
                 });
@@ -240,9 +240,9 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                 console.error('Error setting up chat document listener:', error);
             }
         };
-        
+
         listenToChatChanges();
-        
+
         return () => {
             if (unsubscribe) {
                 unsubscribe();
@@ -568,6 +568,61 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
         const mins = Math.floor(seconds / 60);
         const secs = Math.floor(seconds % 60);
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+    };
+
+        // Get sender name for display
+    const getSenderName = (message) => {
+        if (message.senderId === currentUser?.uid) {
+            return 'You';
+        }
+        
+        // For support messages sent on behalf of astrologer, show astrologer's name
+        if (message.sentBySupport && message.senderId !== currentUser?.uid) {
+            return chat?.astrologerName || 'Astrologer';
+        }
+        
+        // For support messages to astrologer, show support name
+        if (message.sentToAstrologer) {
+            return 'Support';
+        }
+        
+        // For other users, show their display name
+        return otherUser?.displayName || 'User';
+    };
+
+    // Check if we should show sender name (hide for clients on support messages)
+    const shouldShowSenderName = (message) => {
+        // If user is astrologer, support, or admin, always show names
+        const isSupport = userRoles.includes('support');
+        const isAdmin = userRoles.includes('admin');
+        
+        if (isAstrologer || isSupport || isAdmin) {
+            return true;
+        }
+        
+        // For clients, hide names on support messages (sent on behalf of astrologer)
+        if (message.sentBySupport && message.senderId !== currentUser?.uid) {
+            return false;
+        }
+        
+        return true;
+    };
+
+    // Filter messages based on user role and message type
+    const getFilteredMessages = () => {
+        if (!messages) return [];
+        
+        // Check if current user has support or admin role
+        const isSupport = userRoles.includes('support');
+        const isAdmin = userRoles.includes('admin');
+        
+        // If user is astrologer, support, or admin, show all messages
+        if (isAstrologer || isSupport || isAdmin) {
+            return messages;
+        }
+        
+        // For clients, hide support-to-astrologer messages
+        return messages.filter(message => !message.sentToAstrologer);
     };
 
     // Start voice recording
@@ -1064,9 +1119,11 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                 </Box>
                             ) : (
                                 <List sx={{ height: '100%' }}>
-                                    {messages.map((message) => {
+                                    {console.log(messages)}
+                                    {getFilteredMessages().map((message) => {
                                         const isCurrentUser = message.senderId === currentUser.uid;
                                         const isSystem = message.senderId === 'system';
+                                        const isSupportChat = message.sentToAstrologer;
 
                                         return (
                                             <ListItem
@@ -1134,12 +1191,31 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                             maxWidth: '80%'
                                                         }}
                                                     >
-                                                        {!isCurrentUser && (
-                                                            <Avatar
-                                                                src={otherUser?.photoURL}
-                                                                alt={otherUser?.displayName || 'User'}
-                                                                sx={{ width: 54, height: 54, mr: 1 }}
-                                                            />
+                                                                                                                {!isCurrentUser && (
+                                                            <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mr: 1 }}>
+                                                                <Avatar
+                                                                    src={message.sentBySupport ? chat?.astrologerPhotoURL : otherUser?.photoURL}
+                                                                    alt={getSenderName(message)}
+                                                                    sx={{ width: 54, height: 54, mb: 0.5 }}
+                                                                />
+                                                                {shouldShowSenderName(message) && (
+                                                                    <Typography 
+                                                                        variant="caption" 
+                                                                        sx={{ 
+                                                                            fontSize: '0.7rem',
+                                                                            fontWeight: 500,
+                                                                            color: 'text.secondary',
+                                                                            textAlign: 'center',
+                                                                            maxWidth: 60,
+                                                                            overflow: 'hidden',
+                                                                            textOverflow: 'ellipsis',
+                                                                            whiteSpace: 'nowrap'
+                                                                        }}
+                                                                    >
+                                                                        {getSenderName(message)}
+                                                                    </Typography>
+                                                                )}
+                                                            </Box>
                                                         )}
 
                                                         <Box>
@@ -1181,7 +1257,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                                     elevation={1}
                                                                     sx={{
                                                                         p: 1.5,
-                                                                        bgcolor: isCurrentUser ? 'primary.light' : 'background.paper',
+                                                                        bgcolor: isCurrentUser ? 'primary.light' : isSupportChat ? 'background.support' : 'background.paper',
                                                                         color: isCurrentUser ? 'white' : 'inherit',
                                                                         borderRadius: '8px',
                                                                         maxWidth: '300px'
@@ -1273,183 +1349,183 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                 zIndex: 5
                             }}
                         >
-                        {(!isAstrologer && !sendAllowed) ? (
-                            <Box sx={{ textAlign: 'center', width: '100%', p: 2 }}>
-                                <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
-                                    {feedbackSubmitted ?
-                                        t('chat.expiredWithFeedback') :
-                                        t('chat.expiredWithoutFeedback')
-                                    }
-                                </Typography>
-                                {feedbackSubmitted && (
-                                    <Typography variant="caption" color="text.secondary">
-                                        {t('chat.thankYouForFeedback')}
+                            {(!isAstrologer && !sendAllowed) ? (
+                                <Box sx={{ textAlign: 'center', width: '100%', p: 2 }}>
+                                    <Typography variant="body2" color="text.secondary" sx={{ mb: 1 }}>
+                                        {feedbackSubmitted ?
+                                            t('chat.expiredWithFeedback') :
+                                            t('chat.expiredWithoutFeedback')
+                                        }
                                     </Typography>
-                                )}
-                            </Box>
-                        ) : (
-                            <form
-                                onSubmit={handleSendMessage}
-                                style={{ width: '100%' }}
-                            >
-                                <Grid
-                                    container
-                                    spacing={1}
-                                    alignItems="center"
-                                // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
+                                    {feedbackSubmitted && (
+                                        <Typography variant="caption" color="text.secondary">
+                                            {t('chat.thankYouForFeedback')}
+                                        </Typography>
+                                    )}
+                                </Box>
+                            ) : (
+                                <form
+                                    onSubmit={handleSendMessage}
+                                    style={{ width: '100%' }}
                                 >
-                                    {!isRecording && !isRecordingComplete && (
-                                        <Grid container spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'nowrap' }}>
+                                    <Grid
+                                        container
+                                        spacing={1}
+                                        alignItems="center"
+                                    // sx={{ width: '100%', flexWrap: 'nowrap' }} // Ensure items stay in one line
+                                    >
+                                        {!isRecording && !isRecordingComplete && (
+                                            <Grid container spacing={1} alignItems="center" sx={{ width: '100%', flexWrap: 'nowrap' }}>
 
-                                            <Grid item>
-                                                <Box sx={{ display: 'flex', gap: 1 }}>
-                                                    <input
-                                                        type="file"
-                                                        ref={fileInputRef}
-                                                        style={{ display: 'none' }}
-                                                        onChange={handleFileUpload}
+                                                <Grid item>
+                                                    <Box sx={{ display: 'flex', gap: 1 }}>
+                                                        <input
+                                                            type="file"
+                                                            ref={fileInputRef}
+                                                            style={{ display: 'none' }}
+                                                            onChange={handleFileUpload}
+                                                        />
+                                                        <Tooltip title="Attach file">
+                                                            <IconButton
+                                                                color="primary"
+                                                                onClick={openFileSelector}
+                                                                disabled={sendingFile}
+                                                            >
+                                                                {sendingFile ? <CircularProgress size={24} /> : <AttachFileIcon />}
+                                                            </IconButton>
+                                                        </Tooltip>
+
+                                                        {/* Voice recording button - only for astrologers */}
+                                                        {/* {isAstrologer && ( */}
+                                                        <Tooltip title="Record voice message">
+                                                            <IconButton
+                                                                color="primary"
+                                                                onClick={startRecording}
+                                                                disabled={sendingFile}
+                                                            >
+                                                                <MicIcon />
+                                                            </IconButton>
+                                                        </Tooltip>
+                                                        {/* )} */}
+                                                    </Box>
+                                                </Grid>
+
+                                                <Grid item sx={{ flex: 1 }}>
+                                                    <TextField
+                                                        variant="outlined"
+                                                        placeholder="Type a message"
+                                                        size="small"
+                                                        value={newMessage}
+                                                        onChange={(e) => setNewMessage(e.target.value)}
+                                                        disabled={sendingFile || (!isAstrologer && !sendAllowed)}
+                                                        fullWidth
                                                     />
-                                                    <Tooltip title="Attach file">
-                                                        <IconButton
-                                                            color="primary"
-                                                            onClick={openFileSelector}
-                                                            disabled={sendingFile}
-                                                        >
-                                                            {sendingFile ? <CircularProgress size={24} /> : <AttachFileIcon />}
-                                                        </IconButton>
-                                                    </Tooltip>
+                                                </Grid>
 
-                                                    {/* Voice recording button - only for astrologers */}
-                                                    {/* {isAstrologer && ( */}
-                                                    <Tooltip title="Record voice message">
-                                                        <IconButton
-                                                            color="primary"
-                                                            onClick={startRecording}
-                                                            disabled={sendingFile}
-                                                        >
-                                                            <MicIcon />
-                                                        </IconButton>
-                                                    </Tooltip>
-                                                    {/* )} */}
+                                                <Grid item sx={{ display: 'flex', justifyContent: 'flex-end' }}>
+                                                    <IconButton
+                                                        color="primary"
+                                                        type="submit"
+                                                        disabled={!newMessage.trim() || sendingFile || (!isAstrologer && !sendAllowed)}
+                                                    >
+                                                        <SendIcon />
+                                                    </IconButton>
+                                                </Grid>
+                                            </Grid>
+                                        )}
+
+                                        {/* Recording UI */}
+                                        {isRecording && (
+                                            <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                                                    <IconButton
+                                                        color="error"
+                                                        onClick={stopRecording}
+                                                        size="small"
+                                                    >
+                                                        <StopIcon />
+                                                    </IconButton>
+                                                    <Typography variant="body2" color="error">
+                                                        Recording... {formatTime(recordingTime)}
+                                                    </Typography>
+                                                </Box>
+                                                <Box sx={{
+                                                    display: 'flex',
+                                                    alignItems: 'center',
+                                                    gap: 0.5,
+                                                    flex: 1,
+                                                    justifyContent: 'center'
+                                                }}>
+                                                    {[...Array(20)].map((_, i) => (
+                                                        <Box
+                                                            key={i}
+                                                            sx={{
+                                                                width: 3,
+                                                                height: soundWaveHeight,
+                                                                bgcolor: 'primary.main',
+                                                                borderRadius: 1,
+                                                                transition: 'height 0.1s ease-in-out'
+                                                            }}
+                                                        />
+                                                    ))}
                                                 </Box>
                                             </Grid>
+                                        )}
 
-                                            <Grid item sx={{ flex: 1 }}>
-                                                <TextField
-                                                    variant="outlined"
-                                                    placeholder="Type a message"
-                                                    size="small"
-                                                    value={newMessage}
-                                                    onChange={(e) => setNewMessage(e.target.value)}
-                                                    disabled={sendingFile || (!isAstrologer && !sendAllowed)}
-                                                    fullWidth
+                                        {/* Recording preview UI */}
+                                        {isRecordingComplete && (
+                                            <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
+                                                    <IconButton
+                                                        color="primary"
+                                                        onClick={() => {
+                                                            handleAudioPlay('preview', recordedAudio?.url)
+                                                        }}
+                                                        size="small"
+                                                    >
+                                                        {playingAudio === 'preview' ? <PauseIcon /> : <PlayArrowIcon />}
+                                                    </IconButton>
+                                                    <Typography variant="body2">
+                                                        {formatTime(recordingTime)}
+                                                    </Typography>
+                                                    <Box sx={{ flex: 1 }}>
+                                                        <LinearProgress
+                                                            variant="determinate"
+                                                            value={previewAudioProgress} // Use previewAudioProgress for preview
+                                                            sx={{ height: 4, borderRadius: 2 }}
+                                                        />
+                                                    </Box>
+                                                </Box>
+                                                <Box sx={{ display: 'flex', gap: 1 }}>
+                                                    <IconButton
+                                                        color="error"
+                                                        onClick={deleteRecording}
+                                                        size="small"
+                                                    >
+                                                        <DeleteIcon />
+                                                    </IconButton>
+                                                    <IconButton
+                                                        color="primary"
+                                                        onClick={handleVoiceMessageSend}
+                                                        disabled={sendingFile}
+                                                        size="small"
+                                                    >
+                                                        {sendingFile ? <CircularProgress size={20} /> : <SendIcon />}
+                                                    </IconButton>
+                                                </Box>
+                                                <audio
+                                                    ref={el => audioRefs.current['preview'] = el}
+                                                    src={recordedAudio?.url}
+                                                    onTimeUpdate={(e) => handleAudioProgress('preview', e)}
+                                                    onEnded={() => handleAudioEnd('preview')}
+                                                    style={{ display: 'none' }}
                                                 />
                                             </Grid>
-
-                                            <Grid item sx={{ display: 'flex', justifyContent: 'flex-end' }}>
-                                                <IconButton
-                                                    color="primary"
-                                                    type="submit"
-                                                    disabled={!newMessage.trim() || sendingFile || (!isAstrologer && !sendAllowed)}
-                                                >
-                                                    <SendIcon />
-                                                </IconButton>
-                                            </Grid>
-                                        </Grid>
-                                    )}
-
-                                    {/* Recording UI */}
-                                    {isRecording && (
-                                        <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                                                <IconButton
-                                                    color="error"
-                                                    onClick={stopRecording}
-                                                    size="small"
-                                                >
-                                                    <StopIcon />
-                                                </IconButton>
-                                                <Typography variant="body2" color="error">
-                                                    Recording... {formatTime(recordingTime)}
-                                                </Typography>
-                                            </Box>
-                                            <Box sx={{
-                                                display: 'flex',
-                                                alignItems: 'center',
-                                                gap: 0.5,
-                                                flex: 1,
-                                                justifyContent: 'center'
-                                            }}>
-                                                {[...Array(20)].map((_, i) => (
-                                                    <Box
-                                                        key={i}
-                                                        sx={{
-                                                            width: 3,
-                                                            height: soundWaveHeight,
-                                                            bgcolor: 'primary.main',
-                                                            borderRadius: 1,
-                                                            transition: 'height 0.1s ease-in-out'
-                                                        }}
-                                                    />
-                                                ))}
-                                            </Box>
-                                        </Grid>
-                                    )}
-
-                                    {/* Recording preview UI */}
-                                    {isRecordingComplete && (
-                                        <Grid item xs sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
-                                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flex: 1 }}>
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={() => {
-                                                        handleAudioPlay('preview', recordedAudio?.url)
-                                                    }}
-                                                    size="small"
-                                                >
-                                                    {playingAudio === 'preview' ? <PauseIcon /> : <PlayArrowIcon />}
-                                                </IconButton>
-                                                <Typography variant="body2">
-                                                    {formatTime(recordingTime)}
-                                                </Typography>
-                                                <Box sx={{ flex: 1 }}>
-                                                    <LinearProgress
-                                                        variant="determinate"
-                                                        value={previewAudioProgress} // Use previewAudioProgress for preview
-                                                        sx={{ height: 4, borderRadius: 2 }}
-                                                    />
-                                                </Box>
-                                            </Box>
-                                            <Box sx={{ display: 'flex', gap: 1 }}>
-                                                <IconButton
-                                                    color="error"
-                                                    onClick={deleteRecording}
-                                                    size="small"
-                                                >
-                                                    <DeleteIcon />
-                                                </IconButton>
-                                                <IconButton
-                                                    color="primary"
-                                                    onClick={handleVoiceMessageSend}
-                                                    disabled={sendingFile}
-                                                    size="small"
-                                                >
-                                                    {sendingFile ? <CircularProgress size={20} /> : <SendIcon />}
-                                                </IconButton>
-                                            </Box>
-                                            <audio
-                                                ref={el => audioRefs.current['preview'] = el}
-                                                src={recordedAudio?.url}
-                                                onTimeUpdate={(e) => handleAudioProgress('preview', e)}
-                                                onEnded={() => handleAudioEnd('preview')}
-                                                style={{ display: 'none' }}
-                                            />
-                                        </Grid>
-                                    )}
-                                </Grid>
-                            </form>
-                        )}
-                    </Box>
+                                        )}
+                                    </Grid>
+                                </form>
+                            )}
+                        </Box>
                     )}
                 </Paper>
             )}

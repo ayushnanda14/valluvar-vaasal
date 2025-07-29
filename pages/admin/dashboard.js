@@ -70,6 +70,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import TuneIcon from '@mui/icons-material/Tune';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
+import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 
 // Protected route component
 import ProtectedRoute from '../../src/components/ProtectedRoute';
@@ -146,12 +147,12 @@ export default function AdminDashboard() {
   const [astrologerServices, setAstrologerServices] = useState({});
   const [astrologerPricing, setAstrologerPricing] = useState({});
   const [servicesLoading, setServicesLoading] = useState(false);
-  
+
   // Support user management state
   const [signupLinks, setSignupLinks] = useState([]);
   const [newSignupLink, setNewSignupLink] = useState('');
   const [creatingLink, setCreatingLink] = useState(false);
-  
+
   // Real-time listener state
   const [signupLinksListener, setSignupLinksListener] = useState(null);
   const [supportUsersListener, setSupportUsersListener] = useState(null);
@@ -164,16 +165,23 @@ export default function AdminDashboard() {
   const [openAstrologerVerificationDialog, setOpenAstrologerVerificationDialog] = useState(false);
   const [selectedAstrologerForVerification, setSelectedAstrologerForVerification] = useState(null);
   const [newVerificationStatus, setNewVerificationStatus] = useState('');
+  const [allAstrologers, setAllAstrologers] = useState([]);
+  const [loadingAllAstrologers, setLoadingAllAstrologers] = useState(true);
 
   // Get tab from query params
   useEffect(() => {
     if (router.query.tab !== undefined) {
-      setTabValue(parseInt(router.query.tab));
+      const tabValue = parseInt(router.query.tab);
+      if (!isNaN(tabValue)) {
+        setTabValue(tabValue);
+      }
     }
   }, [router.query.tab]);
 
   // Fetch data based on active tab
   useEffect(() => {
+    let unsubscribe = null;
+
     const fetchData = async () => {
       if (!currentUser) return;
 
@@ -199,37 +207,8 @@ export default function AdminDashboard() {
           });
 
           setTestimonials(testimonialsList);
-        } else if (tabValue === 2) {
-          // Revenue tab
-          const paymentsRef = collection(db, 'payments');
-          const q = query(paymentsRef, orderBy('createdAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-
-          let totalRevenue = 0;
-          const astrologerRevenue = {};
-
-          querySnapshot.forEach((doc) => {
-            const payment = doc.data();
-            totalRevenue += payment.amount;
-
-            if (payment.astrologerId) {
-              if (!astrologerRevenue[payment.astrologerId]) {
-                astrologerRevenue[payment.astrologerId] = {
-                  id: payment.astrologerId,
-                  name: payment.astrologerName || 'Unknown',
-                  total: 0
-                };
-              }
-
-              astrologerRevenue[payment.astrologerId].total += payment.amount;
-            }
-          });
-
-          setRevenue({
-            total: totalRevenue,
-            byAstrologer: Object.values(astrologerRevenue)
-          });
         }
+        // Revenue tab is now handled in a separate useEffect for real-time updates
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -238,6 +217,13 @@ export default function AdminDashboard() {
     };
 
     fetchData();
+
+    // Cleanup function
+    return () => {
+      if (unsubscribe) {
+        unsubscribe();
+      }
+    };
   }, [currentUser, tabValue, getAllUsers]);
 
   // Add this new useEffect for fetching astrologers
@@ -245,9 +231,22 @@ export default function AdminDashboard() {
     if (tabValue === 3) {
       const getAstrologers = async () => {
         setLoadingAstrologers(true);
-        const astrologers = await fetchPendingAstrologers();
-        setPendingAstrologers(astrologers);
-        setLoadingAstrologers(false);
+        setLoadingAllAstrologers(true);
+
+        try {
+          // Fetch pending verification requests
+          const pendingAstrologers = await fetchPendingAstrologers();
+          setPendingAstrologers(pendingAstrologers);
+
+          // Fetch all astrologers
+          const allAstrologersData = await fetchAllAstrologers();
+          setAllAstrologers(allAstrologersData);
+        } catch (error) {
+          console.error('Error fetching astrologers:', error);
+        } finally {
+          setLoadingAstrologers(false);
+          setLoadingAllAstrologers(false);
+        }
       };
 
       getAstrologers();
@@ -265,7 +264,7 @@ export default function AdminDashboard() {
       // Set up real-time listener for signup links
       const signupLinksRef = collection(db, 'signupLinks');
       const signupLinksQuery = query(signupLinksRef, orderBy('createdAt', 'desc'));
-      
+
       const unsubscribe = onSnapshot(signupLinksQuery, (querySnapshot) => {
         const links = [];
         querySnapshot.forEach((doc) => {
@@ -312,11 +311,11 @@ export default function AdminDashboard() {
       // Set up real-time listener for support users
       const usersRef = collection(db, 'users');
       const supportUsersQuery = query(
-        usersRef, 
+        usersRef,
         where('roles', 'array-contains', 'support'),
         orderBy('createdAt', 'desc')
       );
-      
+
       const unsubscribe = onSnapshot(supportUsersQuery, (querySnapshot) => {
         const supportUsers = [];
         querySnapshot.forEach((doc) => {
@@ -327,7 +326,7 @@ export default function AdminDashboard() {
             createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
           });
         });
-        
+
         // Update the users state with new support users data
         setUsers(prevUsers => {
           // Remove existing support users
@@ -335,7 +334,7 @@ export default function AdminDashboard() {
           // Add new support users
           return [...nonSupportUsers, ...supportUsers];
         });
-        
+
         // Clear loading state
         setSupportUsersLoading(false);
       }, (error) => {
@@ -371,6 +370,52 @@ export default function AdminDashboard() {
       }
     };
   }, [signupLinksListener, supportUsersListener]);
+
+  // Add cleanup for revenue listener
+  useEffect(() => {
+    let revenueUnsubscribe = null;
+
+    if (tabValue === 2) {
+      const paymentsRef = collection(db, 'payments');
+      const q = query(paymentsRef, orderBy('timestamp', 'desc'));
+
+      revenueUnsubscribe = onSnapshot(q, (querySnapshot) => {
+        let totalRevenue = 0;
+        const astrologerRevenue = {};
+
+        querySnapshot.forEach((doc) => {
+          const payment = doc.data();
+          const amount = payment.amount || 0;
+          totalRevenue += amount;
+
+          if (payment.astrologerId) {
+            if (!astrologerRevenue[payment.astrologerId]) {
+              astrologerRevenue[payment.astrologerId] = {
+                id: payment.astrologerId,
+                name: payment.astrologerName || 'Unknown',
+                total: 0
+              };
+            }
+
+            astrologerRevenue[payment.astrologerId].total += amount;
+          }
+        });
+
+        setRevenue({
+          total: totalRevenue,
+          byAstrologer: Object.values(astrologerRevenue)
+        });
+      }, (error) => {
+        console.error('Error listening to payments:', error);
+      });
+    }
+
+    return () => {
+      if (revenueUnsubscribe) {
+        revenueUnsubscribe();
+      }
+    };
+  }, [tabValue]);
 
   const handleTabChange = (event, newValue) => {
     setTabValue(newValue);
@@ -420,8 +465,8 @@ export default function AdminDashboard() {
           : user
       ));
 
-              // Show success message
-        setSuccessMessage(`User roles updated successfully for ${selectedUser.displayName || selectedUser.email}`);
+      // Show success message
+      setSuccessMessage(`User roles updated successfully for ${selectedUser.displayName || selectedUser.email}`);
 
       handleCloseRoleDialog();
     } catch (error) {
@@ -495,7 +540,7 @@ export default function AdminDashboard() {
 
   const handleViewChats = (userId) => {
     // Navigate to a filtered view of chats for this user
-    router.push(`/admin/chats?userId=${userId}`);
+    router.push(`/admin/chats?userId=${userId}`, undefined, { shallow: true });
     handleCloseActionMenu();
   };
 
@@ -505,22 +550,22 @@ export default function AdminDashboard() {
 
     const isCurrentlyDisabled = user.disabled;
     const action = isCurrentlyDisabled ? 'enable' : 'disable';
-    const confirmMessage = isCurrentlyDisabled 
-      ? 'Are you sure you want to enable this user?' 
+    const confirmMessage = isCurrentlyDisabled
+      ? 'Are you sure you want to enable this user?'
       : 'Are you sure you want to disable this user?';
 
     if (!confirm(confirmMessage)) {
       handleCloseActionMenu();
       return;
     }
-    
+
     try {
       const userRef = doc(db, 'users', userId);
       await updateDoc(userRef, {
         disabled: !isCurrentlyDisabled,
         updatedAt: serverTimestamp()
       });
-      
+
       // Update local state
       setUsers(users.map(u =>
         u.id === userId
@@ -530,12 +575,12 @@ export default function AdminDashboard() {
 
       // Show success message
       setSuccessMessage(`User ${action}d successfully: ${user.displayName || user.email}`);
-      
+
     } catch (error) {
       console.error(`Error ${action}ing user:`, error);
       setErrorMessage(`Failed to ${action} user: ${error.message}`);
     }
-    
+
     handleCloseActionMenu();
   };
 
@@ -550,11 +595,11 @@ export default function AdminDashboard() {
 
     return (
       <Box>
-        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2, flexDirection: { md: 'row', xs: 'column' }, gap: { md: 0, xs: 2 } }}>
           <Typography variant="h5" sx={{ fontFamily: '"Playfair Display", serif' }}>
             Manage Users
           </Typography>
-          
+
           <Box sx={{ display: 'flex', alignItems: 'center' }}>
             <FilterListIcon sx={{ mr: 1, color: 'text.secondary' }} />
             <ToggleButtonGroup
@@ -595,14 +640,14 @@ export default function AdminDashboard() {
             <TableBody>
               {filteredUsers.map((user) => {
                 // Check if user is an astrologer that needs verification
-                const needsVerification = 
-                  user.roles?.includes('astrologer') && 
+                const needsVerification =
+                  user.roles?.includes('astrologer') &&
                   (!user.verificationStatus || user.verificationStatus === 'pending' || user.verificationStatus === 'rejected');
-                
+
                 return (
-                  <TableRow 
-                    key={user.id} 
-                    sx={{ 
+                  <TableRow
+                    key={user.id}
+                    sx={{
                       bgcolor: user.disabled ? 'rgba(0,0,0,0.05)' : 'inherit',
                       '&:hover': {
                         bgcolor: user.disabled ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.04)',
@@ -661,7 +706,7 @@ export default function AdminDashboard() {
             </TableBody>
           </Table>
         </TableContainer>
-        
+
         {/* Actions Menu */}
         <Menu
           anchorEl={anchorEl}
@@ -677,29 +722,29 @@ export default function AdminDashboard() {
             </ListItemIcon>
             <ListItemText>Edit Roles</ListItemText>
           </MenuItem>
-          
-          {selectedActionUser?.roles?.includes('astrologer') && 
-           (!selectedActionUser?.verificationStatus || 
-            selectedActionUser?.verificationStatus === 'pending' || 
-            selectedActionUser?.verificationStatus === 'rejected') && (
-            <MenuItem onClick={() => {
-              handleOpenAstrologerVerification(selectedActionUser);
-              handleCloseActionMenu();
-            }}>
-              <ListItemIcon>
-                <VerifiedIcon fontSize="small" color="secondary" />
-              </ListItemIcon>
-              <ListItemText primary="Verify Astrologer" />
-            </MenuItem>
-          )}
-          
+
+          {selectedActionUser?.roles?.includes('astrologer') &&
+            (!selectedActionUser?.verificationStatus ||
+              selectedActionUser?.verificationStatus === 'pending' ||
+              selectedActionUser?.verificationStatus === 'radmejected') && (
+              <MenuItem onClick={() => {
+                handleOpenAstrologerVerification(selectedActionUser);
+                handleCloseActionMenu();
+              }}>
+                <ListItemIcon>
+                  <VerifiedIcon fontSize="small" color="secondary" />
+                </ListItemIcon>
+                <ListItemText primary="Verify Astrologer" />
+              </MenuItem>
+            )}
+
           <MenuItem onClick={() => handleViewChats(selectedActionUser?.id)}>
             <ListItemIcon>
               <ChatIcon fontSize="small" />
             </ListItemIcon>
             <ListItemText>View Chats</ListItemText>
           </MenuItem>
-          
+
           {selectedActionUser?.roles?.includes('astrologer') && (
             <MenuItem onClick={() => {
               handleOpenServicesDialog(selectedActionUser);
@@ -711,10 +756,10 @@ export default function AdminDashboard() {
               <ListItemText primary="Manage Services & Pricing" />
             </MenuItem>
           )}
-          
+
           <Divider />
-          
-          <MenuItem 
+
+          <MenuItem
             onClick={() => handleToggleUserStatus(selectedActionUser?.id)}
             sx={{ color: selectedActionUser?.disabled ? 'success.main' : 'error.main' }}
           >
@@ -867,6 +912,28 @@ export default function AdminDashboard() {
     }
   };
 
+  // Function to fetch all astrologers (for the main table)
+  const fetchAllAstrologers = async () => {
+    try {
+      const astrologersRef = collection(db, 'users');
+      const q = query(astrologersRef, where('roles', 'array-contains', 'astrologer'));
+      const querySnapshot = await getDocs(q);
+
+      const astrologersList = [];
+      querySnapshot.forEach((doc) => {
+        astrologersList.push({
+          id: doc.id,
+          ...doc.data()
+        });
+      });
+
+      return astrologersList;
+    } catch (error) {
+      console.error('Error fetching all astrologers:', error);
+      return [];
+    }
+  };
+
   // Modified renderAstrologersTab function without hooks inside
   const renderAstrologersTab = () => {
     return (
@@ -881,16 +948,21 @@ export default function AdminDashboard() {
           Manage Astrologers
         </Typography>
 
+        {/* Verification Requests Section */}
+        <Typography variant="h6" sx={{ mb: 2, mt: 3 }}>
+          Verification Requests
+        </Typography>
+
         {loadingAstrologers ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
-            <Typography>Loading astrologer verification requests...</Typography>
+            <Typography>Loading verification requests...</Typography>
           </Box>
         ) : pendingAstrologers.length === 0 ? (
-          <Alert severity="info">
+          <Alert severity="info" sx={{ mb: 3 }}>
             No pending astrologer verification requests at this time.
           </Alert>
         ) : (
-          <TableContainer component={Paper} elevation={0}>
+          <TableContainer component={Paper} elevation={0} sx={{ mb: 4 }}>
             <Table>
               <TableHead>
                 <TableRow>
@@ -944,6 +1016,116 @@ export default function AdminDashboard() {
                       >
                         Review
                       </Button>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+
+        {/* All Astrologers Section */}
+        <Typography variant="h6" sx={{ mb: 2, mt: 4 }}>
+          All Astrologers
+        </Typography>
+
+        {loadingAllAstrologers ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography>Loading all astrologers...</Typography>
+          </Box>
+        ) : allAstrologers.length === 0 ? (
+          <Alert severity="info">
+            No astrologers found in the system.
+          </Alert>
+        ) : (
+          <TableContainer component={Paper} elevation={0}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Verification Status</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Services</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {allAstrologers.map((astrologer) => (
+                  <TableRow
+                    key={astrologer.id}
+                    hover
+                    sx={{
+                      bgcolor: astrologer.disabled ? 'rgba(0,0,0,0.05)' : 'inherit',
+                      '&:hover': {
+                        bgcolor: astrologer.disabled ? 'rgba(0,0,0,0.08)' : 'rgba(0,0,0,0.04)',
+                      },
+                    }}
+                  >
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        <Avatar
+                          src={astrologer.photoURL}
+                          sx={{ mr: 1, width: 32, height: 32 }}
+                        />
+                        <Box>
+                          <Typography variant="body1">
+                            {astrologer.displayName || 'Unnamed Astrologer'}
+                            {astrologer.disabled && (
+                              <Typography component="span" sx={{ ml: 1, color: 'error.main', fontStyle: 'italic' }}>
+                                (Disabled)
+                              </Typography>
+                            )}
+                          </Typography>
+                          <Typography variant="caption" color="text.secondary">{astrologer.email}</Typography>
+                        </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>{astrologer.email}</TableCell>
+                    <TableCell>
+                      <Chip
+                        label={astrologer.verificationStatus || 'Not Submitted'}
+                        color={
+                          astrologer.verificationStatus === 'verified' ? 'success' :
+                            astrologer.verificationStatus === 'rejected' ? 'error' :
+                              astrologer.verificationStatus === 'pending' ? 'warning' :
+                                'default'
+                        }
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      {astrologer.services && astrologer.services.length > 0 ? (
+                        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                          {astrologer.services.map((service, index) => (
+                            <Chip
+                              key={index}
+                              label={service}
+                              size="small"
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                          ))}
+                        </Box>
+                      ) : (
+                        <Typography variant="body2" color="text.secondary">No services</Typography>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      {astrologer.createdAt ? new Date(astrologer.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleOpenActionMenu(e, astrologer);
+                          }}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </Box>
                     </TableCell>
                   </TableRow>
                 ))}
@@ -1128,12 +1310,12 @@ export default function AdminDashboard() {
       // Prepare data for update
       const servicesToUpdate = Object.keys(astrologerServices)
         .filter(serviceKey => astrologerServices[serviceKey]);
-      
+
       const pricingToUpdate = {};
       servicesToUpdate.forEach(serviceKey => {
         // Ensure price is a number and provide a default if empty or invalid
         const price = parseFloat(astrologerPricing[serviceKey]);
-        pricingToUpdate[serviceKey] = !isNaN(price) && price > 0 ? price : 500; 
+        pricingToUpdate[serviceKey] = !isNaN(price) && price > 0 ? price : 500;
       });
 
       // Update astrologer document with services and pricing
@@ -1149,7 +1331,7 @@ export default function AdminDashboard() {
 
       // Optionally, refresh user data if needed, though roles haven't changed here
       // e.g., by re-fetching users for the main table if displayed info changes
-      
+
     } catch (error) {
       console.error('Error updating astrologer services:', error);
       setError('Failed to update astrologer services. Please try again.');
@@ -1282,7 +1464,7 @@ export default function AdminDashboard() {
         <Typography variant="h6" sx={{ mb: 2 }}>
           Support Users
         </Typography>
-        
+
         {supportUsersLoading ? (
           <Box sx={{ textAlign: 'center', py: 4 }}>
             <CircularProgress size={24} />
@@ -1304,36 +1486,36 @@ export default function AdminDashboard() {
                   <TableCell>Actions</TableCell>
                 </TableRow>
               </TableHead>
-                             <TableBody>
-                 {users.filter(user => user.roles?.includes('support')).length === 0 ? (
-                   <TableRow>
-                     <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
-                       <Typography variant="body2" color="text.secondary">
-                         No support users found
-                       </Typography>
-                     </TableCell>
-                   </TableRow>
-                 ) : (
-                   users.filter(user => user.roles?.includes('support')).map((user) => (
-                     <TableRow key={user.id}>
-                       <TableCell>{user.displayName || 'N/A'}</TableCell>
-                       <TableCell>{user.email || 'N/A'}</TableCell>
-                       <TableCell>{user.phoneNumber || 'N/A'}</TableCell>
-                       <TableCell>{user.gender || 'N/A'}</TableCell>
-                       <TableCell>{user.address || 'N/A'}</TableCell>
-                       <TableCell>{user.dateOfBirth || 'N/A'}</TableCell>
-                       <TableCell>
-                         <IconButton
-                           size="small"
-                           onClick={(e) => handleOpenActionMenu(e, user)}
-                         >
-                           <MoreVertIcon />
-                         </IconButton>
-                       </TableCell>
-                     </TableRow>
-                   ))
-                 )}
-               </TableBody>
+              <TableBody>
+                {users.filter(user => user.roles?.includes('support')).length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} sx={{ textAlign: 'center', py: 4 }}>
+                      <Typography variant="body2" color="text.secondary">
+                        No support users found
+                      </Typography>
+                    </TableCell>
+                  </TableRow>
+                ) : (
+                  users.filter(user => user.roles?.includes('support')).map((user) => (
+                    <TableRow key={user.id}>
+                      <TableCell>{user.displayName || 'N/A'}</TableCell>
+                      <TableCell>{user.email || 'N/A'}</TableCell>
+                      <TableCell>{user.phoneNumber || 'N/A'}</TableCell>
+                      <TableCell>{user.gender || 'N/A'}</TableCell>
+                      <TableCell>{user.address || 'N/A'}</TableCell>
+                      <TableCell>{user.dateOfBirth || 'N/A'}</TableCell>
+                      <TableCell>
+                        <IconButton
+                          size="small"
+                          onClick={(e) => handleOpenActionMenu(e, user)}
+                        >
+                          <MoreVertIcon />
+                        </IconButton>
+                      </TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
             </Table>
           </TableContainer>
         )}
@@ -1458,7 +1640,7 @@ export default function AdminDashboard() {
         </DialogTitle>
         <DialogContent>
           {successMessage && <Alert severity="success" sx={{ mb: 2 }}>{successMessage}</Alert>}
-          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}      
+          {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
           {servicesLoading ? (
             <Box sx={{ display: 'flex', justifyContent: 'center', p: 3 }}>
               <CircularProgress />
@@ -1498,9 +1680,9 @@ export default function AdminDashboard() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseServicesDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSaveAstrologerServices} 
-            variant="contained" 
+          <Button
+            onClick={handleSaveAstrologerServices}
+            variant="contained"
             color="primary"
             disabled={servicesLoading || actionLoading}
           >
@@ -1578,26 +1760,77 @@ export default function AdminDashboard() {
                 <Typography variant="h6" gutterBottom>
                   Verification Documents
                 </Typography>
-                {selectedAstrologer.verificationDocuments ? (
+                {selectedAstrologer.verificationDocuments || selectedAstrologer.documents ? (
                   <Grid container spacing={2}>
-                    {Object.keys(selectedAstrologer.verificationDocuments).map((doc, index) => (
-                      <Grid item xs={12} sm={6} md={4} key={index}>
-                        {selectedAstrologer.verificationDocuments[doc]?.length > 0 && selectedAstrologer.verificationDocuments[doc].map((document, index) => (
-                          <Box sx={{ border: '1px solid #ddd', p: 1, borderRadius: 1 }}>
-                            <Typography variant="subtitle2">{doc.split(/(?=[A-Z])/).map(word => word.charAt(0).toUpperCase() + word.slice(1)).join(' ') || 'Document'}</Typography>
-                            <Button
-                              variant="outlined"
-                              size="small"
-                              href={document.url}
-                              target="_blank"
-                              sx={{ mt: 1 }}
-                            >
-                              View Document
-                            </Button>
+                    {/* Handle both verificationDocuments and documents formats */}
+                    {(() => {
+                      const docs = selectedAstrologer.verificationDocuments || selectedAstrologer.documents || {};
+                      const documentTypes = [];
+
+                      // Map document types to display names
+                      const docTypeMap = {
+                        aadhar: 'Aadhar Card',
+                        certificates: 'Certificates',
+                        experience: 'Experience Proof',
+                        aadharCard: 'Aadhar Card',
+                        certificates: 'Certificates',
+                        experienceProof: 'Experience Proof',
+                        profilePicture: 'Profile Picture'
+                      };
+
+                      Object.keys(docs).forEach(key => {
+                        if (key !== 'submittedAt' && docs[key] && (Array.isArray(docs[key]) ? docs[key].length > 0 : docs[key])) {
+                          documentTypes.push({
+                            type: key,
+                            displayName: docTypeMap[key] || key,
+                            documents: Array.isArray(docs[key]) ? docs[key] : [docs[key]]
+                          });
+                        }
+                      });
+
+                      return documentTypes.map((docType, index) => (
+                        <Grid item xs={12} sm={6} md={4} key={index}>
+                          <Box sx={{ border: '1px solid #ddd', p: 2, borderRadius: 1, height: '100%' }}>
+                            <Typography variant="subtitle2" sx={{ mb: 1, fontWeight: 'bold' }}>
+                              {docType.displayName}
+                            </Typography>
+                            {docType.documents.map((document, docIndex) => (
+                              <Box key={docIndex} sx={{ mb: 1 }}>
+                                {typeof document === 'string' ? (
+                                  // Handle URL strings
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    href={document}
+                                    target="_blank"
+                                    startIcon={<PictureAsPdfIcon />}
+                                    sx={{ width: '100%', justifyContent: 'flex-start' }}
+                                  >
+                                    View {docType.displayName}
+                                  </Button>
+                                ) : document.url ? (
+                                  // Handle document objects with URL
+                                  <Button
+                                    variant="outlined"
+                                    size="small"
+                                    href={document.url}
+                                    target="_blank"
+                                    startIcon={<PictureAsPdfIcon />}
+                                    sx={{ width: '100%', justifyContent: 'flex-start' }}
+                                  >
+                                    {document.name || `View ${docType.displayName}`}
+                                  </Button>
+                                ) : (
+                                  <Typography variant="body2" color="text.secondary">
+                                    Invalid document format
+                                  </Typography>
+                                )}
+                              </Box>
+                            ))}
                           </Box>
-                        ))}
-                      </Grid>
-                    ))}
+                        </Grid>
+                      ));
+                    })()}
                   </Grid>
                 ) : (
                   <Typography color="error">No verification documents uploaded</Typography>

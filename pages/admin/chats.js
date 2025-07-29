@@ -62,7 +62,7 @@ export default function AdminChats() {
           <Container maxWidth="lg">
             <Button
               startIcon={<ArrowBackIcon />}
-              onClick={() => router.push('/admin/dashboard?tab=0')}
+              onClick={() => router.push('/admin/dashboard?tab=0', undefined, { shallow: true })}
               sx={{ mb: 2 }}
             >
               Back to Dashboard

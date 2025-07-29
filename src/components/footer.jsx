@@ -167,7 +167,7 @@ const Footer = () => {
             </Typography>
             <Box sx={{
               display: 'flex',
-              flexDirection: { xs: 'row' },
+              flexDirection: { xs: 'column', md: 'row' },
               gap: { xs: 2, md: 3 },
               alignItems: { xs: 'flex-start', md: 'flex-start' },
               width: '100%'

@@ -97,6 +97,7 @@ const ChatMonitor = ({ userId, userType }) => {
 
   // Admin features state
   const [admins, setAdmins] = useState([]);
+  const [supportUsers, setSupportUsers] = useState([]);
   const [assignableUsers, setAssignableUsers] = useState({ admins: [], supportUsers: [], allUsers: [] });
   const [adminAssignmentDialog, setAdminAssignmentDialog] = useState(false);
   const [extensionDialog, setExtensionDialog] = useState(false);
@@ -130,33 +131,33 @@ const ChatMonitor = ({ userId, userType }) => {
     const fetchChats = async () => {
       try {
         setLoading(true);
+        const chatsList = [];
 
-        // Build the query based on whether we have a userId filter
-        let q;
+        // Build the query for regular chats
+        let regularChatsQuery;
         const chatsRef = collection(db, 'chats');
 
         if (userId && userType !== 'admin') {
           // If userId is provided, filter chats where the user is either client or astrologer
-          q = query(
+          regularChatsQuery = query(
             chatsRef,
             where('participants', 'array-contains', userId),
             orderBy('updatedAt', 'desc')
           );
         } else {
           // Otherwise, get all chats
-          q = query(chatsRef, orderBy('updatedAt', 'desc'));
+          regularChatsQuery = query(chatsRef, orderBy('updatedAt', 'desc'));
         }
 
-        // Set up real-time listener
-        unsubscribe = onSnapshot(q, async (querySnapshot) => {
-          const chatsList = [];
-
+        // Set up real-time listener for regular chats
+        unsubscribe = onSnapshot(regularChatsQuery, async (querySnapshot) => {
           // Process each chat and fetch user data
           for (const doc of querySnapshot.docs) {
             const chatData = doc.data();
             const chat = {
               id: doc.id,
-              ...chatData
+              ...chatData,
+              chatType: 'regular' // Mark as regular chat
             };
 
             // Try to fetch user names if not already available
@@ -186,16 +187,102 @@ const ChatMonitor = ({ userId, userType }) => {
               }
             }
 
-            chatsList.push(chat);
+            // Add to chats list if not already present
+            const existingIndex = chatsList.findIndex(c => c.id === chat.id);
+            if (existingIndex >= 0) {
+              chatsList[existingIndex] = chat;
+            } else {
+              chatsList.push(chat);
+            }
           }
 
+          // Sort by updatedAt
+          chatsList.sort((a, b) => {
+            const aTime = a.updatedAt?.toDate?.() || new Date(0);
+            const bTime = b.updatedAt?.toDate?.() || new Date(0);
+            return bTime - aTime;
+          });
+
           setChats(chatsList);
-          console.log('Chats loaded:', chatsList);
-          setLoading(false);
+          console.log('Regular chats loaded:', chatsList);
         }, (error) => {
-          console.error('Error in chats listener:', error);
-          setLoading(false);
+          console.error('Error in regular chats listener:', error);
         });
+
+        // Also fetch admin-client chats
+        const adminChatsRef = collection(db, 'adminClientChats');
+        let adminChatsQuery;
+
+        if (userId && userType === 'admin') {
+          // If userId is provided and user is admin, filter admin chats where the user is the admin
+          adminChatsQuery = query(
+            adminChatsRef,
+            where('adminId', '==', userId),
+            where('status', '==', 'active'),
+            orderBy('updatedAt', 'desc')
+          );
+        } else if (!userId) {
+          // If no userId filter, get all active admin chats
+          adminChatsQuery = query(
+            adminChatsRef,
+            where('status', '==', 'active'),
+            orderBy('updatedAt', 'desc')
+          );
+        }
+
+        // Set up real-time listener for admin chats (only if we have a query)
+        if (adminChatsQuery) {
+          const adminChatsUnsubscribe = onSnapshot(adminChatsQuery, async (querySnapshot) => {
+            // Process each admin chat
+            for (const doc of querySnapshot.docs) {
+              const adminChatData = doc.data();
+              const adminChat = {
+                id: doc.id,
+                ...adminChatData,
+                chatType: 'admin', // Mark as admin chat
+                // Map admin chat fields to regular chat fields for consistency
+                astrologerName: adminChatData.adminName || 'Admin Support',
+                astrologerId: adminChatData.adminId,
+                clientName: adminChatData.clientName || 'Client',
+                clientId: adminChatData.clientId
+              };
+
+              // Add to chats list if not already present
+              const existingIndex = chatsList.findIndex(c => c.id === adminChat.id);
+              if (existingIndex >= 0) {
+                chatsList[existingIndex] = adminChat;
+              } else {
+                chatsList.push(adminChat);
+              }
+            }
+
+            // Sort by updatedAt
+            chatsList.sort((a, b) => {
+              const aTime = a.updatedAt?.toDate?.() || new Date(0);
+              const bTime = b.updatedAt?.toDate?.() || new Date(0);
+              return bTime - aTime;
+            });
+
+            setChats([...chatsList]); // Create new array to trigger re-render
+            console.log('All chats loaded (including admin chats):', chatsList);
+            setLoading(false);
+          }, (error) => {
+            console.error('Error in admin chats listener:', error);
+            setLoading(false);
+          });
+
+          // Store admin chats unsubscribe for cleanup
+          return () => {
+            if (unsubscribe) {
+              unsubscribe();
+            }
+            if (adminChatsUnsubscribe) {
+              adminChatsUnsubscribe();
+            }
+          };
+        } else {
+          setLoading(false);
+        }
       } catch (error) {
         console.error('Error setting up chats listener:', error);
         setLoading(false);
@@ -306,7 +393,9 @@ const ChatMonitor = ({ userId, userType }) => {
       try {
         const users = await getAllAssignableUsers();
         setAssignableUsers(users);
+        console.log('users', users);
         setAdmins(users.admins); // Keep for backward compatibility
+        setSupportUsers(users.supportUsers.concat(users.admins));
       } catch (error) {
         console.error('Error loading assignable users:', error);
       }
@@ -500,7 +589,7 @@ const ChatMonitor = ({ userId, userType }) => {
     setLoadingAdminAction(true);
     try {
       const selectedUserData = assignableUsers.allUsers.find(user => user.id === selectedUser);
-      
+
       if (selectedUserData.userType === 'admin') {
         await assignAdminToChat(selectedChat.id, selectedUser, 'manual');
         // Refresh the selected chat to show updated admin
@@ -512,7 +601,7 @@ const ChatMonitor = ({ userId, userType }) => {
         const updatedChat = { ...selectedChat, supportUserId: selectedUser };
         setSelectedChat(updatedChat);
       }
-      
+
       setAdminAssignmentDialog(false);
       setSelectedUser('');
     } catch (error) {
@@ -921,22 +1010,26 @@ const ChatMonitor = ({ userId, userType }) => {
                   color="primary"
                   onClick={() => setAdminAssignmentDialog(true)}
                   disabled={loadingAdminAction}
+                  sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', border: '1px dashed #e67e22', padding: 1, borderRadius: 1 }}
                 >
                   <AdminPanelSettingsIcon />
+                  <Typography variant="body2" color="text.secondary">
+                    Assign Admin
+                  </Typography>
                 </IconButton>
               </Tooltip>
-
               {/* Chat Extension */}
               <Tooltip title="Extend Chat">
                 <IconButton
                   color="primary"
                   onClick={() => setExtensionDialog(true)}
                   disabled={loadingAdminAction}
+                  sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', border: '1px dashed #e67e22', padding: 1, borderRadius: 1 }}
                 >
                   <AccessTimeIcon />
+                  <Typography variant="body2" color="text.secondary">Extend Chat</Typography>
                 </IconButton>
               </Tooltip>
-
               {/* Feedback Visibility Toggle */}
               {selectedChat.feedback && (
                 <Tooltip title={selectedChat.feedback.visibleToAstrologer ? "Hide from Astrologer" : "Show to Astrologer"}>
@@ -952,21 +1045,14 @@ const ChatMonitor = ({ userId, userType }) => {
             </Box>
           </Box>
 
-                        {/* Assignment Status */}
-              {selectedChat.adminId && (
-                <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
-                  <Typography variant="body2" color="white">
-                    Assigned Admin: {admins.find(a => a.id === selectedChat.adminId)?.displayName || 'Unknown'}
-                  </Typography>
-                </Box>
-              )}
-              {selectedChat.supportUserId && (
-                <Box sx={{ mt: 1, p: 1, bgcolor: 'warning.light', borderRadius: 1 }}>
-                  <Typography variant="body2" color="white">
-                    Assigned Support: {assignableUsers.supportUsers.find(s => s.id === selectedChat.supportUserId)?.displayName || 'Unknown'}
-                  </Typography>
-                </Box>
-              )}
+          {/* Assignment Status */}
+          {(selectedChat.adminId || selectedChat.supportUserId) && (
+            <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
+              <Typography variant="body2" color="white">
+                Assigned Support: {supportUsers.find(a => a.id === selectedChat.supportUserId || a.id === selectedChat.adminId)?.displayName || 'Unknown'}
+              </Typography>
+            </Box>
+          )}
 
           {/* Feedback Display */}
           {selectedChat.feedback && (
@@ -1176,60 +1262,60 @@ const ChatMonitor = ({ userId, userType }) => {
                 maxWidth: '100%'
               }}
             >
-                          <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
-              <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                <Box>
-                  <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
-                    Admin Support Chat
-                  </Typography>
-                  {paymentInfo && (
-                    <Typography variant="caption" sx={{ color: 'white', opacity: 0.8 }}>
-                      Payment: ₹{paymentInfo.amount} • {paymentInfo.timestamp?.toDate().toLocaleDateString()}
+              <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
+                <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <Box>
+                    <Typography variant="h6" sx={{ fontWeight: 600, color: 'white' }}>
+                      Admin Support Chat
                     </Typography>
-                  )}
-                </Box>
-                <Box sx={{ display: 'flex', gap: 1 }}>
-                  {paymentInfo && (
+                    {paymentInfo && (
+                      <Typography variant="caption" sx={{ color: 'white', opacity: 0.8 }}>
+                        Payment: ₹{paymentInfo.amount} • {paymentInfo.timestamp?.toDate().toLocaleDateString()}
+                      </Typography>
+                    )}
+                  </Box>
+                  <Box sx={{ display: 'flex', gap: 1 }}>
+                    {paymentInfo && (
+                      <Button
+                        size="small"
+                        variant="contained"
+                        color="info"
+                        onClick={() => setRefundDialogOpen(true)}
+                        sx={{
+                          bgcolor: 'info.main',
+                          color: 'white',
+                          '&:hover': { bgcolor: 'info.dark' }
+                        }}
+                      >
+                        Refund
+                      </Button>
+                    )}
                     <Button
                       size="small"
                       variant="contained"
-                      color="info"
-                      onClick={() => setRefundDialogOpen(true)}
+                      color="success"
+                      onClick={handleResolveAdminChat}
+                      disabled={loadingAdminAction}
                       sx={{
-                        bgcolor: 'info.main',
+                        bgcolor: 'success.main',
                         color: 'white',
-                        '&:hover': { bgcolor: 'info.dark' }
+                        '&:hover': { bgcolor: 'success.dark' },
+                        '&:disabled': { bgcolor: 'grey.400' }
                       }}
                     >
-                      Refund
+                      {loadingAdminAction ? 'Resolving...' : 'Resolve'}
                     </Button>
-                  )}
-                  <Button
-                    size="small"
-                    variant="contained"
-                    color="success"
-                    onClick={handleResolveAdminChat}
-                    disabled={loadingAdminAction}
-                    sx={{
-                      bgcolor: 'success.main',
-                      color: 'white',
-                      '&:hover': { bgcolor: 'success.dark' },
-                      '&:disabled': { bgcolor: 'grey.400' }
-                    }}
-                  >
-                    {loadingAdminAction ? 'Resolving...' : 'Resolve'}
-                  </Button>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    onClick={handleCloseAdminChat}
-                    sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
-                  >
-                    Close
-                  </Button>
+                    <Button
+                      size="small"
+                      variant="outlined"
+                      onClick={handleCloseAdminChat}
+                      sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
+                    >
+                      Close
+                    </Button>
+                  </Box>
                 </Box>
               </Box>
-            </Box>
 
               <Box sx={{ flex: 1, overflow: 'auto', p: 2 }}>
                 {loadingAdminChat ? (
@@ -1357,20 +1443,20 @@ const ChatMonitor = ({ userId, userType }) => {
           )}
         </Box>
 
-                  {/* File Preview Modal */}
-          <FilePreviewModal
-            open={modalOpen}
-            onClose={closeFilePreview}
-            file={previewFile}
-          />
+        {/* File Preview Modal */}
+        <FilePreviewModal
+          open={modalOpen}
+          onClose={closeFilePreview}
+          file={previewFile}
+        />
 
-          {/* Refund Dialog */}
-          <RefundDialog
-            open={refundDialogOpen}
-            onClose={() => setRefundDialogOpen(false)}
-            chatId={selectedChat?.id}
-            clientId={selectedChat?.clientId}
-          />
+        {/* Refund Dialog */}
+        <RefundDialog
+          open={refundDialogOpen}
+          onClose={() => setRefundDialogOpen(false)}
+          chatId={selectedChat?.id}
+          clientId={selectedChat?.clientId}
+        />
 
         {/* User Assignment Dialog */}
         <Dialog open={adminAssignmentDialog} onClose={() => setAdminAssignmentDialog(false)}>
@@ -1513,7 +1599,7 @@ const ChatMonitor = ({ userId, userType }) => {
           mb: 2
         }}
       >
-        Client-Astrologer Conversations
+        Conversations & Support Chats
       </Typography>
 
       {chats.length === 0 ? (
@@ -1528,7 +1614,7 @@ const ChatMonitor = ({ userId, userType }) => {
                 <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Admin</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Support</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -1548,13 +1634,18 @@ const ChatMonitor = ({ userId, userType }) => {
                       {chat.clientName || chat.clientId || 'Unknown Client'}
                     </TableCell>
                     <TableCell>
-                      {chat.astrologerName || chat.astrologerId || 'Unknown Astrologer'}
+                      {chat.chatType === 'admin' ? 
+                        (chat.astrologerName || 'Admin Support') : 
+                        (chat.astrologerName || chat.astrologerId || 'Unknown Astrologer')
+                      }
                     </TableCell>
-                    <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General'}</TableCell>
                     <TableCell>
-                      {chat.adminId ? (
+                      {chat.chatType === 'admin' ? 'Admin Support' : (SERVICE_TYPES[chat.serviceType] || 'General')}
+                    </TableCell>
+                    <TableCell>
+                      {chat.supportUserId ? (
                         <Chip
-                          label={admins.find(a => a.id === chat.adminId)?.displayName || 'Unknown Admin'}
+                          label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
                           color="primary"
                           size="small"
                           icon={<AdminPanelSettingsIcon />}

@@ -38,20 +38,20 @@ export default function SupportChat() {
       try {
         setLoading(true);
         const chatDoc = await getDoc(doc(db, 'chats', chatId));
-        
+
         if (!chatDoc.exists()) {
           setError('Chat not found');
           return;
         }
-        
+
         const chatData = { id: chatDoc.id, ...chatDoc.data() };
-        
+
         // Check if this chat is assigned to the current support user
         if (chatData.supportUserId !== currentUser.uid) {
           setError('You are not assigned to this chat');
           return;
         }
-        
+
         setChat(chatData);
       } catch (err) {
         console.error('Error loading chat:', err);
@@ -98,7 +98,7 @@ export default function SupportChat() {
         <meta name="description" content="Support chat interface" />
       </Head>
 
-      <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh' }}>
+      <Box sx={{ display: 'flex', flexDirection: 'column' }}>
         {/* Header */}
         <Box
           sx={{
@@ -135,8 +135,8 @@ export default function SupportChat() {
         {/* Chat Interface */}
         <Box sx={{ flex: 1, overflow: 'hidden', display: 'flex', flexDirection: 'column', pb: 2 }}>
           <Container maxWidth="lg" sx={{ flex: 1, display: 'flex', flexDirection: 'column', height: '100%' }}>
-            <SupportChatBox 
-              chatId={chatId} 
+            <SupportChatBox
+              chatId={chatId}
               otherUser={{
                 displayName: `${chat?.clientName || 'Client'} & ${chat?.astrologerName || 'Astrologer'}`,
                 photoURL: null,

@@ -22,6 +22,7 @@ import CloseIcon from '@mui/icons-material/Close';
 import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AssignmentIcon from '@mui/icons-material/Assignment';
+import LanguageIcon from '@mui/icons-material/Language';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -32,7 +33,7 @@ import { useTheme } from '@mui/material/styles';
 import useMediaQuery from '@mui/material/useMediaQuery';
 
 const Navbar = () => {
-  const { t } = useTranslation('common');
+  const { t, i18n } = useTranslation('common');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const isMobileNav = useMediaQuery('(max-width:900px)');
@@ -110,6 +111,18 @@ const Navbar = () => {
     return (names[0].charAt(0) + names[names.length - 1].charAt(0)).toUpperCase();
   };
 
+  // Language switcher for mobile drawer
+  const languages = {
+    en: 'English',
+    ta: 'தமிழ்',
+  };
+  const currentLang = i18n.language.split('-')[0];
+  const currentLabel = languages[currentLang] || currentLang.toUpperCase();
+
+  const changeLanguage = (lng) => {
+    i18n.changeLanguage(lng);
+  };
+
   return (
     <>
       <Head>
@@ -156,20 +169,19 @@ const Navbar = () => {
                     fontSize: '1.3rem',
                     position: 'absolute',
                     left: '50%',
-                    transform: 'translateX(-50%)'
+                    transform: 'translateX(-50%)',
                   }}
                 >
                   {t('brand')}
                 </Typography>
               </Link>
 
-              {/* Right side - Language Selector and Profile Icon */}
+              {/* Right side - Profile Icon only (language switcher moved to drawer) */}
               <Box sx={{ 
                 display: 'flex', 
                 alignItems: 'center', 
                 gap: 1
               }}>
-                <LanguageSwitcher />
                 {currentUser ? (
                   <IconButton
                     onClick={handleProfileClick}
@@ -478,6 +490,42 @@ const Navbar = () => {
           <IconButton onClick={toggleDrawer(false)}>
             <CloseIcon />
           </IconButton>
+        </Box>
+        <Divider />
+
+        {/* Language Switcher in Mobile Drawer */}
+        <Box sx={{ p: 2 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 500,
+              mb: 1,
+              color: 'text.secondary'
+            }}
+          >
+            {t('navbar.language')}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {Object.keys(languages).map((lng) => (
+              <Button
+                key={lng}
+                variant={currentLang === lng ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => changeLanguage(lng)}
+                startIcon={<LanguageIcon />}
+                sx={{
+                  fontFamily: '"Cinzel", serif',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  minWidth: 'auto',
+                  px: 2
+                }}
+              >
+                {languages[lng]}
+              </Button>
+            ))}
+          </Box>
         </Box>
         <Divider />
 
