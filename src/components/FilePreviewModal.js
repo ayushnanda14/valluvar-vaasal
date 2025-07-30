@@ -17,6 +17,7 @@ import ImageIcon from '@mui/icons-material/Image';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DescriptionIcon from '@mui/icons-material/Description';
 import { Document, Page, pdfjs } from 'react-pdf';
+import Image from 'next/image';
 
 // Set up the worker for PDF.js
 pdfjs.GlobalWorkerOptions.workerSrc = `//cdnjs.cloudflare.com/ajax/libs/pdf.js/${pdfjs.version}/pdf.worker.min.js`;
@@ -94,7 +95,7 @@ export default function FilePreviewModal({ open, onClose, file }) {
     if (fileType.startsWith('image/')) {
       return (
         <Box sx={{ textAlign: 'center', pt: 2 }}>
-          <img
+          <Image
             src={file.url}
             alt={file.name}
             style={{

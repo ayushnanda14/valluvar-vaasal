@@ -96,7 +96,7 @@ export default function Messages() {
         unsubscribe();
       }
     };
-  }, [currentUser]);
+  }, [currentUser, router.query, isMobile, t]);
 
   const handleSelectChat = (chat) => {
     setSelectedChat(chat);

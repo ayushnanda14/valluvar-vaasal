@@ -134,7 +134,7 @@ export default function AstrologerDashboard() {
             try {
               setRevenueLoading(true);
               console.log('Fetching revenue for astrologer:', currentUser.uid);
-              
+
               const revenueQuery = query(
                 collection(db, 'payments'),
                 where('astrologerId', '==', currentUser.uid),
@@ -143,13 +143,13 @@ export default function AstrologerDashboard() {
 
               const revenueSnapshot = await getDocs(revenueQuery);
               console.log('Revenue snapshot size:', revenueSnapshot.size);
-              
+
               const revenueData = revenueSnapshot.docs.map(doc => {
                 const data = { id: doc.id, ...doc.data() };
                 console.log('Payment record:', data);
                 return data;
               });
-              
+
               setRevenue(revenueData);
               console.log('Total revenue records found:', revenueData.length);
             } catch (error) {
@@ -280,7 +280,7 @@ export default function AstrologerDashboard() {
     if (chats.length === 0) {
       return (
         <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography>You don't have any client consultations yet.</Typography>
+          <Typography>You don&apos;t have any client consultations yet.</Typography>
         </Box>
       );
     }

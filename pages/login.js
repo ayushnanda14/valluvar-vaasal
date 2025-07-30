@@ -435,7 +435,7 @@ export default function Login() {
 
             <Box sx={{ mt: 3, textAlign: 'center' }}>
               <Typography variant="body2">
-                Don't have an account?{' '}
+                Don&apos;t have an account?{' '}
                 <MuiLink href="/signup" color="primary">Sign up</MuiLink>
               </Typography>
               <Typography variant="body2" sx={{ mt: 1 }}>

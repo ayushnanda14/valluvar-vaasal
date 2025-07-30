@@ -274,7 +274,7 @@ export default function SupportDashboard() {
                             </Typography>
                             {chat.lastMessage && (
                               <Typography variant="body2" color="text.secondary" sx={{ fontStyle: 'italic' }}>
-                                "{typeof chat.lastMessage === 'string' ? chat.lastMessage : chat.lastMessage.text || 'Message'}"
+                                &quot;{typeof chat.lastMessage === 'string' ? chat.lastMessage : chat.lastMessage.text || 'Message'}&quot;
                               </Typography>
                             )}
                           </Box>

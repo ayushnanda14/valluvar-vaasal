@@ -159,7 +159,7 @@ export default function About() {
                         mb: 3
                       }}
                     >
-                      At Valluvar Vaasal, our mission is to preserve and share the profound wisdom of ancient Tamil astrology—a tradition that has guided countless souls for millennia. In a world of rapid technological advancement and constant change, we believe that the timeless insights of our ancestors offer invaluable guidance for navigating life's journey.
+                      At Valluvar Vaasal, our mission is to preserve and share the profound wisdom of ancient Tamil astrology—a tradition that has guided countless souls for millennia. In a world of rapid technological advancement and constant change, we believe that the timeless insights of our ancestors offer invaluable guidance for navigating life&apos;s journey.
                     </Typography>
 
                     <Typography
@@ -173,7 +173,7 @@ export default function About() {
                         mb: 3
                       }}
                     >
-                      Our name, "Valluvar Vaasal," translates to "The Gateway of Valluvar"—honoring the legendary Tamil poet and philosopher Thiruvalluvar, whose wisdom continues to illuminate paths across generations. Like a gateway, we aim to be the bridge connecting the ancient knowledge of Tamil astrology with those seeking clarity in the modern world.
+                      Our name, &quot;Valluvar Vaasal&quot;, translates to &quot;The Gateway of Valluvar&quot;—honoring the legendary Tamil poet and philosopher Thiruvalluvar, whose wisdom continues to illuminate paths across generations. Like a gateway, we aim to be the bridge connecting the ancient knowledge of Tamil astrology with those seeking clarity in the modern world.
                     </Typography>
 
                     <Typography
@@ -215,7 +215,7 @@ export default function About() {
                         mb: 3
                       }}
                     >
-                      <strong>Compassion:</strong> We approach each reading with deep empathy, understanding that every individual's journey is unique and deserving of respectful guidance.
+                      <strong>Compassion:</strong> We approach each reading with deep empathy, understanding that every individual&apos;s journey is unique and deserving of respectful guidance.
                     </Typography>
 
                     <Typography
@@ -270,7 +270,7 @@ export default function About() {
                         fontStyle: 'italic'
                       }}
                     >
-                      "The stars guide, but do not compel. Through understanding the cosmic patterns that influence us, we gain the wisdom to navigate our destinies with greater awareness."
+                      &quot;The stars guide, but do not compel. Through understanding the cosmic patterns that influence us, we gain the wisdom to navigate our destinies with greater awareness.&quot;
                     </Typography>
                   </Paper>
                 </MotionBox>

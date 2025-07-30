@@ -209,7 +209,7 @@ export default function ServicePageLayout({
       }
     };
     fetchDistricts();
-  }, [serviceType]);
+  }, [serviceType, t]);
 
   // Fetch astrologers based on selected district
   useEffect(() => {
@@ -245,7 +245,7 @@ export default function ServicePageLayout({
     };
 
     fetchAstrologersByDistrict();
-  }, [selectedDistrict, serviceType, step]);
+  }, [selectedDistrict, serviceType, step, t]);
 
   // Check if user is logged in
   useEffect(() => {

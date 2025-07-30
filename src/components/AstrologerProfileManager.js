@@ -34,13 +34,13 @@ import FileUploadSection from './FileUploadSection';
 
 // Define the list of districts (reuse from signup)
 const TAMIL_NADU_DISTRICTS = [
-  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
-  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 
-  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 
-  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 
-  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)', 
-  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 
-  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 
+  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
+  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur',
+  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal',
+  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet',
+  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)',
+  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur',
+  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram',
   'Virudhunagar'
 ];
 
@@ -95,7 +95,7 @@ export default function AstrologerProfileManager() {
         const verificationData = await getAstrologerVerificationStatus(currentUser.uid);
         const newVerificationStatus = verificationData.verificationStatus || 'not_submitted';
         setVerificationStatus(newVerificationStatus);
-        
+
         // Check if verification was just completed (show success message once)
         if (newVerificationStatus === 'verified' && !hasShownVerificationSuccess) {
           setSuccess('Your account verification is complete! You can now provide astrology services.');
@@ -124,7 +124,7 @@ export default function AstrologerProfileManager() {
             jathakPrediction: userPricing.jathakPrediction || 500,
             jathakWriting: userPricing.jathakWriting || 500
           });
-          
+
           // Set district from user data
           setState(userData.state || 'Tamil Nadu'); // Default to TN if not set
           setDistrict(userData.district || '');
@@ -145,7 +145,7 @@ export default function AstrologerProfileManager() {
     };
 
     fetchProfileData();
-  }, [currentUser]);
+  }, [currentUser, hasShownVerificationSuccess]);
 
   // Handle service selection
   const handleServiceChange = (event) => {
@@ -169,8 +169,8 @@ export default function AstrologerProfileManager() {
     if (!currentUser) { /* ... error handling ... */ return; }
     if (!services.marriageMatching && !services.jathakPrediction && !services.jathakWriting) { /* ... error handling ... */ return; }
     if (!district) { // Add district validation
-        setError('Please select your district.');
-        return;
+      setError('Please select your district.');
+      return;
     }
 
     setLoading(true);
@@ -180,12 +180,12 @@ export default function AstrologerProfileManager() {
     try {
       // Combine updates: Could be two separate calls or one if service adjusted
       // Using two calls for clarity with existing structure
-      
+
       // 1. Update Services & Pricing
       await updateAstrologerServices(currentUser.uid, services, pricing);
-      
+
       // 2. Update Profile Details (State is fixed, only district changes)
-      await updateAstrologerProfileDetails(currentUser.uid, { district, state }); 
+      await updateAstrologerProfileDetails(currentUser.uid, { district, state });
 
       setSuccess('Your profile details, services, and pricing have been updated successfully.'); // Updated success message
     } catch (err) {
@@ -227,7 +227,7 @@ export default function AstrologerProfileManager() {
 
       setSuccess('Verification documents submitted successfully. Your application is now under review.');
       setVerificationStatus('pending');
-      
+
       // Clear the uploaded files
       setAadharFiles([]);
       setCertificateFiles([]);
@@ -313,10 +313,10 @@ export default function AstrologerProfileManager() {
 
       {/* Add Profile Photo Uploader */}
       <Box sx={{ mb: 4 }}>
-        <ProfilePhotoUploader 
+        <ProfilePhotoUploader
           onPhotoUpdate={(newPhotoUrl) => {
             setSuccess('Profile photo updated successfully.');
-          }} 
+          }}
         />
       </Box>
 
@@ -328,34 +328,34 @@ export default function AstrologerProfileManager() {
           Your Location
         </Typography>
         <Grid container spacing={2} sx={{ mb: 3 }}>
-           <Grid item xs={12} sm={6}>
-               <TextField
-                 fullWidth
-                 label="State"
-                 value={state}
-                 InputProps={{ readOnly: true }}
-                 disabled // Visually indicate it's not changeable here
-                 sx={{ backgroundColor: '#f0f0f0' }} 
-               />
-           </Grid>
-           <Grid item xs={12} sm={6}>
-             <FormControl sx={{ width: '100%' }} required>
-               <InputLabel id="district-select-label">District</InputLabel>
-               <Select
-                 labelId="district-select-label"
-                 value={district}
-                 label="District"
-                 onChange={(e) => setDistrict(e.target.value)}
-               >
-                 <MenuItem value="" disabled><em>Select District</em></MenuItem>
-                 {TAMIL_NADU_DISTRICTS.map((dist) => (
-                   <MenuItem key={dist} value={dist}>{dist}</MenuItem>
-                 ))}
-               </Select>
-             </FormControl>
-           </Grid>
+          <Grid item xs={12} sm={6}>
+            <TextField
+              fullWidth
+              label="State"
+              value={state}
+              InputProps={{ readOnly: true }}
+              disabled // Visually indicate it's not changeable here
+              sx={{ backgroundColor: '#f0f0f0' }}
+            />
+          </Grid>
+          <Grid item xs={12} sm={6}>
+            <FormControl sx={{ width: '100%' }} required>
+              <InputLabel id="district-select-label">District</InputLabel>
+              <Select
+                labelId="district-select-label"
+                value={district}
+                label="District"
+                onChange={(e) => setDistrict(e.target.value)}
+              >
+                <MenuItem value="" disabled><em>Select District</em></MenuItem>
+                {TAMIL_NADU_DISTRICTS.map((dist) => (
+                  <MenuItem key={dist} value={dist}>{dist}</MenuItem>
+                ))}
+              </Select>
+            </FormControl>
+          </Grid>
         </Grid>
-         
+
         <Divider sx={{ my: 3 }} />
 
         {/* Verification Documents Section */}
@@ -364,7 +364,7 @@ export default function AstrologerProfileManager() {
             <Typography variant="h6" sx={{ mb: 2, mt: 3 }}>
               Verification Documents
             </Typography>
-            
+
             <Alert severity="info" sx={{ mb: 3 }}>
               Upload the required documents to complete your verification process. All documents will be reviewed by our team.
             </Alert>

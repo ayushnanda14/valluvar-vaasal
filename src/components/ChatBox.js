@@ -290,7 +290,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                 unsubscribe();
             }
         };
-    }, [chatId]);
+    }, [chatId, isAdminChat]);
 
     // Scroll to bottom when messages change
     useEffect(() => {
@@ -570,22 +570,22 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
         return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
     };
 
-        // Get sender name for display
+    // Get sender name for display
     const getSenderName = (message) => {
         if (message.senderId === currentUser?.uid) {
             return 'You';
         }
-        
+
         // For support messages sent on behalf of astrologer, show astrologer's name
         if (message.sentBySupport && message.senderId !== currentUser?.uid) {
             return chat?.astrologerName || 'Astrologer';
         }
-        
+
         // For support messages to astrologer, show support name
         if (message.sentToAstrologer) {
             return 'Support';
         }
-        
+
         // For other users, show their display name
         return otherUser?.displayName || 'User';
     };
@@ -595,32 +595,32 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
         // If user is astrologer, support, or admin, always show names
         const isSupport = userRoles.includes('support');
         const isAdmin = userRoles.includes('admin');
-        
+
         if (isAstrologer || isSupport || isAdmin) {
             return true;
         }
-        
+
         // For clients, hide names on support messages (sent on behalf of astrologer)
         if (message.sentBySupport && message.senderId !== currentUser?.uid) {
             return false;
         }
-        
+
         return true;
     };
 
     // Filter messages based on user role and message type
     const getFilteredMessages = () => {
         if (!messages) return [];
-        
+
         // Check if current user has support or admin role
         const isSupport = userRoles.includes('support');
         const isAdmin = userRoles.includes('admin');
-        
+
         // If user is astrologer, support, or admin, show all messages
         if (isAstrologer || isSupport || isAdmin) {
             return messages;
         }
-        
+
         // For clients, hide support-to-astrologer messages
         return messages.filter(message => !message.sentToAstrologer);
     };
@@ -1191,7 +1191,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                             maxWidth: '80%'
                                                         }}
                                                     >
-                                                                                                                {!isCurrentUser && (
+                                                        {!isCurrentUser && (
                                                             <Box sx={{ display: 'flex', flexDirection: 'column', alignItems: 'center', mr: 1 }}>
                                                                 <Avatar
                                                                     src={message.sentBySupport ? chat?.astrologerPhotoURL : otherUser?.photoURL}
@@ -1199,9 +1199,9 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                                     sx={{ width: 54, height: 54, mb: 0.5 }}
                                                                 />
                                                                 {shouldShowSenderName(message) && (
-                                                                    <Typography 
-                                                                        variant="caption" 
-                                                                        sx={{ 
+                                                                    <Typography
+                                                                        variant="caption"
+                                                                        sx={{
                                                                             fontSize: '0.7rem',
                                                                             fontWeight: 500,
                                                                             color: 'text.secondary',
