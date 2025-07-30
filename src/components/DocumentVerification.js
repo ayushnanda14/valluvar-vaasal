@@ -139,7 +139,7 @@ export default function DocumentVerification() {
       case 'verified':
         return (
           <Alert severity="success" sx={{ mb: 3 }}>
-            Your account is verified. You can now provide astrology services.
+            Your verification is complete! You can now provide astrology services.
           </Alert>
         );
       case 'pending':

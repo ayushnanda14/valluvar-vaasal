@@ -64,6 +64,7 @@ export default function AstrologerProfileManager() {
 
   // State for verification status
   const [verificationStatus, setVerificationStatus] = useState('not_submitted');
+  const [hasShownVerificationSuccess, setHasShownVerificationSuccess] = useState(false);
 
   // State for form submission
   const [loading, setLoading] = useState(false);
@@ -92,7 +93,14 @@ export default function AstrologerProfileManager() {
       try {
         // Fetch verification status (as before)
         const verificationData = await getAstrologerVerificationStatus(currentUser.uid);
-        setVerificationStatus(verificationData.verificationStatus || 'not_submitted');
+        const newVerificationStatus = verificationData.verificationStatus || 'not_submitted';
+        setVerificationStatus(newVerificationStatus);
+        
+        // Check if verification was just completed (show success message once)
+        if (newVerificationStatus === 'verified' && !hasShownVerificationSuccess) {
+          setSuccess('Your account verification is complete! You can now provide astrology services.');
+          setHasShownVerificationSuccess(true);
+        }
 
         // Fetch full user document for profile details
         const userDocRef = doc(db, 'users', currentUser.uid);
@@ -234,6 +242,11 @@ export default function AstrologerProfileManager() {
 
   // Render verification status message
   const renderVerificationStatus = () => {
+    // Don't show verification status if verified and success message has been shown
+    if (verificationStatus === 'verified' && hasShownVerificationSuccess) {
+      return null;
+    }
+
     switch (verificationStatus) {
       case 'verified':
         return (

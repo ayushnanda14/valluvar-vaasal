@@ -37,7 +37,7 @@ import ChatIcon from '@mui/icons-material/Chat';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
 import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
-import { getUserChats } from '../../src/services/chatService';
+import { getUserChats, markChatAsCompleted } from '../../src/services/chatService';
 import { SERVICE_TYPES } from '@/utils/constants';
 
 export default function AstrologerDashboard() {
@@ -50,6 +50,7 @@ export default function AstrologerDashboard() {
   const [revenueLoading, setRevenueLoading] = useState(true);
   const [loading, setLoading] = useState(true);
   const [selectedChat, setSelectedChat] = useState(null);
+  const [readingsFilter, setReadingsFilter] = useState('all'); // 'all', 'active', 'completed'
 
   // New state for notifications and verification status
   const [newReadingsCount, setNewReadingsCount] = useState(0);
@@ -80,16 +81,16 @@ export default function AstrologerDashboard() {
 
           // Check if profile has all required fields
           const hasServices = profileData.services && profileData.services.length > 0;
-          const hasPricing = profileData.services && Object.keys(profileData.serviceCharges).length > 0;
+          const hasPricing = profileData.serviceCharges && Object.keys(profileData.serviceCharges).length > 0;
 
           setIsProfileComplete(hasServices && hasPricing);
-          setIsVerified(profileData.verified === true);
-          setVerificationStatus(profileData.verificationStatus || 'pending');
+          setIsVerified(profileData.verificationStatus === 'verified');
+          setVerificationStatus(profileData.verificationStatus || 'not_submitted');
           setVerificationMessage(profileData.verificationMessage || '');
         } else {
           setIsProfileComplete(false);
           setIsVerified(false);
-          setVerificationStatus('pending');
+          setVerificationStatus('not_submitted');
         }
       } catch (error) {
         console.error('Error fetching profile status:', error);
@@ -205,6 +206,15 @@ export default function AstrologerDashboard() {
     setSelectedChat(null);
   };
 
+  const handleMarkAsCompleted = async (chatId) => {
+    try {
+      await markChatAsCompleted(chatId, currentUser.uid);
+      // The chat list will automatically update due to the real-time listener
+    } catch (error) {
+      console.error('Error marking chat as completed:', error);
+    }
+  };
+
   const renderReadingsTab = () => {
     if (loading) {
       return (
@@ -228,12 +238,26 @@ export default function AstrologerDashboard() {
           </Box>
 
           <Paper elevation={1} sx={{ mb: 2, p: 2 }}>
-            <Typography variant="subtitle1" fontWeight="bold">
-              Service: {SERVICE_TYPES[selectedChat.serviceType] || 'General Consultation'}
-            </Typography>
-            <Typography variant="body2" color="text.secondary">
-              Started on: {selectedChat.createdAt?.toDate().toLocaleDateString() || 'Unknown date'}
-            </Typography>
+            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+              <Box>
+                <Typography variant="subtitle1" fontWeight="bold">
+                  Service: {SERVICE_TYPES[selectedChat.serviceType] || 'General Consultation'}
+                </Typography>
+                <Typography variant="body2" color="text.secondary">
+                  Started on: {selectedChat.createdAt?.toDate().toLocaleDateString() || 'Unknown date'}
+                </Typography>
+              </Box>
+              {selectedChat.status !== 'completed' && (
+                <Button
+                  variant="contained"
+                  color="success"
+                  size="small"
+                  onClick={() => handleMarkAsCompleted(selectedChat.id)}
+                >
+                  Mark as Completed
+                </Button>
+              )}
+            </Box>
           </Paper>
 
           <ChatBox
@@ -243,6 +267,14 @@ export default function AstrologerDashboard() {
         </Box>
       );
     }
+
+    // Filter chats based on status
+    const filteredChats = chats.filter(chat => {
+      if (readingsFilter === 'all') return true;
+      if (readingsFilter === 'active') return chat.status !== 'completed';
+      if (readingsFilter === 'completed') return chat.status === 'completed';
+      return true;
+    });
 
     // If no chats available
     if (chats.length === 0) {
@@ -255,102 +287,150 @@ export default function AstrologerDashboard() {
 
     // Show the list of chats
     return (
-      <TableContainer component={Paper} elevation={1}>
-        <Table>
-          <TableHead>
-            <TableRow>
-              <TableCell>Client</TableCell>
-              <TableCell>Service</TableCell>
-              <TableCell>
-                <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                  <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
-                  Last Updated
-                </Box>
-              </TableCell>
-              <TableCell>Status</TableCell>
-              <TableCell>Actions</TableCell>
-            </TableRow>
-          </TableHead>
-          <TableBody>
-            {chats.map((chat) => (
-              <TableRow
-                key={chat.id}
-                hover
-                sx={{
-                  cursor: 'pointer',
-                  bgcolor: chat.lastMessage &&
-                    chat.lastMessage.senderId !== currentUser?.uid &&
-                    !chat.lastMessage.read ?
-                    'rgba(25, 118, 210, 0.08)' : 'inherit'
-                }}
-                onClick={() => handleChatSelect(chat)}
-              >
-                <TableCell>
-                  <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                    {chat.otherParticipant?.photoURL ? (
-                      <Box
-                        component="img"
-                        src={chat.otherParticipant.photoURL}
-                        alt={chat.otherParticipant.displayName}
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          mr: 1
-                        }}
-                      />
-                    ) : (
-                      <Box
-                        sx={{
-                          width: 32,
-                          height: 32,
-                          borderRadius: '50%',
-                          bgcolor: 'primary.main',
-                          color: 'white',
-                          display: 'flex',
-                          alignItems: 'center',
-                          justifyContent: 'center',
-                          mr: 1
-                        }}
-                      >
-                        {chat.otherParticipant?.displayName?.[0]?.toUpperCase() || '?'}
-                      </Box>
-                    )}
-                    {chat.otherParticipant?.displayName || 'Unknown Client'}
-                  </Box>
-                </TableCell>
-                <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General Consultation'}</TableCell>
-                <TableCell>
-                  {chat.updatedAt?.toDate().toLocaleDateString() || 'Unknown date'}
-                </TableCell>
-                <TableCell>
-                  <Chip
-                    label={chat.status || 'Active'}
-                    color={
-                      chat.status === 'completed' ? 'success' :
-                        chat.status === 'pending' ? 'warning' : 'primary'
-                    }
-                    size="small"
-                  />
-                </TableCell>
-                <TableCell>
-                  <Button
-                    size="small"
-                    variant="outlined"
-                    startIcon={<ChatIcon />}
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleChatSelect(chat);
+      <Box>
+        {/* Filter buttons */}
+        <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+          <Button
+            variant={readingsFilter === 'all' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setReadingsFilter('all')}
+          >
+            All ({chats.length})
+          </Button>
+          <Button
+            variant={readingsFilter === 'active' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setReadingsFilter('active')}
+          >
+            Active ({chats.filter(chat => chat.status !== 'completed').length})
+          </Button>
+          <Button
+            variant={readingsFilter === 'completed' ? 'contained' : 'outlined'}
+            size="small"
+            onClick={() => setReadingsFilter('completed')}
+          >
+            Completed ({chats.filter(chat => chat.status === 'completed').length})
+          </Button>
+        </Box>
+
+        {filteredChats.length === 0 ? (
+          <Box sx={{ textAlign: 'center', py: 4 }}>
+            <Typography>No {readingsFilter} readings found.</Typography>
+          </Box>
+        ) : (
+          <TableContainer component={Paper} elevation={1}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell>Client</TableCell>
+                  <TableCell>Service</TableCell>
+                  <TableCell>
+                    <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                      <CalendarTodayIcon fontSize="small" sx={{ mr: 0.5 }} />
+                      Last Updated
+                    </Box>
+                  </TableCell>
+                  <TableCell>Status</TableCell>
+                  <TableCell>Actions</TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {filteredChats.map((chat) => (
+                  <TableRow
+                    key={chat.id}
+                    hover
+                    sx={{
+                      cursor: 'pointer',
+                      bgcolor: chat.lastMessage &&
+                        chat.lastMessage.senderId !== currentUser?.uid &&
+                        !chat.lastMessage.read ?
+                        'rgba(25, 118, 210, 0.08)' : 'inherit'
                     }}
+                    onClick={() => handleChatSelect(chat)}
                   >
-                    Chat
-                  </Button>
-                </TableCell>
-              </TableRow>
-            ))}
-          </TableBody>
-        </Table>
-      </TableContainer>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center' }}>
+                        {chat.otherParticipant?.photoURL ? (
+                          <Box
+                            component="img"
+                            src={chat.otherParticipant.photoURL}
+                            alt={chat.otherParticipant.displayName}
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              mr: 1
+                            }}
+                          />
+                        ) : (
+                          <Box
+                            sx={{
+                              width: 32,
+                              height: 32,
+                              borderRadius: '50%',
+                              bgcolor: 'primary.main',
+                              color: 'white',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              mr: 1
+                            }}
+                          >
+                            {chat.otherParticipant?.displayName?.[0]?.toUpperCase() || '?'}
+                          </Box>
+                        )}
+                        {chat.otherParticipant?.displayName || 'Unknown Client'}
+                      </Box>
+                    </TableCell>
+                    <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General Consultation'}</TableCell>
+                    <TableCell>
+                      {chat.updatedAt?.toDate().toLocaleDateString() || 'Unknown date'}
+                    </TableCell>
+                    <TableCell>
+                      <Chip
+                        label={chat.status || 'Active'}
+                        color={
+                          chat.status === 'completed' ? 'success' :
+                            chat.status === 'pending' ? 'warning' : 'primary'
+                        }
+                        size="small"
+                      />
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Button
+                          size="small"
+                          variant="outlined"
+                          startIcon={<ChatIcon />}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleChatSelect(chat);
+                          }}
+                        >
+                          Chat
+                        </Button>
+                        {chat.status !== 'completed' && (
+                          <Button
+                            size="small"
+                            variant="outlined"
+                            color="success"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleMarkAsCompleted(chat.id);
+                            }}
+                          >
+                            Complete
+                          </Button>
+                        )}
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
+        )}
+      </Box>
     );
   };
 

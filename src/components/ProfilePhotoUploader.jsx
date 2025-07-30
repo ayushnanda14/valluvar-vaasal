@@ -8,6 +8,7 @@ import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { storage } from '../firebase/firebaseConfig';
 import { updateProfile } from 'firebase/auth';
 import FileUploadSection from './FileUploadSection';
+import ImageCropper from './ImageCropper';
 
 const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
   const { t } = useTranslation('common');
@@ -15,6 +16,8 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
   const [photo, setPhoto] = useState([]);
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
+  const [showCropper, setShowCropper] = useState(false);
+  const [selectedFile, setSelectedFile] = useState(null);
 
   const handlePhotoUpload = async () => {
     if (!currentUser || photo.length === 0) {
@@ -58,6 +61,19 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
     }
   };
 
+  const handleFileSelect = (files) => {
+    if (files.length > 0) {
+      setSelectedFile(files[0]);
+      setShowCropper(true);
+    }
+  };
+
+  const handleCropComplete = (croppedFile) => {
+    setPhoto([croppedFile]);
+    setSelectedFile(null);
+    setShowCropper(false);
+  };
+
   return (
     <Box>
       <Typography variant="subtitle1" sx={{ mb: 1 }}>
@@ -75,7 +91,7 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
 
       <FileUploadSection
         files={photo}
-        onFilesChange={setPhoto}
+        onFilesChange={handleFileSelect}
         multiple={false}
         accept="image/*"
       />
@@ -89,6 +105,13 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
       >
         {loading ? <CircularProgress size={24} /> : t('profile.uploadPhoto', 'Upload Photo')}
       </Button>
+
+      <ImageCropper
+        open={showCropper}
+        onClose={() => setShowCropper(false)}
+        imageFile={selectedFile}
+        onCropComplete={handleCropComplete}
+      />
     </Box>
   );
 };

@@ -641,31 +641,48 @@ export const toggleFeedbackVisibility = async (chatId, visibleToAstrologer) => {
 
 // Get chat expiry status
 export const getChatExpiryStatus = async (chatId) => {
-    try {
-        console.log('Getting chat expiry status', chatId);
-        const chatDoc = await getDoc(doc(db, 'chats', chatId));
-        if (!chatDoc.exists()) {
-            throw new Error('Chat not found');
-        }
-        
-        const chatData = chatDoc.data();
-        const expiryTimestamp = chatData.expiryTimestamp || 
-            (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
-        
-        const now = Date.now();
-        const isExpired = now > expiryTimestamp;
-        const timeUntilExpiry = Math.max(0, expiryTimestamp - now);
-        
-        return {
-            isExpired,
-            timeUntilExpiry,
-            expiryTimestamp: Timestamp.fromMillis(expiryTimestamp),
-            hasBeenExtended: !!chatData.expiryTimestamp
-        };
-    } catch (error) {
-        console.error('Error getting chat expiry status:', error);
-        throw error;
+  try {
+    console.log('Getting chat expiry status', chatId);
+    const chatDoc = await getDoc(doc(db, 'chats', chatId));
+    if (!chatDoc.exists()) {
+      throw new Error('Chat not found');
     }
+    
+    const chatData = chatDoc.data();
+    const expiryTimestamp = chatData.expiryTimestamp || 
+      (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
+    
+    const now = Date.now();
+    const isExpired = now > expiryTimestamp;
+    const timeUntilExpiry = Math.max(0, expiryTimestamp - now);
+    
+    return {
+      isExpired,
+      timeUntilExpiry,
+      expiryTimestamp: Timestamp.fromMillis(expiryTimestamp),
+      hasBeenExtended: !!chatData.expiryTimestamp
+    };
+  } catch (error) {
+    console.error('Error getting chat expiry status:', error);
+    throw error;
+  }
+};
+
+// Mark chat as completed
+export const markChatAsCompleted = async (chatId, completedBy) => {
+  try {
+    await updateDoc(doc(db, 'chats', chatId), {
+      status: 'completed',
+      completedAt: serverTimestamp(),
+      completedBy: completedBy,
+      updatedAt: serverTimestamp()
+    });
+    
+    return true;
+  } catch (error) {
+    console.error('Error marking chat as completed:', error);
+    throw error;
+  }
 }; 
 
 // Assign a support user to a chat
