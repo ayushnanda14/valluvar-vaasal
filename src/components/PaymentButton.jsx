@@ -138,11 +138,15 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
         onClick={handlePayment}
         disabled={loading || paymentInitiated}
         sx={{
-          py: 1.5,
-          px: 4,
+          py: { xs: 1.5, md: 2 },
+          px: { xs: 2, md: 4 },
           fontFamily: '"Cinzel", serif',
-          fontSize: '1.1rem',
-          minWidth: '200px',
+          fontSize: { xs: '1rem', md: '1.1rem' },
+          minWidth: { xs: 'auto', md: '200px' },
+          maxWidth: '100%',
+          whiteSpace: 'nowrap',
+          overflow: 'hidden',
+          textOverflow: 'ellipsis'
         }}
       >
         {loading ? <CircularProgress size={24} /> : paymentInitiated ? t('payment.processing', 'Processing...') : t('payment.payNow')}

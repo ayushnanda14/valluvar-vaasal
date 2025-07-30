@@ -113,9 +113,12 @@ export default function PaymentSummary({
                 onClick={handlePayment}
                 disabled={loading}
                 sx={{ 
-                  py: 1.5,
+                  py: { xs: 1.5, md: 2 },
                   fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: '1.1rem'
+                  fontSize: { xs: '1rem', md: '1.1rem' },
+                  whiteSpace: 'nowrap',
+                  overflow: 'hidden',
+                  textOverflow: 'ellipsis'
                 }}
               >
             {loading ? <CircularProgress size={24} /> : `Pay ₹${totalWithGST}`}

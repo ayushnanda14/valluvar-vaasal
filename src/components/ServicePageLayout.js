@@ -38,6 +38,7 @@ import { useAuth } from '../context/AuthContext';
 import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
 import { db, storage } from '../firebase/firebaseConfig';
 import FileUploadSection from './FileUploadSection';
+import JathakWritingForm from './JathakWritingForm';
 import PaymentSummary from './PaymentSummary';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { SERVICE_TYPES } from '@/utils/constants';
@@ -47,13 +48,13 @@ import { createPaymentRecords } from '../services/createPaymentRecords';
 
 // Define the list of districts (should match the signup list)
 const TAMIL_NADU_DISTRICTS = [
-  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri', 
-  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur', 
-  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal', 
-  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet', 
-  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)', 
-  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur', 
-  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram', 
+  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
+  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur',
+  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal',
+  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet',
+  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)',
+  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur',
+  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram',
   'Virudhunagar'
 ];
 
@@ -70,7 +71,7 @@ export default function ServicePageLayout({
   const { currentUser } = useAuth();
   const { t, i18n } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-  
+
   // Set default dualUploadLabels if not provided
   const defaultDualUploadLabels = dualUploadLabels || [t('uploadLabels.firstPerson'), t('uploadLabels.secondPerson')];
 
@@ -91,33 +92,41 @@ export default function ServicePageLayout({
   const [toast, setToast] = useState({ open: false, message: '', severity: 'error' });
   const [jathakWritingOption, setJathakWritingOption] = useState('baby');
   const [uploadSubstep, setUploadSubstep] = useState(1);
+  const [jathakFormData, setJathakFormData] = useState({
+    name: '',
+    birthPlace: '',
+    birthDate: '',
+    birthTime: '',
+    additionalNotes: ''
+  });
+  const [jathakFormErrors, setJathakFormErrors] = useState({});
 
   // Load state from localStorage on mount
   useEffect(() => {
-    if (typeof window !== 'undefined' && currentUser) { 
+    if (typeof window !== 'undefined' && currentUser) {
       const savedStateRaw = localStorage.getItem(localStorageKey);
       if (savedStateRaw) {
         try {
           const savedState = JSON.parse(savedStateRaw);
 
-                      // Check if the saved state belongs to the current user
-            if (savedState.userId && savedState.userId === currentUser.uid) {
-              // Always start from step 1 (file upload) after refresh
-              setStep(1);
-              
-              // Restore district and astrologer selections silently
-              if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
-              if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+          // Check if the saved state belongs to the current user
+          if (savedState.userId && savedState.userId === currentUser.uid) {
+            // Always start from step 1 (file upload) after refresh
+            setStep(1);
 
-              // Show message only if user had meaningful previous selections (both district and astrologers)
-              if (savedState.selectedDistrict && savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
-                setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
-              }
-              
-              // Clear files state as File objects cannot be persisted directly
-              setFiles([]);
-              setSecondFiles([]);
-            } else {
+            // Restore district and astrologer selections silently
+            if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
+            if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+
+            // Show message only if user had meaningful previous selections (both district and astrologers)
+            if (savedState.selectedDistrict && savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
+              setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
+            }
+
+            // Clear files state as File objects cannot be persisted directly
+            setFiles([]);
+            setSecondFiles([]);
+          } else {
             // Stored data is for a different user or has no userId, clear it and start fresh
             localStorage.removeItem(localStorageKey);
             // Reset to default step and selections for a truly fresh start
@@ -144,11 +153,11 @@ export default function ServicePageLayout({
         setSelectedAstrologers([]);
       }
     }
-  }, [serviceType, currentUser, localStorageKey, t]); 
+  }, [serviceType, currentUser, localStorageKey, t]);
 
   // Save state to localStorage whenever relevant parts change
   useEffect(() => {
-    if (typeof window !== 'undefined' && currentUser) { 
+    if (typeof window !== 'undefined' && currentUser) {
       const stateToSave = {
         userId: currentUser.uid, // Add userId here
         step,
@@ -174,14 +183,14 @@ export default function ServicePageLayout({
           where('roles', 'array-contains', 'astrologer'),
           where('state', '==', 'Tamil Nadu')
         );
-        
+
         // Then filter the results for those who offer the specific service
         const astrologersSnapshot = await getDocs(astrologersQuery);
         const filteredDocs = astrologersSnapshot.docs.filter(doc => {
           const data = doc.data();
           return data.services && data.services.includes(serviceType);
         });
-        
+
         // Extract districts from the filtered results
         const districts = new Set();
         filteredDocs.forEach((doc) => {
@@ -207,7 +216,7 @@ export default function ServicePageLayout({
     const fetchAstrologersByDistrict = async () => {
       if (!selectedDistrict || step !== 2) return;
 
-        setLoading(true);
+      setLoading(true);
       setSelectedAstrologers([]);
       try {
         // Broaden the query: Filter by role, state, and district only
@@ -220,7 +229,7 @@ export default function ServicePageLayout({
         );
 
         const querySnapshot = await getDocs(astrologersQuery);
-        
+
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() })) // Map to include ID and data
@@ -265,18 +274,46 @@ export default function ServicePageLayout({
     setSecondFiles(newFiles);
   };
 
+    const validateJathakForm = () => {
+    const errors = {};
+    if (!jathakFormData.name?.trim()) {
+      errors.name = t('jathakWriting.form.errors.nameRequired', 'Name is required');
+    }
+    if (!jathakFormData.birthPlace?.trim()) {
+      errors.birthPlace = t('jathakWriting.form.errors.birthPlaceRequired', 'Birth place is required');
+    }
+    if (!jathakFormData.birthDate) {
+      errors.birthDate = t('jathakWriting.form.errors.birthDateRequired', 'Birth date is required');
+    }
+    if (!jathakFormData.birthTime) {
+      errors.birthTime = t('jathakWriting.form.errors.birthTimeRequired', 'Birth time is required');
+    }
+    return errors;
+  };
+
   const handleNextStep = () => {
     setError('');
     if (step === 1) {
-      if (dualUpload && isMobile) {
-        // For mobile dual upload, let the substep buttons handle navigation
-        return;
-      }
-      
-      if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
-        const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: defaultDualUploadLabels[0], label2: defaultDualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
-        setToast({ open: true, message: errorMessage, severity: 'error' });
-        return;
+      // For jathak writing service with baby option, validate form instead of files
+      if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+        const formErrors = validateJathakForm();
+        if (Object.keys(formErrors).length > 0) {
+          setJathakFormErrors(formErrors);
+          setToast({ open: true, message: t('jathakWriting.form.errors.pleaseComplete'), severity: 'error' });
+          return;
+        }
+        setJathakFormErrors({});
+      } else {
+        if (dualUpload && isMobile) {
+          // For mobile dual upload, let the substep buttons handle navigation
+          return;
+        }
+        
+        if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
+          const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: defaultDualUploadLabels[0], label2: defaultDualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
+          setToast({ open: true, message: errorMessage, severity: 'error' });
+          return;
+        }
       }
       
       // Check if we have saved district and astrologer selections
@@ -338,7 +375,17 @@ export default function ServicePageLayout({
         filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        selectedDistrict: selectedDistrict // Storing selected district
+        selectedDistrict: selectedDistrict, // Storing selected district
+        // Add jathak writing form data if applicable
+        ...(serviceType === 'jathakWriting' && jathakWritingOption === 'baby' && {
+          jathakWritingData: {
+            name: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime,
+            additionalNotes: jathakFormData.additionalNotes
+          }
+        })
       };
 
       const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
@@ -388,74 +435,87 @@ export default function ServicePageLayout({
         const fileReferences = [];
 
         try {
-        // Process main files
-        for (let i = 0; i < files.length; i++) {
-          const file = files[i];
-          
-          // Generate appropriate file name based on service type
-          let newFileName;
-          if (serviceType === 'marriageMatching') {
-              newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-          } else {
-              newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-          }
-          
-            const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-          const uploadTask = await uploadBytes(storageRef, file);
-          const downloadURL = await getDownloadURL(uploadTask.ref);
-          
-          fileReferences.push({
-            name: newFileName,
-            originalName: file.name,
-            type: file.type,
-            size: file.size,
-            url: downloadURL,
-            uploadedBy: currentUser.uid,
-            uploadedAt: serverTimestamp()
-          });
-        }
+          // Process main files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
 
-        // Process secondary files if dual upload is enabled
-        if (dualUpload && secondFiles.length > 0) {
-          for (let i = 0; i < secondFiles.length; i++) {
-            const file = secondFiles[i];
-              const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+            // Generate appropriate file name based on service type
+            let newFileName;
+            if (serviceType === 'marriageMatching') {
+              newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            } else {
+              newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            }
+
+            const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
-            
+
             fileReferences.push({
               name: newFileName,
               originalName: file.name,
               type: file.type,
               size: file.size,
               url: downloadURL,
-                category: defaultDualUploadLabels[1],
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
-        }
 
-        // Store file references in a subcollection of the chat
-        for (const fileRef of fileReferences) {
-          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-        }
+          // Process secondary files if dual upload is enabled
+          if (dualUpload && secondFiles.length > 0) {
+            for (let i = 0; i < secondFiles.length; i++) {
+              const file = secondFiles[i];
+              const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+              const uploadTask = await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(uploadTask.ref);
 
-        // Add a system message about the uploaded files
+              fileReferences.push({
+                name: newFileName,
+                originalName: file.name,
+                type: file.type,
+                size: file.size,
+                url: downloadURL,
+                category: defaultDualUploadLabels[1],
+                uploadedBy: currentUser.uid,
+                uploadedAt: serverTimestamp()
+              });
+            }
+          }
+
+          // Store file references in a subcollection of the chat
+          for (const fileRef of fileReferences) {
+            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+          }
+
+                  // Add a system message about the uploaded files or form data
+        const systemMessageText = serviceType === 'jathakWriting' && jathakWritingOption === 'baby'
+          ? t('servicePage.systemMessage.jathakFormSubmitted', {
+              name: currentUser.displayName || 'User',
+              personName: jathakFormData.name,
+              birthPlace: jathakFormData.birthPlace,
+              birthDate: jathakFormData.birthDate,
+              birthTime: jathakFormData.birthTime
+            })
+          : t('servicePage.systemMessage.uploadedFiles', {
+              name: currentUser.displayName || 'User',
+              count: fileReferences.length
+            });
+
         await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
           senderId: 'system',
-          text: t('servicePage.systemMessage.uploadedFiles', { 
-          name: currentUser.displayName || 'User', 
-          count: fileReferences.length 
-        }),
+          text: systemMessageText,
           timestamp: serverTimestamp(),
           read: false,
-          fileReferences: fileReferences.map(f => ({ 
-            name: f.name, 
-            url: f.url,
-            type: f.type
-          }))
+          ...(serviceType === 'jathakWriting' && jathakWritingOption === 'baby' 
+            ? { jathakFormData: jathakFormData }
+            : { fileReferences: fileReferences.map(f => ({
+                name: f.name,
+                url: f.url,
+                type: f.type
+              }))
+          })
         });
         } catch (err) {
           console.error('Error uploading files:', err);
@@ -549,9 +609,9 @@ export default function ServicePageLayout({
                         {t('servicePage.steps.step4')} - {t('servicePage.steps.payment')}
                       </Typography>
                     </Box>
-                    <LinearProgress 
-                      variant="determinate" 
-                      value={((step - 1) / 2) * 100} 
+                    <LinearProgress
+                      variant="determinate"
+                      value={((step - 1) / 2) * 100}
                       sx={{ height: 8, borderRadius: 4 }}
                     />
                     <Box sx={{ mt: 1, textAlign: 'center' }}>
@@ -575,9 +635,9 @@ export default function ServicePageLayout({
                         }}
                       >
                         <Typography variant="body1">{t('servicePage.steps.step1')}</Typography>
-                        <Typography 
-                          variant="body2" 
-                          sx={{ 
+                        <Typography
+                          variant="body2"
+                          sx={{
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             hyphens: 'auto',
@@ -597,9 +657,9 @@ export default function ServicePageLayout({
                         }}
                       >
                         <Typography variant="body1">{t('servicePage.steps.step2')}</Typography>
-                        <Typography 
+                        <Typography
                           variant="body2"
-                          sx={{ 
+                          sx={{
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             hyphens: 'auto',
@@ -619,9 +679,9 @@ export default function ServicePageLayout({
                         }}
                       >
                         <Typography variant="body1">{t('servicePage.steps.step3')}</Typography>
-                        <Typography 
+                        <Typography
                           variant="body2"
-                          sx={{ 
+                          sx={{
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             hyphens: 'auto',
@@ -641,9 +701,9 @@ export default function ServicePageLayout({
                         }}
                       >
                         <Typography variant="body1">{t('servicePage.steps.step4')}</Typography>
-                        <Typography 
+                        <Typography
                           variant="body2"
-                          sx={{ 
+                          sx={{
                             wordWrap: 'break-word',
                             overflowWrap: 'break-word',
                             hyphens: 'auto'
@@ -676,7 +736,7 @@ export default function ServicePageLayout({
                   {serviceType === 'jathakWriting' && (
                     <Box sx={{ mb: 3 }}>
                       <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                        {t('servicePage.jathakWriting.selectOption', 'Select Jathak Writing Option')}
+                        {t('jathakWriting.selectOption', 'Select Jathak Writing Option')}
                       </Typography>
                       <FormControl component="fieldset">
                         <RadioGroup
@@ -689,10 +749,10 @@ export default function ServicePageLayout({
                             label={
                               <Box>
                                 <Typography variant="body1" fontWeight="bold">
-                                  {t('servicePage.jathakWriting.babyOption.title', 'Name, Birth Place, Birth Date and Time')}
+                                  {t('jathakWriting.babyOption.title', 'New Jathak Writing')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                  {t('servicePage.jathakWriting.babyOption.description', 'For babies and new births')}
+                                  {t('jathakWriting.babyOption.description', 'For babies and new births')}
                                 </Typography>
                               </Box>
                             }
@@ -704,10 +764,10 @@ export default function ServicePageLayout({
                             label={
                               <Box>
                                 <Typography variant="body1" fontWeight="bold">
-                                  {t('servicePage.jathakWriting.oldOption.title', 'Old Jathak for Jathak Re-writing')}
+                                  {t('jathakWriting.oldOption.title', 'Old Jathak Re-writing')}
                                 </Typography>
                                 <Typography variant="body2" color="text.secondary">
-                                  {t('servicePage.jathakWriting.oldOption.description', 'For older people with existing jathak')}
+                                  {t('jathakWriting.oldOption.description', 'For older people with existing jathak')}
                                 </Typography>
                               </Box>
                             }
@@ -747,109 +807,167 @@ export default function ServicePageLayout({
                     </Alert>
                   )}
 
-                  {dualUpload ? (
-                    isMobile ? (
-                      // Mobile: Step-wise upload
-                      <Box>
-                        {uploadSubstep === 1 && (
-                          <Box>
-                                                         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                               {t('servicePage.uploadStep', { step: 1, total: 2 })}: {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
-                             </Typography>
+                                    {/* Show form for new jathak writing, file upload for old jathak writing */}
+                  {serviceType === 'jathakWriting' && jathakWritingOption === 'baby' ? (
+                    <JathakWritingForm
+                      formData={jathakFormData}
+                      onFormDataChange={setJathakFormData}
+                      errors={jathakFormErrors}
+                    />
+                  ) : (
+                    dualUpload ? (
+                      isMobile ? (
+                        // Mobile: Step-wise upload
+                        <Box>
+                          {uploadSubstep === 1 && (
+                            <Box>
+                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                 {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {t('uploadLabels.firstPerson')} {t('uploadLabels.jathak')}
+                               </Typography>
+                              <FileUploadSection
+                                files={files}
+                                onFilesChange={handleFilesChange}
+                                multiple={multipleUploads}
+                              />
+                              <Box sx={{ mt: 3, textAlign: 'center' }}>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    if (files.length > 0) {
+                                      setUploadSubstep(2);
+                                    } else {
+                                      setToast({
+                                        open: true,
+                                        message: t('servicePage.errors.uploadFirstPerson'),
+                                        severity: 'error'
+                                      });
+                                    }
+                                  }}
+                                  sx={{
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '100%',
+                                    minWidth: { xs: 'auto', md: '200px' },
+                                    px: { xs: 2, md: 3 },
+                                    py: { xs: 1.5, md: 2 }
+                                  }}
+                                >
+                                  {t('servicePage.nextUploadStep', 'Next: Upload Second Person')}
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+                          {uploadSubstep === 2 && (
+                            <Box>
+                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                 {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
+                               </Typography>
+                              <FileUploadSection
+                                files={secondFiles}
+                                onFilesChange={handleSecondFilesChange}
+                                multiple={multipleUploads}
+                              />
+                              <Box sx={{
+                                mt: 3,
+                                display: 'flex',
+                                gap: { xs: 1, md: 2 },
+                                justifyContent: 'center',
+                                flexWrap: 'wrap'
+                              }}>
+                                <Button
+                                  variant="outlined"
+                                  onClick={() => setUploadSubstep(1)}
+                                  sx={{
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '100%',
+                                    minWidth: { xs: 'auto', md: '120px' },
+                                    px: { xs: 2, md: 3 },
+                                    py: { xs: 1.5, md: 2 }
+                                  }}
+                                >
+                                  {t('servicePage.previous', 'Previous')}
+                                </Button>
+                                <Button
+                                  variant="contained"
+                                  onClick={() => {
+                                    if (secondFiles.length > 0) {
+                                      // Both files uploaded, proceed to next step
+                                      handleNextStep();
+                                    } else {
+                                      setToast({
+                                        open: true,
+                                        message: t('servicePage.errors.uploadSecondPerson'),
+                                        severity: 'error'
+                                      });
+                                    }
+                                  }}
+                                  sx={{
+                                    whiteSpace: 'nowrap',
+                                    overflow: 'hidden',
+                                    textOverflow: 'ellipsis',
+                                    maxWidth: '100%',
+                                    minWidth: { xs: 'auto', md: '200px' },
+                                    px: { xs: 2, md: 3 },
+                                    py: { xs: 1.5, md: 2 }
+                                  }}
+                                >
+                                  {t('servicePage.proceedToNext', 'Proceed to Next Step')}
+                                </Button>
+                              </Box>
+                            </Box>
+                          )}
+                        </Box>
+                      ) : (
+                        // Desktop: Original grid layout
+                        <Grid container spacing={3}>
+                          <Grid item xs={12} md={6}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                mb: 2,
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                hyphens: 'auto'
+                              }}
+                            >
+                              {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
+                            </Typography>
                             <FileUploadSection
                               files={files}
                               onFilesChange={handleFilesChange}
                               multiple={multipleUploads}
                             />
-                            <Box sx={{ mt: 3, textAlign: 'center' }}>
-                              <Button
-                                variant="contained"
-                                onClick={() => {
-                                  if (files.length > 0) {
-                                    setUploadSubstep(2);
-                                  } else {
-                                    setToast({ 
-                                      open: true, 
-                                      message: t('servicePage.errors.uploadFirstPerson'), 
-                                      severity: 'error' 
-                                    });
-                                  }
-                                }}
-                              >
-                                {t('servicePage.nextUploadStep', 'Next: Upload Second Person')}
-                              </Button>
-                            </Box>
-                          </Box>
-                        )}
-                        {uploadSubstep === 2 && (
-                          <Box>
-                                                         <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                               {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
-                             </Typography>
+                          </Grid>
+                          <Grid item xs={12} md={6}>
+                            <Typography
+                              variant="h6"
+                              sx={{
+                                mb: 2,
+                                wordWrap: 'break-word',
+                                overflowWrap: 'break-word',
+                                hyphens: 'auto'
+                              }}
+                            >
+                              {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
+                            </Typography>
                             <FileUploadSection
                               files={secondFiles}
                               onFilesChange={handleSecondFilesChange}
                               multiple={multipleUploads}
                             />
-                            <Box sx={{ mt: 3, display: 'flex', gap: 2, justifyContent: 'center' }}>
-                              <Button
-                                variant="outlined"
-                                onClick={() => setUploadSubstep(1)}
-                              >
-                                {t('servicePage.previous', 'Previous')}
-                              </Button>
-                              <Button
-                                variant="contained"
-                                onClick={() => {
-                                  if (secondFiles.length > 0) {
-                                    // Both files uploaded, proceed to next step
-                                    handleNextStep();
-                                  } else {
-                                    setToast({ 
-                                      open: true, 
-                                      message: t('servicePage.errors.uploadSecondPerson'), 
-                                      severity: 'error' 
-                                    });
-                                  }
-                                }}
-                              >
-                                {t('servicePage.proceedToNext', 'Proceed to Next Step')}
-                              </Button>
-                            </Box>
-                          </Box>
-                        )}
-                      </Box>
+                          </Grid>
+                        </Grid>
+                      )
                     ) : (
-                      // Desktop: Original grid layout
-                      <Grid container spacing={3}>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
-                          </Typography>
-                          <FileUploadSection
-                            files={files}
-                            onFilesChange={handleFilesChange}
-                            multiple={multipleUploads}
-                          />
-                        </Grid>
-                        <Grid item xs={12} md={6}>
-                          <Typography variant="h6" sx={{ mb: 2 }}>
-                            {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
-                          </Typography>
-                          <FileUploadSection
-                            files={secondFiles}
-                            onFilesChange={handleSecondFilesChange}
-                            multiple={multipleUploads}
-                          />
-                        </Grid>
-                      </Grid>
+                      <FileUploadSection
+                        files={files}
+                        onFilesChange={handleFilesChange}
+                        multiple={multipleUploads}
+                      />
                     )
-                  ) : (
-                    <FileUploadSection
-                      files={files}
-                      onFilesChange={handleFilesChange}
-                      multiple={multipleUploads}
-                    />
                   )}
 
                   <Box sx={{ mt: 4, textAlign: 'right' }}>
@@ -859,18 +977,19 @@ export default function ServicePageLayout({
                       size="large"
                       onClick={handleNextStep}
                       sx={{
-                        py: 1.5,
-                        px: 4,
+                        py: { xs: 1.5, md: 2 },
+                        px: { xs: 2, md: 4 },
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem',
-                        minWidth: '200px',
+                        fontSize: { xs: '1rem', md: '1.1rem' },
+                        minWidth: { xs: 'auto', md: '200px' },
+                        maxWidth: '100%',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
                         textOverflow: 'ellipsis'
                       }}
                     >
-                      {selectedDistrict && selectedAstrologers.length > 0 
-                        ? t('servicePage.nextPayment', 'Next: Payment') 
+                      {selectedDistrict && selectedAstrologers.length > 0
+                        ? t('servicePage.nextPayment', 'Next: Payment')
                         : t('servicePage.nextDistrict', 'Next: Select District')
                       }
                     </Button>
@@ -908,7 +1027,7 @@ export default function ServicePageLayout({
                           // Separate available and unavailable districts
                           const availableDistrictsList = [];
                           const unavailableDistrictsList = [];
-                          
+
                           TAMIL_NADU_DISTRICTS.forEach((dist) => {
                             const isAvailable = availableDistricts.has(dist);
                             if (isAvailable) {
@@ -917,11 +1036,11 @@ export default function ServicePageLayout({
                               unavailableDistrictsList.push(dist);
                             }
                           });
-                          
+
                           // Sort both lists alphabetically
                           availableDistrictsList.sort();
                           unavailableDistrictsList.sort();
-                          
+
                           // Combine and render
                           return [...availableDistrictsList, ...unavailableDistrictsList].map((dist) => {
                             const isAvailable = availableDistricts.has(dist);
@@ -929,10 +1048,10 @@ export default function ServicePageLayout({
                               <MenuItem key={dist} value={dist} disabled={!isAvailable}>
                                 {dist}
                                 {!isAvailable && (
-                                  <MuiChip 
-                                    label={t('districts.comingSoon', 'Service Coming Soon')} 
-                                    size="small" 
-                                    variant="outlined" 
+                                  <MuiChip
+                                    label={t('districts.comingSoon', 'Service Coming Soon')}
+                                    size="small"
+                                    variant="outlined"
                                     sx={{ ml: 1, opacity: 0.7 }}
                                   />
                                 )}
@@ -943,21 +1062,29 @@ export default function ServicePageLayout({
                       </Select>
                     </FormControl>
                   )}
-                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <Box sx={{
+                    mt: 4,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: { xs: 1, md: 2 },
+                    flexWrap: { xs: 'wrap', md: 'nowrap' }
+                  }}>
                     <Button
                       variant="outlined"
                       color="primary"
                       size="large"
                       onClick={handlePreviousStep}
                       sx={{
-                        py: 1.5,
-                        px: 4,
+                        py: { xs: 1.5, md: 2 },
+                        px: { xs: 2, md: 4 },
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem',
-                        minWidth: '120px',
+                        fontSize: { xs: '1rem', md: '1.1rem' },
+                        minWidth: { xs: 'auto', md: '120px' },
+                        maxWidth: '100%',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        textOverflow: 'ellipsis',
+                        flex: { xs: '1 1 auto', md: '0 0 auto' }
                       }}
                     >
                       {t('servicePage.back', 'Back')}
@@ -969,14 +1096,16 @@ export default function ServicePageLayout({
                       onClick={handleNextStep}
                       disabled={districtLoading || !selectedDistrict}
                       sx={{
-                        py: 1.5,
-                        px: 4,
+                        py: { xs: 1.5, md: 2 },
+                        px: { xs: 2, md: 4 },
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem',
-                        minWidth: '200px',
+                        fontSize: { xs: '1rem', md: '1.1rem' },
+                        minWidth: { xs: 'auto', md: '200px' },
+                        maxWidth: '100%',
                         whiteSpace: 'nowrap',
                         overflow: 'hidden',
-                        textOverflow: 'ellipsis'
+                        textOverflow: 'ellipsis',
+                        flex: { xs: '1 1 auto', md: '0 0 auto' }
                       }}
                     >
                       {t('servicePage.nextAstrologers', 'Next: Select Astrologers')}
@@ -1063,7 +1192,7 @@ export default function ServicePageLayout({
                               },
                             }}
                           >
-                          {astrologers.map(astrologer => (
+                            {astrologers.map(astrologer => (
                               <Box
                                 key={astrologer.id}
                                 sx={{
@@ -1074,67 +1203,67 @@ export default function ServicePageLayout({
                                 <Card
                                   sx={{
                                     height: '100%',
-                                  border: selectedAstrologers.some(a => a.id === astrologer.id)
-                                    ? `2px solid ${theme.palette.primary.main}`
+                                    border: selectedAstrologers.some(a => a.id === astrologer.id)
+                                      ? `2px solid ${theme.palette.primary.main}`
                                       : 'none',
                                     transition: 'all 0.3s ease',
                                     '&:hover': {
                                       transform: 'translateY(-4px)',
                                       boxShadow: theme.shadows[4],
                                     }
-                                }}
-                              >
-                                <CardActionArea
-                                  onClick={() => handleAstrologerSelect(astrologer)}
-                                    sx={{ 
-                                      display: 'flex', 
-                                      flexDirection: 'column', 
+                                  }}
+                                >
+                                  <CardActionArea
+                                    onClick={() => handleAstrologerSelect(astrologer)}
+                                    sx={{
+                                      display: 'flex',
+                                      flexDirection: 'column',
                                       alignItems: 'stretch',
                                       height: '100%',
                                       padding: 0,
                                       overflow: 'hidden'
                                     }}
-                                >
-                                  <CardMedia
-                                    component="img"
-                                    height="300px"
-                                    image={astrologer.photoURL || '/images/default-avatar.png'}
-                                    alt={astrologer.displayName}
-                                      sx={{ 
+                                  >
+                                    <CardMedia
+                                      component="img"
+                                      height="300px"
+                                      image={astrologer.photoURL || '/images/default-avatar.png'}
+                                      alt={astrologer.displayName}
+                                      sx={{
                                         objectFit: 'cover',
                                         margin: 0,
                                         display: 'block'
                                       }}
-                                  />
-                                    <CardContent 
-                                      sx={{ 
-                                        padding: 2, 
+                                    />
+                                    <CardContent
+                                      sx={{
+                                        padding: 2,
                                         paddingBottom: '16px !important', // Override default padding
                                         display: 'flex',
                                         flexDirection: 'column'
                                       }}
                                     >
-                                    <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
                                         <Typography
                                           gutterBottom
                                           variant="h6"
                                           component="div"
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                        {astrologer.displayName}
-                                      </Typography>
-                                      <Checkbox
-                                        checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                        color="primary"
-                                      />
-                                    </Box>
+                                          {astrologer.displayName}
+                                        </Typography>
+                                        <Checkbox
+                                          checked={selectedAstrologers.some(a => a.id === astrologer.id)}
+                                          color="primary"
+                                        />
+                                      </Box>
                                       <Typography
                                         variant="body2"
                                         color="text.secondary"
                                         sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                       >
-                                        {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology','General Astrology')}
-                                    </Typography>
+                                        {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                      </Typography>
                                       <Typography
                                         variant="body2"
                                         color="text.primary"
@@ -1144,13 +1273,13 @@ export default function ServicePageLayout({
                                           fontFamily: '"Cormorant Garamond", serif'
                                         }}
                                       >
-                                      ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                    </Typography>
-                                  </CardContent>
-                                </CardActionArea>
-                              </Card>
+                                        ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                      </Typography>
+                                    </CardContent>
+                                  </CardActionArea>
+                                </Card>
                               </Box>
-                          ))}
+                            ))}
                           </Box>
                         </Paper>
                       </Box>
@@ -1202,8 +1331,8 @@ export default function ServicePageLayout({
                           ) : (
                             <>
                               <Box sx={{ flex: '1', overflowY: 'auto' }}>
-                              <List>
-                                {selectedAstrologers.map(astrologer => (
+                                <List>
+                                  {selectedAstrologers.map(astrologer => (
                                     <ListItem
                                       key={astrologer.id}
                                       disablePadding
@@ -1214,13 +1343,13 @@ export default function ServicePageLayout({
                                         backgroundColor: theme.palette.background.default
                                       }}
                                     >
-                                    <ListItemAvatar>
-                                      <Avatar
-                                        src={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt={astrologer.displayName}
-                                      />
-                                    </ListItemAvatar>
-                                    <ListItemText
+                                      <ListItemAvatar>
+                                        <Avatar
+                                          src={astrologer.photoURL || '/images/default-avatar.png'}
+                                          alt={astrologer.displayName}
+                                        />
+                                      </ListItemAvatar>
+                                      <ListItemText
                                         primary={
                                           <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
                                             {astrologer.displayName}
@@ -1236,10 +1365,10 @@ export default function ServicePageLayout({
                                             ₹{astrologer.serviceCharges?.[serviceType] || 0}
                                           </Typography>
                                         }
-                                    />
-                                  </ListItem>
-                                ))}
-                              </List>
+                                      />
+                                    </ListItem>
+                                  ))}
+                                </List>
                               </Box>
 
                               <Divider sx={{ my: 2 }} />
@@ -1271,17 +1400,29 @@ export default function ServicePageLayout({
                     </Box>
                   )}
 
-                  <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                  <Box sx={{
+                    mt: 4,
+                    display: 'flex',
+                    justifyContent: 'space-between',
+                    gap: { xs: 1, md: 2 },
+                    flexWrap: { xs: 'wrap', md: 'nowrap' }
+                  }}>
                     <Button
                       variant="outlined"
                       color="primary"
                       size="large"
                       onClick={handlePreviousStep}
                       sx={{
-                        py: 1.5,
-                        px: 4,
+                        py: { xs: 1.5, md: 2 },
+                        px: { xs: 2, md: 4 },
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: { xs: '1rem', md: '1.1rem' },
+                        minWidth: { xs: 'auto', md: '120px' },
+                        maxWidth: '100%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: { xs: '1 1 auto', md: '0 0 auto' }
                       }}
                     >
                       {t('servicePage.back', 'Back')}
@@ -1294,10 +1435,16 @@ export default function ServicePageLayout({
                       onClick={handleNextStep}
                       disabled={selectedAstrologers.length === 0}
                       sx={{
-                        py: 1.5,
-                        px: 4,
+                        py: { xs: 1.5, md: 2 },
+                        px: { xs: 2, md: 4 },
                         fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: '1.1rem'
+                        fontSize: { xs: '1rem', md: '1.1rem' },
+                        minWidth: { xs: 'auto', md: '200px' },
+                        maxWidth: '100%',
+                        whiteSpace: 'nowrap',
+                        overflow: 'hidden',
+                        textOverflow: 'ellipsis',
+                        flex: { xs: '1 1 auto', md: '0 0 auto' }
                       }}
                     >
                       {t('servicePage.nextPayment', 'Next: Payment')}
@@ -1324,7 +1471,7 @@ export default function ServicePageLayout({
                   {/* Show selection summary */}
                   <Alert severity="success" sx={{ mb: 3 }}>
                     <Typography variant="body2">
-                      <strong>{t('servicePage.selectedServices', 'Selected Services:')}</strong>
+                      <strong>{t('servicePage.selectedServices', 'Selected Service:')}</strong> {title}
                     </Typography>
                     <Typography variant="body2">
                       {t('servicePage.district', 'District')}: {selectedDistrict}
@@ -1335,8 +1482,8 @@ export default function ServicePageLayout({
                   </Alert>
 
                   <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
-                    <Box 
-                      sx={{ 
+                    <Box
+                      sx={{
                         flex: { xs: '1 1 100%', md: isPaymentFlowActiveByButton ? '1 1 100%' : '1 1 75%' },
                         minHeight: { md: '500px' }
                       }}
@@ -1362,20 +1509,20 @@ export default function ServicePageLayout({
                         >
                           {t('servicePage.paymentMethod', 'Payment Method')}
                         </Typography>
-                        
+
                         <PaymentButton
                           amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
                           description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
                           onSuccess={handlePayment}
                           onError={(error) => setError(error)}
                           onProcessingStateChange={handlePaymentProcessingChange}
-                  />
+                        />
                       </Paper>
                     </Box>
 
                     {!isPaymentFlowActiveByButton && (
-                      <Box 
-                        sx={{ 
+                      <Box
+                        sx={{
                           flex: { xs: '1 1 100%', md: '1 1 25%' },
                           minHeight: { md: '500px' }
                         }}
@@ -1393,10 +1540,10 @@ export default function ServicePageLayout({
                             flexDirection: 'column'
                           }}
                         >
-                          <Typography 
-                            variant="h6" 
-                            sx={{ 
-                              mb: 2, 
+                          <Typography
+                            variant="h6"
+                            sx={{
+                              mb: 2,
                               color: theme.palette.primary.main,
                               fontFamily: '"Cormorant Garamond", serif'
                             }}
@@ -1406,10 +1553,10 @@ export default function ServicePageLayout({
                           <Box sx={{ flex: '1', overflowY: 'auto' }}>
                             <List>
                               {selectedAstrologers.map(astrologer => (
-                                <ListItem 
-                                  key={astrologer.id} 
-                                  disablePadding 
-                                  sx={{ 
+                                <ListItem
+                                  key={astrologer.id}
+                                  disablePadding
+                                  sx={{
                                     mb: 1,
                                     p: 1,
                                     borderRadius: '4px',
@@ -1429,8 +1576,8 @@ export default function ServicePageLayout({
                                       </Typography>
                                     }
                                     secondary={
-                                      <Typography 
-                                        sx={{ 
+                                      <Typography
+                                        sx={{
                                           color: theme.palette.primary.main,
                                           fontFamily: '"Cormorant Garamond", serif'
                                         }}
@@ -1445,16 +1592,16 @@ export default function ServicePageLayout({
                           </Box>
                           <Divider sx={{ my: 2 }} />
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
+                            <Typography
+                              variant="body1"
+                              sx={{
                                 fontWeight: 'bold',
                                 fontFamily: '"Cormorant Garamond", serif'
                               }}
                             >
                               Subtotal:
                             </Typography>
-                            <Typography 
+                            <Typography
                               variant="body1"
                               sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                             >
@@ -1462,16 +1609,16 @@ export default function ServicePageLayout({
                             </Typography>
                           </Box>
                           <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography 
-                              variant="body1" 
-                              sx={{ 
+                            <Typography
+                              variant="body1"
+                              sx={{
                                 fontWeight: 'bold',
                                 fontFamily: '"Cormorant Garamond", serif'
                               }}
                             >
                               GST (18%):
                             </Typography>
-                            <Typography 
+                            <Typography
                               variant="body1"
                               sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                             >
@@ -1480,18 +1627,18 @@ export default function ServicePageLayout({
                           </Box>
                           <Divider sx={{ my: 2 }} />
                           <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography 
-                              variant="h6" 
-                              sx={{ 
+                            <Typography
+                              variant="h6"
+                              sx={{
                                 fontWeight: 'bold',
                                 fontFamily: '"Cormorant Garamond", serif'
                               }}
                             >
                               Total:
                             </Typography>
-                            <Typography 
-                              variant="h5" 
-                              sx={{ 
+                            <Typography
+                              variant="h5"
+                              sx={{
                                 color: theme.palette.primary.main,
                                 fontFamily: '"Cormorant Garamond", serif'
                               }}
@@ -1505,17 +1652,29 @@ export default function ServicePageLayout({
                   </Box>
 
                   {!isPaymentFlowActiveByButton && (
-                    <Box sx={{ mt: 4, display: 'flex', justifyContent: 'space-between' }}>
+                    <Box sx={{
+                      mt: 4,
+                      display: 'flex',
+                      justifyContent: 'space-between',
+                      gap: { xs: 1, md: 2 },
+                      flexWrap: { xs: 'wrap', md: 'nowrap' }
+                    }}>
                       <Button
                         variant="outlined"
                         color="primary"
                         size="large"
                         onClick={handlePreviousStep}
                         sx={{
-                          py: 1.5,
-                          px: 4,
+                          py: { xs: 1.5, md: 2 },
+                          px: { xs: 2, md: 4 },
                           fontFamily: '"Cormorant Garamond", serif',
-                          fontSize: '1.1rem'
+                          fontSize: { xs: '1rem', md: '1.1rem' },
+                          minWidth: { xs: 'auto', md: '120px' },
+                          maxWidth: '100%',
+                          whiteSpace: 'nowrap',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis',
+                          flex: { xs: '1 1 auto', md: '0 0 auto' }
                         }}
                       >
                         {t('servicePage.back', 'Back')}
@@ -1528,7 +1687,7 @@ export default function ServicePageLayout({
           </Container>
         </Box>
       </Box>
-      
+
       {/* Toast notifications */}
       <Snackbar
         open={toast.open}

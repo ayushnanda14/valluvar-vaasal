@@ -9,7 +9,9 @@ import {
   ListItemIcon, 
   IconButton,
   Paper,
-  Tooltip
+  Tooltip,
+  useTheme,
+  useMediaQuery
 } from '@mui/material';
 import CloudUploadIcon from '@mui/icons-material/CloudUpload';
 import InsertDriveFileIcon from '@mui/icons-material/InsertDriveFile';
@@ -33,6 +35,8 @@ const VisuallyHiddenInput = styled('input')({
 
 export default function FileUploadSection({ files, onFilesChange, multiple = true }) {
   const { t, i18n } = useTranslation('common');
+  const theme = useTheme();
+  const isMobile = useMediaQuery(theme.breakpoints.down('md'));
   const [dragActive, setDragActive] = useState(false);
   
   const handleFileChange = (e) => {
@@ -79,9 +83,17 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
       return <InsertDriveFileIcon color="action" />;
     }
   };
+
+  const truncateFileName = (fileName, maxLength = 30) => {
+    if (fileName.length <= maxLength) return fileName;
+    const extension = fileName.split('.').pop();
+    const nameWithoutExt = fileName.substring(0, fileName.lastIndexOf('.'));
+    const truncatedName = nameWithoutExt.substring(0, maxLength - extension.length - 4) + '...';
+    return `${truncatedName}.${extension}`;
+  };
   
   return (
-    <Box>
+    <Box sx={{ width: '100%' }}>
       <Paper
         onDragEnter={handleDrag}
         onDragLeave={handleDrag}
@@ -91,15 +103,15 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
           border: '2px dashed',
           borderColor: dragActive ? 'primary.main' : 'divider',
           borderRadius: 2,
-          p: 3,
+          p: { xs: 2, md: 3 },
           textAlign: 'center',
           backgroundColor: dragActive ? 'rgba(0, 0, 0, 0.04)' : 'transparent',
           transition: 'all 0.2s ease',
-          cursor: 'pointer'
+          cursor: 'pointer',
+          width: '100%',
+          boxSizing: 'border-box'
         }}
       >
-        {/* <CloudUploadIcon sx={{ fontSize: 48, color: 'primary.main', mb: 2 }} /> */}
-
         {/* Demo image above supported formats */}
         <Box sx={{ mb: 2 }}>
           <Typography variant="subtitle2" sx={{ mb: 1 }}>
@@ -122,14 +134,27 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
           />
         </Box>
 
-        <Typography variant="h6" gutterBottom>
+        <Typography 
+          variant="h6" 
+          gutterBottom
+          sx={{
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            hyphens: 'auto'
+          }}
+        >
           {t('fileUpload.dragDropTitle', 'Drag & Drop Files Here')}
         </Typography>
 
         <Typography 
           variant="body2" 
           color="text.secondary" 
-          sx={{ mb: 2 }}
+          sx={{ 
+            mb: 2,
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
+            hyphens: 'auto'
+          }}
         >
           {t('fileUpload.supportedFormats', 'Supported formats: PDF, JPG, PNG, DOC, DOCX')}
         </Typography>
@@ -138,6 +163,14 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
           component="label"
           variant="contained"
           color="primary"
+          sx={{
+            whiteSpace: 'nowrap',
+            overflow: 'hidden',
+            textOverflow: 'ellipsis',
+            maxWidth: '100%',
+            minWidth: { xs: 'auto', md: '120px' },
+            px: { xs: 2, md: 3 }
+          }}
         >
           {t('fileUpload.browseFiles', 'Browse Files')}
           <VisuallyHiddenInput 
@@ -150,27 +183,80 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
       </Paper>
       
       {files.length > 0 && (
-        <Box sx={{ mt: 3 }}>
-          <Typography variant="subtitle1" gutterBottom>
+        <Box sx={{ mt: 3, width: '100%' }}>
+          <Typography 
+            variant="subtitle1" 
+            gutterBottom
+            sx={{
+              wordWrap: 'break-word',
+              overflowWrap: 'break-word',
+              hyphens: 'auto'
+            }}
+          >
             {t('fileUpload.uploadedFiles', 'Uploaded Files')} ({files.length})
           </Typography>
           
-          <List>
+          <List sx={{ width: '100%' }}>
             {files.map((file, index) => (
               <ListItem
                 key={index}
+                sx={{
+                  width: '100%',
+                  boxSizing: 'border-box',
+                  flexWrap: 'wrap',
+                  gap: 1
+                }}
                 secondaryAction={
-                  <IconButton edge="end" onClick={() => handleDelete(index)}>
+                  <IconButton 
+                    edge="end" 
+                    onClick={() => handleDelete(index)}
+                    sx={{ flexShrink: 0 }}
+                  >
                     <DeleteIcon />
                   </IconButton>
                 }
               >
-                <ListItemIcon>
+                <ListItemIcon sx={{ flexShrink: 0 }}>
                   {getFileIcon(file)}
                 </ListItemIcon>
                 <ListItemText
-                  primary={file.name}
-                  secondary={`${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                  primary={
+                    <Tooltip title={file.name} placement="top">
+                      <Typography
+                        sx={{
+                          wordWrap: 'break-word',
+                          overflowWrap: 'break-word',
+                          hyphens: 'auto',
+                          maxWidth: '100%',
+                          display: '-webkit-box',
+                          WebkitLineClamp: 2,
+                          WebkitBoxOrient: 'vertical',
+                          overflow: 'hidden',
+                          textOverflow: 'ellipsis'
+                        }}
+                      >
+                        {isMobile ? truncateFileName(file.name, 25) : file.name}
+                      </Typography>
+                    </Tooltip>
+                  }
+                  secondary={
+                    <Typography
+                      variant="body2"
+                      color="text.secondary"
+                      sx={{
+                        wordWrap: 'break-word',
+                        overflowWrap: 'break-word',
+                        hyphens: 'auto'
+                      }}
+                    >
+                      {`${(file.size / 1024 / 1024).toFixed(2)} MB`}
+                    </Typography>
+                  }
+                  sx={{
+                    minWidth: 0,
+                    flex: 1,
+                    overflow: 'hidden'
+                  }}
                 />
               </ListItem>
             ))}

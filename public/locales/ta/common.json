@@ -170,7 +170,7 @@
     "selectAstrologersTitle": "ஜோதிடரைத் தேர்ந்தெடுக்கவும்",
     "showingAstrologers": "{{district}} மாவட்டத்திற்கான ஜோதிடர்கள்",
     "noAstrologersFound": "{{district}} இல் {{service}} வழங்கும் ஜோதிடர்கள் இல்லை.",
-    "nextDistrict": "அடுத்து: மாவட்டத்தைத் தேர்ந்தெடுக்கவும்",
+    "nextDistrict": "அடுத்து: மாவட்டம்",
     "nextAstrologers": "அடுத்து: ஜோதிடரைத் தேர்ந்தெடுக்கவும்",
     "nextPayment": "அடுத்து: கட்டணம்",
     "back": "பின்செல்க",
@@ -204,33 +204,53 @@
       "uploadStep": "படி {{step}} / {{total}}",
       "nextUploadStep": "அடுத்து: இரண்டாம் நபர் பதிவேற்று",
       "previous": "முன்பு",
-      "proceedToNext": "அடுத்த படிக்கு செல்லு",
-      "uploadStep": "படி {{step}} / {{total}}"
+      "proceedToNext": "அடுத்த படிக்கு செல்லு"
     }
   },
-      "payment": {
-      "payNow": "இப்போதே செலுத்துக",
-      "error": "கட்டணப் பிழை: பணம் செலுத்துவதில் தோல்வி."
+  "payment": {
+    "payNow": "இப்போதே செலுத்துக",
+    "error": "கட்டணப் பிழை: பணம் செலுத்துவதில் தோல்வி."
+  },
+  "jathakWriting": {
+    "selectOption": "ஜாதக எழுத்து விருப்பத்தைத் தேர்ந்தெடுக்கவும்",
+    "babyOption": {
+      "title": "புதிய ஜாதக எழுத்து",
+      "description": "குழந்தைகள் மற்றும் புதிய பிறப்புகளுக்கு"
     },
-    "jathakWriting": {
-      "selectOption": "ஜாதக எழுத்து விருப்பத்தைத் தேர்ந்தெடுக்கவும்",
-      "babyOption": {
-        "title": "பெயர், பிறப்பிடம், பிறந்த தேதி மற்றும் நேரம்",
-        "description": "குழந்தைகள் மற்றும் புதிய பிறப்புகளுக்கு"
-      },
-      "oldOption": {
-        "title": "பழைய ஜாதகம் மறு எழுத்துக்கு",
-        "description": "பழைய ஜாதகம் உள்ள பெரியவர்களுக்கு"
+    "oldOption": {
+      "title": "பழைய ஜாதக மறு எழுத்து",
+      "description": "பழைய ஜாதகம் உள்ள பெரியவர்களுக்கு"
+    },
+    "form": {
+      "title": "பிறப்பு விவரங்களை உள்ளிடவும்",
+      "demoTitle": "பிறப்பு விவரங்களின் எடுத்துக்காட்டு",
+      "demoAlt": "பிறப்பு விவரங்களின் எடுத்துக்காட்டு",
+      "name": "முழு பெயர்",
+      "birthPlace": "பிறப்பிடம்",
+      "birthDate": "பிறந்த தேதி",
+      "birthTime": "பிறந்த நேரம்",
+      "selectTime": "நேரத்தைத் தேர்ந்தெடுக்கவும்",
+      "additionalNotes": "கூடுதல் குறிப்புகள் (விருப்பமானது)",
+      "notesPlaceholder": "பிறப்பு பற்றிய கூடுதல் தகவல்கள் அல்லது சிறப்பு சூழ்நிலைகள்...",
+      "disclaimer": "குறிப்பு: துல்லியமான ஜாதக கணிப்புக்கு சரியான பிறந்த நேரம் முக்கியமானது. சரியான நேரம் தெரியவில்லை என்றால், கிடைக்கக்கூடிய சிறந்த மதிப்பீட்டை வழங்கவும்.",
+      "errors": {
+        "pleaseComplete": "தயவுசெய்து அனைத்து தேவையான புலங்களையும் நிரப்பவும்.",
+        "nameRequired": "பெயர் தேவை",
+        "birthPlaceRequired": "பிறப்பிடம் தேவை",
+        "birthDateRequired": "பிறந்த தேதி தேவை",
+        "birthTimeRequired": "பிறந்த நேரம் தேவை"
       }
-    },
-    "uploadLabels": {
-      "firstPerson": "முதல் நபர்",
-      "secondPerson": "இரண்டாம் நபர்",
-      "jathak": "ஜாதகம்"
-    },
-    "systemMessage": {
-      "uploadedFiles": "{{name}} {{count}} ஆவணங்களை பரிசீலனைக்காக பதிவேற்றியுள்ளார்."
-    },
+    }
+  },
+  "uploadLabels": {
+    "firstPerson": "முதல் நபர்",
+    "secondPerson": "இரண்டாம் நபர்",
+    "jathak": "ஜாதகம்"
+  },
+  "systemMessage": {
+    "uploadedFiles": "{{name}} {{count}} ஆவணங்களை பரிசீலனைக்காக பதிவேற்றியுள்ளார்.",
+    "jathakFormSubmitted": "{{name}} {{personName}} க்கான பிறப்பு விவரங்களை சமர்ப்பித்துள்ளார் (பிறப்பிடம்: {{birthPlace}}, தேதி: {{birthDate}}, நேரம்: {{birthTime}}) ஜாதக எழுத்துக்காக."
+  },
   "fileUpload": {
     "dragDropTitle": "கோப்புகளை இங்கே இழுத்து விடுங்கள்",
     "supportedFormats": "ஆதரிக்கப்படும் வடிவங்கள்: PDF, JPG, PNG, DOC, DOCX",

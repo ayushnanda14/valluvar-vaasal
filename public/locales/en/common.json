@@ -210,33 +210,53 @@
       "uploadStep": "Step {{step}} of {{total}}",
       "nextUploadStep": "Next: Upload Second Person",
       "previous": "Previous",
-      "proceedToNext": "Proceed to Next Step",
-      "uploadStep": "Step {{step}} of {{total}}"
+      "proceedToNext": "Proceed to Next Step"
     }
   },
-      "payment": {
-      "payNow": "Pay Now",
-      "error": "Payment Error: Failed to process payment."
+  "payment": {
+    "payNow": "Pay Now",
+    "error": "Payment Error: Failed to process payment."
+  },
+  "jathakWriting": {
+    "selectOption": "Select Jathak Writing Option",
+    "babyOption": {
+      "title": "New Jathak Writing",
+      "description": "For babies and new births"
     },
-    "jathakWriting": {
-      "selectOption": "Select Jathak Writing Option",
-      "babyOption": {
-        "title": "Name, Birth Place, Birth Date and Time",
-        "description": "For babies and new births"
-      },
-      "oldOption": {
-        "title": "Old Jathak for Jathak Re-writing",
-        "description": "For older people with existing jathak"
+    "oldOption": {
+      "title": "Old Jathak Re-writing",
+      "description": "For older people with existing jathak"
+    },
+    "form": {
+      "title": "Enter Birth Details",
+      "demoTitle": "Example of Birth Details",
+      "demoAlt": "Example Birth Details",
+      "name": "Full Name",
+      "birthPlace": "Birth Place",
+      "birthDate": "Birth Date",
+      "birthTime": "Birth Time",
+      "selectTime": "Select time",
+      "additionalNotes": "Additional Notes (Optional)",
+      "notesPlaceholder": "Any additional information about the birth or special circumstances...",
+      "disclaimer": "Note: Accurate birth time is crucial for precise jathak calculation. If the exact time is not known, please provide the best estimate available.",
+      "errors": {
+        "pleaseComplete": "Please complete all required fields.",
+        "nameRequired": "Name is required",
+        "birthPlaceRequired": "Birth place is required",
+        "birthDateRequired": "Birth date is required",
+        "birthTimeRequired": "Birth time is required"
       }
-    },
-    "uploadLabels": {
-      "firstPerson": "First Person",
-      "secondPerson": "Second Person",
-      "jathak": "Jathak"
-    },
-    "systemMessage": {
-      "uploadedFiles": "{{name}} has uploaded {{count}} document(s) for review."
-    },
+    }
+  },
+  "uploadLabels": {
+    "firstPerson": "First Person",
+    "secondPerson": "Second Person",
+    "jathak": "Jathak"
+  },
+  "systemMessage": {
+    "uploadedFiles": "{{name}} has uploaded {{count}} document(s) for review.",
+    "jathakFormSubmitted": "{{name}} has submitted birth details for {{personName}} (Birth Place: {{birthPlace}}, Date: {{birthDate}}, Time: {{birthTime}}) for jathak writing."
+  },
   "fileUpload": {
     "dragDropTitle": "Drag & Drop Files Here",
     "supportedFormats": "Supported formats: PDF, JPG, PNG, DOC, DOCX",
