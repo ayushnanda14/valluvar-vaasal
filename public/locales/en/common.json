@@ -190,6 +190,8 @@
       "loadAstrologers": "Failed to load astrologers for this district. Please try again.",
       "uploadDual": "Please upload files for both {{label1}} and {{label2}}.",
       "uploadSingle": "Please upload at least one file.",
+      "uploadFirstPerson": "Please upload files for the first person.",
+      "uploadSecondPerson": "Please upload files for the second person.",
       "selectDistrict": "Please select a district.",
       "selectAstrologer": "Please select at least one astrologer.",
       "fileUploadFailed": "There was an error uploading your files. Please try again.",
@@ -204,13 +206,37 @@
       "uploadFiles": "Upload Files",
       "selectDistrict": "Select District",
       "selectAstrologers": "Select Astrologers",
-      "payment": "Payment"
+      "payment": "Payment",
+      "uploadStep": "Step {{step}} of {{total}}",
+      "nextUploadStep": "Next: Upload Second Person",
+      "previous": "Previous",
+      "proceedToNext": "Proceed to Next Step",
+      "uploadStep": "Step {{step}} of {{total}}"
     }
   },
-  "payment": {
-    "payNow": "Pay Now",
-    "error": "Payment Error: Failed to process payment."
-  },
+      "payment": {
+      "payNow": "Pay Now",
+      "error": "Payment Error: Failed to process payment."
+    },
+    "jathakWriting": {
+      "selectOption": "Select Jathak Writing Option",
+      "babyOption": {
+        "title": "Name, Birth Place, Birth Date and Time",
+        "description": "For babies and new births"
+      },
+      "oldOption": {
+        "title": "Old Jathak for Jathak Re-writing",
+        "description": "For older people with existing jathak"
+      }
+    },
+    "uploadLabels": {
+      "firstPerson": "First Person",
+      "secondPerson": "Second Person",
+      "jathak": "Jathak"
+    },
+    "systemMessage": {
+      "uploadedFiles": "{{name}} has uploaded {{count}} document(s) for review."
+    },
   "fileUpload": {
     "dragDropTitle": "Drag & Drop Files Here",
     "supportedFormats": "Supported formats: PDF, JPG, PNG, DOC, DOCX",
