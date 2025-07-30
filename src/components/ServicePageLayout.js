@@ -337,6 +337,11 @@ export default function ServicePageLayout({
       }
       setStep(3);
     }
+    
+    // Scroll to top when moving to next step
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const handlePreviousStep = () => {
@@ -344,6 +349,11 @@ export default function ServicePageLayout({
     if (step === 3) setStep(2);
     else if (step === 2) setStep(1.5);
     else if (step === 1.5) setStep(1);
+    
+    // Scroll to top when moving to previous step
+    setTimeout(() => {
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    }, 100);
   };
 
   const calculateTotal = () => {
@@ -1171,13 +1181,17 @@ export default function ServicePageLayout({
                           <Box
                             sx={{
                               display: 'flex',
-                              overflowX: 'auto',
+                              flexDirection: { xs: 'column', md: 'row' },
+                              overflowX: { md: 'auto' },
+                              overflowY: { xs: 'auto', md: 'visible' },
                               gap: 2,
                               pb: 2,
                               flex: '1 1 auto',
+                              maxHeight: { xs: '400px', md: 'none' },
                               scrollbarWidth: 'thin',
                               '&::-webkit-scrollbar': {
-                                height: '8px',
+                                width: { xs: '8px', md: '8px' },
+                                height: { md: '8px' },
                               },
                               '&::-webkit-scrollbar-track': {
                                 background: 'rgba(0,0,0,0.1)',
@@ -1196,7 +1210,8 @@ export default function ServicePageLayout({
                               <Box
                                 key={astrologer.id}
                                 sx={{
-                                  minWidth: { xs: '280px', sm: '320px' },
+                                  minWidth: { xs: '100%', md: '280px' },
+                                  maxWidth: { xs: '100%', md: '320px' },
                                   flexShrink: 0,
                                 }}
                               >

@@ -4,10 +4,6 @@ import {
   TextField,
   Typography,
   Paper,
-  FormControl,
-  InputLabel,
-  Select,
-  MenuItem,
   useTheme,
   useMediaQuery,
   Alert
@@ -25,20 +21,6 @@ export default function JathakWritingForm({ formData, onFormDataChange, errors =
       [field]: value
     });
   };
-
-  // Generate time options for 24-hour format
-  const generateTimeOptions = () => {
-    const options = [];
-    for (let hour = 0; hour < 24; hour++) {
-      for (let minute = 0; minute < 60; minute += 15) {
-        const timeString = `${hour.toString().padStart(2, '0')}:${minute.toString().padStart(2, '0')}`;
-        options.push(timeString);
-      }
-    }
-    return options;
-  };
-
-  const timeOptions = generateTimeOptions();
 
   return (
     <Box sx={{ width: '100%' }}>
@@ -174,30 +156,27 @@ export default function JathakWritingForm({ formData, onFormDataChange, errors =
               />
 
               {/* Birth Time */}
-              <FormControl fullWidth required error={!!errors.birthTime}>
-                <InputLabel sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                  {t('jathakWriting.form.birthTime', 'Birth Time')}
-                </InputLabel>
-                <Select
-                  value={formData.birthTime || ''}
-                  onChange={(e) => handleInputChange('birthTime', e.target.value)}
-                  label={t('jathakWriting.form.birthTime', 'Birth Time')}
-                  sx={{
-                    '& .MuiSelect-select': {
-                      fontFamily: '"Cormorant Garamond", serif'
-                    }
-                  }}
-                >
-                  <MenuItem value="" disabled>
-                    <em>{t('jathakWriting.form.selectTime', 'Select time')}</em>
-                  </MenuItem>
-                  {timeOptions.map((time) => (
-                    <MenuItem key={time} value={time} sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                      {time}
-                    </MenuItem>
-                  ))}
-                </Select>
-              </FormControl>
+              <TextField
+                fullWidth
+                type="time"
+                label={t('jathakWriting.form.birthTime', 'Birth Time')}
+                value={formData.birthTime || ''}
+                onChange={(e) => handleInputChange('birthTime', e.target.value)}
+                error={!!errors.birthTime}
+                helperText={errors.birthTime}
+                required
+                InputLabelProps={{
+                  shrink: true,
+                }}
+                sx={{
+                  '& .MuiInputLabel-root': {
+                    fontFamily: '"Cormorant Garamond", serif'
+                  },
+                  '& .MuiInputBase-input': {
+                    fontFamily: '"Cormorant Garamond", serif'
+                  }
+                }}
+              />
 
               {/* Additional Notes */}
               <TextField
