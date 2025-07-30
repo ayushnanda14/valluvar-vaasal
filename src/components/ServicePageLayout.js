@@ -63,13 +63,16 @@ export default function ServicePageLayout({
   serviceType,
   multipleUploads = false,
   dualUpload = false,
-  dualUploadLabels = [t('uploadLabels.firstPerson'), t('uploadLabels.secondPerson')]
+  dualUploadLabels
 }) {
   const theme = useTheme();
   const router = useRouter();
   const { currentUser } = useAuth();
   const { t, i18n } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  
+  // Set default dualUploadLabels if not provided
+  const defaultDualUploadLabels = dualUploadLabels || [t('uploadLabels.firstPerson'), t('uploadLabels.secondPerson')];
 
   const localStorageKey = `servicePageProgress_${serviceType}`;
 
@@ -271,7 +274,7 @@ export default function ServicePageLayout({
       }
       
       if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
-        const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: dualUploadLabels[0], label2: dualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
+        const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: defaultDualUploadLabels[0], label2: defaultDualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
         setToast({ open: true, message: errorMessage, severity: 'error' });
         return;
       }
@@ -427,7 +430,7 @@ export default function ServicePageLayout({
               type: file.type,
               size: file.size,
               url: downloadURL,
-                category: dualUploadLabels[1],
+                category: defaultDualUploadLabels[1],
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
@@ -751,7 +754,7 @@ export default function ServicePageLayout({
                         {uploadSubstep === 1 && (
                           <Box>
                                                          <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                               {t('servicePage.uploadStep', { step: 1, total: 2 })}: {dualUploadLabels[0]} {t('uploadLabels.jathak')}
+                               {t('servicePage.uploadStep', { step: 1, total: 2 })}: {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
                              </Typography>
                             <FileUploadSection
                               files={files}
@@ -781,7 +784,7 @@ export default function ServicePageLayout({
                         {uploadSubstep === 2 && (
                           <Box>
                                                          <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                               {t('servicePage.uploadStep', { step: 2, total: 2 })}: {dualUploadLabels[1]} {t('uploadLabels.jathak')}
+                               {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
                              </Typography>
                             <FileUploadSection
                               files={secondFiles}
@@ -821,7 +824,7 @@ export default function ServicePageLayout({
                       <Grid container spacing={3}>
                         <Grid item xs={12} md={6}>
                           <Typography variant="h6" sx={{ mb: 2 }}>
-                            {dualUploadLabels[0]} {t('uploadLabels.jathak')}
+                            {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
                           </Typography>
                           <FileUploadSection
                             files={files}
@@ -831,7 +834,7 @@ export default function ServicePageLayout({
                         </Grid>
                         <Grid item xs={12} md={6}>
                           <Typography variant="h6" sx={{ mb: 2 }}>
-                            {dualUploadLabels[1]} {t('uploadLabels.jathak')}
+                            {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
                           </Typography>
                           <FileUploadSection
                             files={secondFiles}
