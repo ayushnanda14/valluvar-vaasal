@@ -50,13 +50,33 @@ export default function TestimonialsPage() {
         setSubmitting(true);
         setError('');
 
+        // Validate required fields
+        if (!testimonialText.trim()) {
+            setError(t('testimonials.validation.testimonialRequired'));
+            setSubmitting(false);
+            return;
+        }
+
+        if (!service) {
+            setError(t('testimonials.validation.serviceRequired'));
+            setSubmitting(false);
+            return;
+        }
+
+        if (!currentUser && !name.trim()) {
+            setError(t('testimonials.validation.nameRequired'));
+            setSubmitting(false);
+            return;
+        }
+
         try {
             const testimonialData = {
-                text: testimonialText,
-                name: isAnonymous ? 'Anonymous' : (name || currentUser?.displayName),
+                text: testimonialText.trim(),
+                name: isAnonymous ? 'Anonymous' : (name || currentUser?.displayName || 'Anonymous'),
                 service,
                 rating,
-                timestamp: serverTimestamp(),
+                createdAt: serverTimestamp(),
+                approved: false, // New testimonials need approval
                 userId: currentUser?.uid || null
             };
 
@@ -67,6 +87,11 @@ export default function TestimonialsPage() {
             setService('');
             setRating(5);
             setIsAnonymous(false);
+            
+            // Show additional message about approval
+            setTimeout(() => {
+                setSuccess(false);
+            }, 3000);
         } catch (err) {
             console.error('Error submitting testimonial:', err);
             setError(t('testimonials.submitError'));
@@ -287,6 +312,12 @@ export default function TestimonialsPage() {
                                     {t('testimonials.review')}
                                 </Typography>
 
+                                {error && (
+                                    <Alert severity="error" sx={{ mb: 3 }}>
+                                        {error}
+                                    </Alert>
+                                )}
+
                                 <Button
                                     type="submit"
                                     variant="contained"
@@ -315,6 +346,7 @@ export default function TestimonialsPage() {
                 open={success}
                 autoHideDuration={6000}
                 onClose={() => setSuccess(false)}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
             >
                 <Alert
                     onClose={() => setSuccess(false)}
@@ -322,6 +354,21 @@ export default function TestimonialsPage() {
                     sx={{ width: '100%' }}
                 >
                     {t('testimonials.thankYou')}
+                </Alert>
+            </Snackbar>
+
+            <Snackbar
+                open={!!error}
+                autoHideDuration={6000}
+                onClose={() => setError('')}
+                anchorOrigin={{ vertical: 'top', horizontal: 'center' }}
+            >
+                <Alert
+                    onClose={() => setError('')}
+                    severity="error"
+                    sx={{ width: '100%' }}
+                >
+                    {error}
                 </Alert>
             </Snackbar>
         </>

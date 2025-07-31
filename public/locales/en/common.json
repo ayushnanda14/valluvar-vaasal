@@ -18,7 +18,8 @@
     "settings": "Settings",
     "bookings": "My Bookings",
     "messages": "My Readings",
-    "language": "Language"
+    "language": "Language",
+    "account": "Account"
   },
   "footer": {
     "description": "Connecting you with ancient Tamil wisdom for modern life.",
@@ -79,12 +80,17 @@
     "service": "Service Used",
     "rating": "Your Rating",
     "anonymous": "Submit Anonymously",
-    "review": "Your testimonial will be reviewed before being published.",
+    "review": "Your testimonial will be reviewed by our team before being published. This helps us maintain quality and authenticity.",
     "submit": "Submit Testimonial",
     "submitting": "Submitting...",
     "submitError": "Failed to submit testimonial. Please try again.",
-    "thankYou": "Thank you for sharing your experience!",
-    "noTestimonials": "No testimonials available yet. Be the first to share your experience!"
+    "thankYou": "Thank you for sharing your experience! Your testimonial has been submitted and will be reviewed before being published.",
+    "noTestimonials": "No testimonials available yet. Be the first to share your experience!",
+    "validation": {
+      "testimonialRequired": "Please enter your testimonial.",
+      "serviceRequired": "Please select a service.",
+      "nameRequired": "Please enter your name."
+    }
   },
   "bookings": {
     "title": "My Bookings",

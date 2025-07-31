@@ -23,6 +23,7 @@ import PersonIcon from '@mui/icons-material/Person';
 import LogoutIcon from '@mui/icons-material/Logout';
 import AssignmentIcon from '@mui/icons-material/Assignment';
 import LanguageIcon from '@mui/icons-material/Language';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Link from 'next/link';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
@@ -46,6 +47,9 @@ const Navbar = () => {
 
   // For profile drawer (mobile)
   const [drawerOpen, setDrawerOpen] = useState(false);
+
+  // For logged out user drawer
+  const [loggedOutDrawerOpen, setLoggedOutDrawerOpen] = useState(false);
 
   // For role-based navigation
   const [isAdmin, setIsAdmin] = useState(false);
@@ -80,6 +84,10 @@ const Navbar = () => {
     }
   };
 
+  const handleLoggedOutProfileClick = () => {
+    setLoggedOutDrawerOpen(true);
+  };
+
   const handleClose = () => {
     setAnchorEl(null);
   };
@@ -100,6 +108,13 @@ const Navbar = () => {
       return;
     }
     setDrawerOpen(open);
+  };
+
+  const toggleLoggedOutDrawer = (open) => (event) => {
+    if (event && event.type === 'keydown' && (event.key === 'Tab' || event.key === 'Shift')) {
+      return;
+    }
+    setLoggedOutDrawerOpen(open);
   };
 
   // Get user initials for avatar
@@ -208,24 +223,17 @@ const Navbar = () => {
                     )}
                   </IconButton>
                 ) : (
-                  <Link href="/login" passHref legacyBehavior>
-                    <Button 
-                      component="a" 
-                      variant="contained" 
-                      color="primary" 
-                      size="small"
-                      sx={{ 
-                        textTransform: 'none', 
-                        fontFamily: '"Cinzel", serif', 
-                        fontWeight: 500, 
-                        px: 2, 
-                        py: 0.5,
-                        fontSize: '0.8rem'
-                      }}
-                    >
-                      {t('auth.signIn')}
-                    </Button>
-                  </Link>
+                  <IconButton
+                    onClick={handleLoggedOutProfileClick}
+                    size='small'
+                    sx={{ 
+                      border: `2px solid ${theme.palette.grey[400]}`, 
+                      p: '4px',
+                      color: theme.palette.grey[600]
+                    }}
+                  >
+                    <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                  </IconButton>
                 )}
               </Box>
             </Box>
@@ -240,7 +248,6 @@ const Navbar = () => {
                 </Link>
               </Box>
               <Box sx={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', py: 1 }}>
-                <LanguageSwitcher />
                 {currentUser ? (
                   <IconButton
                     onClick={handleProfileClick}
@@ -256,11 +263,17 @@ const Navbar = () => {
                     )}
                   </IconButton>
                 ) : (
-                  <Link href="/login" passHref legacyBehavior>
-                    <Button component="a" variant="contained" color="primary" sx={{ textTransform: 'none', fontFamily: '"Cinzel", serif', fontWeight: 500, px: 3, py: 1 }}>
-                      {t('auth.signIn')}
-                    </Button>
-                  </Link>
+                  <IconButton
+                    onClick={handleLoggedOutProfileClick}
+                    size='small'
+                    sx={{ 
+                      border: `2px solid ${theme.palette.grey[400]}`, 
+                      p: '4px',
+                      color: theme.palette.grey[600]
+                    }}
+                  >
+                    <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                  </IconButton>
                 )}
               </Box>
             </>
@@ -298,7 +311,6 @@ const Navbar = () => {
 
               {/* Right-hand controls */}
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, ml: 'auto' }}>
-                <LanguageSwitcher />
                 {currentUser ? (
                   <>
                     <IconButton
@@ -435,27 +447,21 @@ const Navbar = () => {
                     )}
                   </>
                 ) : (
-                  <Link href="/login" passHref legacyBehavior>
-                    <Button
-                      component="a"
-                      variant="contained"
-                      color="primary"
-                      sx={{
-                        py: 1,
-                        px: 3,
-                        fontFamily: '"Cinzel", serif',
-                        fontWeight: 500,
-                        boxShadow: 'none',
-                        letterSpacing: '0.8px',
-                        textTransform: 'none',
-                        '&:hover': {
-                          boxShadow: '0px 2px 4px rgba(0,0,0,0.2)',
-                        }
-                      }}
-                    >
-                      {t('auth.signIn')}
-                    </Button>
-                  </Link>
+                  <IconButton
+                    onClick={handleLoggedOutProfileClick}
+                    size="small"
+                    sx={{
+                      border: `2px solid ${theme.palette.grey[400]}`,
+                      padding: '4px',
+                      color: theme.palette.grey[600],
+                      '&:hover': {
+                        borderColor: theme.palette.grey[500],
+                        color: theme.palette.grey[700],
+                      }
+                    }}
+                  >
+                    <AccountCircleIcon sx={{ width: 32, height: 32 }} />
+                  </IconButton>
                 )}
               </Box>
             </Toolbar>
@@ -617,6 +623,104 @@ const Navbar = () => {
             </List>
           </>
         )}
+      </Drawer>
+
+      {/* Logged Out User Drawer */}
+      <Drawer
+        anchor="right"
+        open={loggedOutDrawerOpen}
+        onClose={toggleLoggedOutDrawer(false)}
+        sx={{
+          '& .MuiDrawer-paper': {
+            width: '80%',
+            maxWidth: '300px',
+            boxSizing: 'border-box',
+            background: theme.palette.background.paper,
+          },
+        }}
+      >
+        <Box sx={{ p: 3, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+          <Typography
+            variant="h6"
+            sx={{
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 600,
+            }}
+          >
+            {t('navbar.settings')}
+          </Typography>
+          <IconButton onClick={toggleLoggedOutDrawer(false)}>
+            <CloseIcon />
+          </IconButton>
+        </Box>
+        <Divider />
+
+        {/* Language Switcher */}
+        <Box sx={{ p: 2 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 500,
+              mb: 1,
+              color: 'text.secondary'
+            }}
+          >
+            {t('navbar.language')}
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            {Object.keys(languages).map((lng) => (
+              <Button
+                key={lng}
+                variant={currentLang === lng ? 'contained' : 'outlined'}
+                size="small"
+                onClick={() => changeLanguage(lng)}
+                startIcon={<LanguageIcon />}
+                sx={{
+                  fontFamily: '"Cinzel", serif',
+                  fontWeight: 500,
+                  textTransform: 'none',
+                  minWidth: 'auto',
+                  px: 2
+                }}
+              >
+                {languages[lng]}
+              </Button>
+            ))}
+          </Box>
+        </Box>
+        <Divider />
+
+        {/* Sign In Section */}
+        <Box sx={{ p: 3 }}>
+          <Typography
+            variant="subtitle2"
+            sx={{
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 500,
+              mb: 2,
+              color: 'text.secondary'
+            }}
+          >
+            {t('navbar.account')}
+          </Typography>
+          <Link href="/login" passHref legacyBehavior>
+            <Button
+              component="a"
+              variant="contained"
+              color="primary"
+              fullWidth
+              sx={{
+                textTransform: 'none',
+                fontFamily: '"Cinzel", serif',
+                fontWeight: 500,
+                py: 1.5
+              }}
+            >
+              {t('auth.signIn')}
+            </Button>
+          </Link>
+        </Box>
       </Drawer>
     </>
   );
