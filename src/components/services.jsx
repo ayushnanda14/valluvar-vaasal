@@ -39,18 +39,34 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
     imagePosition = 'center 20%'; // Lower focus point for desktop
   }
 
-  // Dynamic heights to avoid extra white-space
-  const cardMinHeight = isLoggedIn
-    ? { xs: '240px', sm: '280px', md: '380px' }
-    : { xs: '300px', sm: '340px', md: '500px' };
-  const contentMinHeight = isLoggedIn
-    ? 'auto'
-    : { xs: '150px', sm: '170px', md: '220px' };
+  // Dynamic card dimensions based on viewport
+  const cardHeight = {
+    xs: '350px',
+    md: '400px',
+    lg: '500px',
+    xl: '500px'
+  };
+
+  const cardWidth = {
+    xs: '95vw',
+    sm: '85vw',
+    md: '100%',
+    lg: '100%',
+    xl: '100%'
+  };
+
+  const imageHeight = {
+    xs: '200px',
+    sm: '220px',
+    md: '250px',
+    lg: '280px',
+    xl: '300px'
+  };
+
   const contentJustify = isLoggedIn ? 'flex-start' : 'space-between';
 
   return (
     <Grid item xs={12} sm={6} md={4}>
-      {/* <Link href={destinationUrl || '/'} passHref legacyBehavior> */}
       <Box sx={{
         display: 'flex',
         justifyContent: 'center',
@@ -72,21 +88,14 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
           transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
           viewport={{ once: true, margin: "-100px" }}
           sx={{
-            height: '100%',
+            height: cardHeight,
+            width: cardWidth,
             display: 'flex',
             flexDirection: 'column',
             borderRadius: '16px',
-            // overflow: 'hidden',
+            overflow: 'hidden',
             boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
             position: 'relative',
-            width: '100%',
-            minHeight: cardMinHeight, // Dynamic min height
-            minWidth: isLoggedIn
-              ? { xs: '90vw', sm: '380px', md: '380px' }
-              : 'auto',
-            maxWidth: isLoggedIn
-              ? { xs: '100%', sm: '100%', md: '380px' }
-              : 'auto',
             '&:hover': {
               boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
               transform: 'translateY(-5px)',
@@ -94,29 +103,17 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
             }
           }}
         >
-          <Box sx={{ position: 'relative' }}>
+          <Box sx={{ position: 'relative', flexShrink: 0 }}>
             <CardMedia
               component="img"
               image={imageSrc}
               alt={title}
               sx={{
-                // Make image occupy 50% of the card on mobile (xs and sm)
-                height: {
-                  xs: isLoggedIn ? (isTablet ? 240 : 300) : (isTablet ? 280 : 300),
-                  md: isLoggedIn ? (isTablet ? 240 : 300) : (isTablet ? 140 : 300)
-                },
+                height: imageHeight,
+                aspectRatio: '1/1',
                 objectFit: 'cover',
                 objectPosition: imagePosition,
-                '&::after': {
-                  content: '""',
-                  position: 'absolute',
-                  bottom: 0,
-                  left: 0,
-                  width: '100%',
-                  height: '40%',
-                  background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
-                  zIndex: 1
-                }
+                width: '100%'
               }}
             />
             <Box
@@ -161,7 +158,7 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
             display: 'flex',
             flexDirection: 'column',
             justifyContent: contentJustify,
-            minHeight: contentMinHeight
+            overflow: 'hidden'
           }}>
             {/* Show description only when logged OUT */}
             {!isLoggedIn ? (
@@ -172,11 +169,12 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
                   color: theme.palette.secondary.main,
-                  // overflow: 'hidden',
+                  overflow: 'hidden',
                   display: '-webkit-box',
-                  // WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
+                  WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
                   WebkitBoxOrient: 'vertical',
-                  lineHeight: 1.4
+                  lineHeight: 1.4,
+                  flexGrow: 1
                 }}
               >
                 {description}
@@ -189,14 +187,15 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
                   fontFamily: '"Cormorant Garamond", serif',
                   fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
                   color: theme.palette.secondary.main,
-                  textAlign: 'left'
+                  textAlign: 'left',
+                  flexGrow: 1
                 }}
               >
                 {cue}
               </Typography>
             )}
             {isLoggedIn && (
-              <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'flex-start' }}>
+              <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
                 <Link href={destinationUrl || '/'} passHref legacyBehavior>
                   <Button
                     endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '1rem', md: '1.2rem' } }} />}
@@ -308,20 +307,10 @@ const Services = () => {
 
         <Grid
           container
-          spacing={{ xs: 2, sm: 3, md: 4 }}
+          spacing={{ xs: 3, sm: 4, md: 5 }}
           justifyContent="center"
-          wrap="nowrap"
           sx={{
-            width: { xs: '100%', md: '110%'},
-            padding: '10px',
-            overflowX: 'auto',
-            // overflowY: 'hidden',
-            flexDirection: {
-              xs: 'column', // mobile
-              sm: 'column', // small tablets
-              md: 'row',    // tablets and up
-              lg: 'row'
-            }
+            width: '100%'
           }}
         >
           {servicesList.map((service, index) => (
@@ -334,8 +323,6 @@ const Services = () => {
               imageSrc={service.imageSrc}
               delay={service.delay}
               isLoggedIn={isLoggedIn}
-              // Pass a prop to indicate mobile for image height adjustment
-              mobileImageHeight={true}
             />
           ))}
         </Grid>

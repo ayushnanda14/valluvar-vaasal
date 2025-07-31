@@ -73,7 +73,9 @@ const Footer = () => {
               display: 'flex',
               flexDirection: { xs: 'row', md: 'column' },
               alignItems: { xs: 'flex-start', md: 'flex-start' },
-              gap: { xs: 2, md: 0 }
+              gap: { xs: 2, md: 0 },
+              flexWrap: 'wrap',
+              width: '100%'
             }}>
               <ListItem disablePadding>
                 <ListItemButton
@@ -92,7 +94,8 @@ const Footer = () => {
                       color: theme.palette.secondary.main
                     },
                     width: 'max-content',
-                    padding: '0px'
+                    padding: '0px',
+                    minWidth: 'fit-content'
                   }}
                 >
                   <ListItemText primary={t('navbar.about')} />
@@ -115,7 +118,8 @@ const Footer = () => {
                       color: theme.palette.secondary.main
                     },
                     width: 'max-content',
-                    padding: '0px'
+                    padding: '0px',
+                    minWidth: 'fit-content'
                   }}
                 >
                   <ListItemText primary={t('navbar.services')} />
@@ -138,7 +142,8 @@ const Footer = () => {
                       color: theme.palette.secondary.main
                     },
                     width: 'max-content',
-                    padding: '0px'
+                    padding: '0px',
+                    minWidth: 'fit-content'
                   }}
                 >
                   <ListItemText primary={t('footer.feedback')} />
