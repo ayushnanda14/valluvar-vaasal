@@ -1040,16 +1040,17 @@ export default function AdminDashboard() {
         ) : (
           <TableContainer component={Paper} elevation={0}>
             <Table>
-              <TableHead>
-                <TableRow>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Verification Status</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Services</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
-                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-                </TableRow>
-              </TableHead>
+                          <TableHead>
+              <TableRow>
+                <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Verification Status</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Services</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+              </TableRow>
+            </TableHead>
               <TableBody>
                 {allAstrologers.map((astrologer) => (
                   <TableRow
@@ -1082,6 +1083,7 @@ export default function AdminDashboard() {
                       </Box>
                     </TableCell>
                     <TableCell>{astrologer.email}</TableCell>
+                    <TableCell>{astrologer.phoneNumber || 'N/A'}</TableCell>
                     <TableCell>
                       <Chip
                         label={astrologer.verificationStatus || 'Not Submitted'}
