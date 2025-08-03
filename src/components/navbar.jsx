@@ -710,6 +710,7 @@ const Navbar = () => {
               variant="contained"
               color="primary"
               fullWidth
+              onClick={() => setLoggedOutDrawerOpen(false)}
               sx={{
                 textTransform: 'none',
                 fontFamily: '"Cinzel", serif',

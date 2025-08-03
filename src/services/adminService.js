@@ -246,11 +246,17 @@ export const getAllAssignableUsers = async () => {
 };
 
 // Create support user signup link
-export const createSupportSignupLink = async (createdBy) => {
+export const createSupportSignupLink = async (creator) => {
   try {
+    if (!creator || !creator.uid) {
+      throw new Error('Invalid creator object');
+    }
+
     const linkData = {
       type: 'support_signup',
-      createdBy,
+      createdBy: creator.uid,
+      createdByName: creator.displayName || creator.email || 'Unknown',
+      createdByEmail: creator.email || 'Unknown',
       createdAt: serverTimestamp(),
       expiresAt: new Date(Date.now() + 12 * 60 * 60 * 1000), // 12 hours
       used: false

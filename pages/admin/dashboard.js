@@ -295,7 +295,7 @@ export default function AdminDashboard() {
         signupLinksListener();
       }
     };
-  }, [tabValue, signupLinksListener]);
+  }, [tabValue]);
 
   // Real-time listener for support users
   useEffect(() => {
@@ -357,7 +357,7 @@ export default function AdminDashboard() {
         supportUsersListener();
       }
     };
-  }, [tabValue, supportUsersListener]);
+  }, [tabValue]);
 
   // Cleanup effect for all listeners
   useEffect(() => {
@@ -1346,7 +1346,11 @@ export default function AdminDashboard() {
   const handleCreateSignupLink = async () => {
     try {
       setCreatingLink(true);
-      const link = await createSupportSignupLink(currentUser.uid);
+      const link = await createSupportSignupLink({
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        email: currentUser.email
+      });
       setNewSignupLink(link.url);
       setSignupLinks([link, ...signupLinks]);
       setSuccessMessage('Support signup link created successfully');
@@ -1427,10 +1431,11 @@ export default function AdminDashboard() {
                 </TableRow>
               </TableHead>
               <TableBody>
+                {console.log(signupLinks)}
                 {signupLinks.map((link) => (
                   <TableRow key={link.id}>
                     <TableCell>{link.id}</TableCell>
-                    <TableCell>{link.createdBy}</TableCell>
+                    <TableCell>{link.createdByName || link.createdByEmail || link.createdBy}</TableCell>
                     <TableCell>
                       {link.createdAt instanceof Date ? link.createdAt.toLocaleString() : 'Unknown'}
                     </TableCell>

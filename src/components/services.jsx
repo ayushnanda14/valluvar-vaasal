@@ -12,8 +12,7 @@ import {
   useMediaQuery
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import Link from 'next/link';
-import ArrowForwardIcon from '@mui/icons-material/ArrowForward';
+import { useRouter } from 'next/router';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 
@@ -28,6 +27,7 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
   const { t } = useTranslation('common');
+  const router = useRouter();
 
   // Determine the optimal object position based on screen size
   let imagePosition;
@@ -67,42 +67,43 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
 
   return (
     <Grid item xs={12} sm={6} md={4}>
-      <Box sx={{
-        display: 'flex',
-        justifyContent: 'center',
-        height: '100%',
-        cursor: 'pointer',
-        '&:hover': {
-          transform: 'translateY(-7px)',
+
+        <Box onClick={() => { if (isLoggedIn) router.push(destinationUrl); }} sx={{
+          display: 'flex',
+          justifyContent: 'center',
+          height: '100%',
+          cursor: isLoggedIn ? 'pointer' : 'default',
+          '&:hover': {
+            transform: isLoggedIn ? 'translateY(-7px)' : 'none',
+            transition: 'all 0.3s ease'
+          },
+          '&:not(:hover)': {
+            transform: 'translateY(0)',
+            transition: 'all 0.4s ease-out'
+          },
           transition: 'all 0.3s ease'
-        },
-        '&:not(:hover)': {
-          transform: 'translateY(0)',
-          transition: 'all 0.4s ease-out'
-        },
-        transition: 'all 0.3s ease'
-      }}>
-        <MotionCard
-          initial={{ opacity: 0, y: 50 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
-          viewport={{ once: true, margin: "-100px" }}
-          sx={{
-            height: cardHeight,
-            width: cardWidth,
-            display: 'flex',
-            flexDirection: 'column',
-            borderRadius: '16px',
-            overflow: 'hidden',
-            boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
-            position: 'relative',
-            '&:hover': {
-              boxShadow: '0 12px 28px rgba(139, 69, 19, 0.15)',
-              transform: 'translateY(-5px)',
-              transition: 'all 0.3s ease'
-            }
-          }}
-        >
+        }}>
+          <MotionCard
+            initial={{ opacity: 0, y: 50 }}
+            whileInView={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
+            viewport={{ once: true, margin: "-100px" }}
+            sx={{
+              height: cardHeight,
+              width: cardWidth,
+              display: 'flex',
+              flexDirection: 'column',
+              borderRadius: '16px',
+              overflow: 'hidden',
+              boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
+              position: 'relative',
+              '&:hover': {
+                boxShadow: isLoggedIn ? '0 12px 28px rgba(139, 69, 19, 0.15)' : '0 8px 20px rgba(139, 69, 19, 0.1)',
+                transform: isLoggedIn ? 'translateY(-5px)' : 'none',
+                transition: 'all 0.3s ease'
+              }
+            }}
+          >
           <Box sx={{ position: 'relative', flexShrink: 0 }}>
             <CardMedia
               component="img"
@@ -194,36 +195,10 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
                 {cue}
               </Typography>
             )}
-            {isLoggedIn && (
-              <Box sx={{ mt: 'auto', display: 'flex', justifyContent: 'flex-start', flexShrink: 0 }}>
-                <Link href={destinationUrl || '/'} passHref legacyBehavior>
-                  <Button
-                    endIcon={<ArrowForwardIcon sx={{ fontSize: { xs: '1rem', md: '1.2rem' } }} />}
-                    component="span"
-                    sx={{
-                      textTransform: 'none',
-                      fontFamily: '"Cormorant Garamond", serif',
-                      fontWeight: 600,
-                      fontSize: { xs: '0.9rem', sm: '0.95rem', md: '1rem' },
-                      color: theme.palette.primary.main,
-                      px: { xs: 1, sm: 1.5, md: 2 },
-                      py: { xs: 0.5, sm: 0.75, md: 1 },
-                      minHeight: { xs: '36px', sm: '40px', md: '44px' },
-                      '&:hover': {
-                        backgroundColor: 'transparent',
-                        color: theme.palette.primary.dark,
-                      }
-                    }}
-                  >
-                    {t('services.checkOut')}
-                  </Button>
-                </Link>
-              </Box>
-            )}
           </CardContent>
         </MotionCard>
       </Box>
-      {/* </Link> */}
+
     </Grid>
   );
 };
