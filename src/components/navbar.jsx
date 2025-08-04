@@ -159,11 +159,11 @@ const Navbar = () => {
         <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '5px' }}>
           {isMobileNav ? (
             // Single container mobile layout
-            <Box sx={{ 
-              display: 'flex', 
-              justifyContent: 'space-between', 
-              alignItems: 'center', 
-              width: '100%', 
+            <Box sx={{
+              display: 'flex',
+              justifyContent: 'space-between',
+              alignItems: 'center',
+              width: '100%',
               py: 1,
               px: 2
             }}>
@@ -172,14 +172,14 @@ const Navbar = () => {
 
               {/* Center - Title */}
               <Link href="/" passHref legacyBehavior>
-                <Typography 
-                  component="a" 
-                  variant="h5" 
-                  sx={{ 
-                    fontFamily: '"Cinzel", serif', 
-                    fontWeight: 600, 
-                    letterSpacing: '1px', 
-                    textDecoration: 'none', 
+                <Typography
+                  component="a"
+                  variant="h5"
+                  sx={{
+                    fontFamily: '"Cinzel", serif',
+                    fontWeight: 600,
+                    letterSpacing: '1px',
+                    textDecoration: 'none',
                     color: 'inherit',
                     fontSize: '1.3rem',
                     position: 'absolute',
@@ -192,31 +192,31 @@ const Navbar = () => {
               </Link>
 
               {/* Right side - Profile Icon only (language switcher moved to drawer) */}
-              <Box sx={{ 
-                display: 'flex', 
-                alignItems: 'center', 
+              <Box sx={{
+                display: 'flex',
+                alignItems: 'center',
                 gap: 1
               }}>
                 {currentUser ? (
                   <IconButton
                     onClick={handleProfileClick}
                     size='small'
-                    sx={{ 
-                      border: `2px solid ${theme.palette.primary.main}`, 
+                    sx={{
+                      border: `2px solid ${theme.palette.primary.main}`,
                       p: '4px'
                     }}
                   >
                     {currentUser.photoURL ? (
                       <Avatar src={currentUser.photoURL} sx={{ width: 32, height: 32 }} />
                     ) : (
-                      <Avatar sx={{ 
-                        width: 32, 
-                        height: 32, 
-                        bgcolor: theme.palette.primary.main, 
-                        color: theme.palette.primary.contrastText, 
-                        fontFamily: '"Cinzel", serif', 
-                        fontWeight: 500, 
-                        fontSize: '0.9rem' 
+                      <Avatar sx={{
+                        width: 32,
+                        height: 32,
+                        bgcolor: theme.palette.primary.main,
+                        color: theme.palette.primary.contrastText,
+                        fontFamily: '"Cinzel", serif',
+                        fontWeight: 500,
+                        fontSize: '0.9rem'
                       }}>
                         {getUserInitials()}
                       </Avatar>
@@ -226,8 +226,8 @@ const Navbar = () => {
                   <IconButton
                     onClick={handleLoggedOutProfileClick}
                     size='small'
-                    sx={{ 
-                      border: `2px solid ${theme.palette.grey[400]}`, 
+                    sx={{
+                      border: `2px solid ${theme.palette.grey[400]}`,
                       p: '4px',
                       color: theme.palette.grey[600]
                     }}
@@ -266,8 +266,8 @@ const Navbar = () => {
                   <IconButton
                     onClick={handleLoggedOutProfileClick}
                     size='small'
-                    sx={{ 
-                      border: `2px solid ${theme.palette.grey[400]}`, 
+                    sx={{
+                      border: `2px solid ${theme.palette.grey[400]}`,
                       p: '4px',
                       color: theme.palette.grey[600]
                     }}
@@ -704,40 +704,42 @@ const Navbar = () => {
           >
             {t('navbar.account')}
           </Typography>
-          <Link href="/login" passHref legacyBehavior>
-            <Button
-              component="a"
-              variant="contained"
-              color="primary"
-              fullWidth
-              onClick={() => setLoggedOutDrawerOpen(false)}
-              sx={{
-                textTransform: 'none',
-                fontFamily: '"Cinzel", serif',
-                fontWeight: 500,
-                py: 1.5
-              }}
-            >
-              {t('auth.signIn')}
-            </Button>
-          </Link>
-          <Link href="/signup" passHref legacyBehavior>
-            <Button
-              component="a"
-              variant="contained"
-              color="secondary"
-              fullWidth
-              onClick={() => setLoggedOutDrawerOpen(false)}
-              sx={{
-                textTransform: 'none',
-                fontFamily: '"Cinzel", serif',
-                fontWeight: 500,
-                py: 1.5
-              }}
-            >
-              {t('auth.signUp')}
-            </Button>
-          </Link>
+          <Box sx={{ display: 'flex', gap: 2, flexDirection: { xs: 'column', md: 'row' } }}>
+            <Link href="/login" passHref legacyBehavior>
+              <Button
+                component="a"
+                variant="contained"
+                color="primary"
+                fullWidth
+                onClick={() => setLoggedOutDrawerOpen(false)}
+                sx={{
+                  textTransform: 'none',
+                  fontFamily: '"Cinzel", serif',
+                  fontWeight: 500,
+                  py: 1.5
+                }}
+              >
+                {t('auth.signIn')}
+              </Button>
+            </Link>
+            <Link href="/signup" passHref legacyBehavior>
+              <Button
+                component="a"
+                variant="contained"
+                color="text.secondary"
+                fullWidth
+                onClick={() => setLoggedOutDrawerOpen(false)}
+                sx={{
+                  textTransform: 'none',
+                  fontFamily: '"Cinzel", serif',
+                  fontWeight: 500,
+                  py: 1.5
+                }}
+              >
+                {t('auth.signUp')}
+              </Button>
+            </Link>
+          </Box>
         </Box>
       </Drawer>
     </>

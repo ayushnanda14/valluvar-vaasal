@@ -3,7 +3,6 @@ import {
   Box,
   Container,
   Typography,
-  Grid,
   Card,
   CardContent,
   CardMedia,
@@ -22,7 +21,7 @@ const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 
 const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay, isLoggedIn }) => {
-  const theme = useTheme();
+    const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
   const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
@@ -47,13 +46,7 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
     xl: '500px'
   };
 
-  const cardWidth = {
-    xs: '95vw',
-    sm: '85vw',
-    md: '100%',
-    lg: '100%',
-    xl: '100%'
-  };
+  const cardWidth = '100%';
 
   const imageHeight = {
     xs: '200px',
@@ -66,140 +59,155 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
   const contentJustify = isLoggedIn ? 'flex-start' : 'space-between';
 
   return (
-    <Grid item xs={12} sm={6} md={4}>
 
-        <Box onClick={() => { if (isLoggedIn) router.push(destinationUrl); }} sx={{
+    <Box onClick={() => { if (isLoggedIn) router.push(destinationUrl); }} sx={{
+      display: 'flex',
+      justifyContent: 'center',
+      height: '100%',
+      cursor: isLoggedIn ? 'pointer' : 'default',
+      '&:hover': {
+        transform: isLoggedIn ? 'translateY(-7px)' : 'none',
+        transition: 'all 0.3s ease'
+      },
+      '&:not(:hover)': {
+        transform: 'translateY(0)',
+        transition: 'all 0.4s ease-out'
+      },
+      transition: 'all 0.3s ease'
+    }}>
+      <MotionCard
+        initial={{ opacity: 0, y: 50 }}
+        whileInView={{ opacity: 1, y: 0 }}
+        transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
+        viewport={{ once: true, margin: "-100px" }}
+        sx={{
+          height: cardHeight,
+          width: cardWidth,
           display: 'flex',
-          justifyContent: 'center',
-          height: '100%',
-          cursor: isLoggedIn ? 'pointer' : 'default',
+          flexDirection: 'column',
+          borderRadius: '16px',
+          overflow: 'hidden',
+          boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
+          position: 'relative',
           '&:hover': {
-            transform: isLoggedIn ? 'translateY(-7px)' : 'none',
-            transition: 'all 0.3s ease'
-          },
-          '&:not(:hover)': {
-            transform: 'translateY(0)',
-            transition: 'all 0.4s ease-out'
-          },
-          transition: 'all 0.3s ease'
-        }}>
-          <MotionCard
-            initial={{ opacity: 0, y: 50 }}
-            whileInView={{ opacity: 1, y: 0 }}
-            transition={{ duration: 0.8, delay: delay, ease: "easeOut" }}
-            viewport={{ once: true, margin: "-100px" }}
+            boxShadow: isLoggedIn ? '0 12px 28px rgba(139, 69, 19, 0.15)' : '0 8px 20px rgba(139, 69, 19, 0.1)',
+            transform: isLoggedIn ? 'translateY(-5px)' : 'none',
+            transition: 'all 0.3s ease',
+            height: 'auto',
+            overflow: 'visible',
+            '& .service-description': {
+              transition: 'all 0.3s ease',
+              WebkitLineClamp: 'unset',
+              overflow: 'visible',
+              display: 'block',
+              maxHeight: '1000px'
+            },
+            '& .MuiCardContent-root': {
+              overflow: 'visible'
+            }
+          }
+        }}
+      >
+        <Box sx={{ position: 'relative', flexShrink: 0 }}>
+          <CardMedia
+            component="img"
+            image={imageSrc}
+            alt={title}
             sx={{
-              height: cardHeight,
-              width: cardWidth,
-              display: 'flex',
-              flexDirection: 'column',
-              borderRadius: '16px',
-              overflow: 'hidden',
-              boxShadow: '0 8px 20px rgba(139, 69, 19, 0.1)',
-              position: 'relative',
-              '&:hover': {
-                boxShadow: isLoggedIn ? '0 12px 28px rgba(139, 69, 19, 0.15)' : '0 8px 20px rgba(139, 69, 19, 0.1)',
-                transform: isLoggedIn ? 'translateY(-5px)' : 'none',
-                transition: 'all 0.3s ease'
-              }
+              height: imageHeight,
+              aspectRatio: '1/1',
+              objectFit: 'cover',
+              objectPosition: imagePosition,
+              width: '100%'
+            }}
+          />
+          <Box
+            sx={{
+              position: 'absolute',
+              bottom: 0,
+              left: 0,
+              width: '100%',
+              height: '40%',
+              background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
+              zIndex: 1
+            }}
+          />
+          <Typography
+            variant={isMobile ? "h6" : "h5"}
+            component="h3"
+            sx={{
+              position: 'absolute',
+              bottom: { xs: -5, sm: -8, md: -10 },
+              left: 0,
+              width: '100%',
+              px: { xs: 2, sm: 2.5, md: 3 },
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 600,
+              color: theme.palette.secondary.dark,
+              zIndex: 2,
+              textShadow: '0 1px 2px rgba(255,255,255,0.8)',
+              fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
+              lineHeight: 1.2
             }}
           >
-          <Box sx={{ position: 'relative', flexShrink: 0 }}>
-            <CardMedia
-              component="img"
-              image={imageSrc}
-              alt={title}
+            {title}
+          </Typography>
+        </Box>
+
+        <CardContent sx={{
+          flexGrow: 1,
+          pt: { xs: 3, sm: 3.5, md: 4 },
+          pb: 2,
+          px: { xs: 2, sm: 2.5, md: 3 },
+          background: theme.palette.background.paper,
+          display: 'flex',
+          flexDirection: 'column',
+          justifyContent: contentJustify,
+          overflow: 'hidden'
+        }}>
+          {/* Show description only when logged OUT */}
+          {!isLoggedIn ? (
+            <>
+              <Typography
+              className="service-description"
+              variant="body1"
               sx={{
-                height: imageHeight,
-                aspectRatio: '1/1',
-                objectFit: 'cover',
-                objectPosition: imagePosition,
-                width: '100%'
-              }}
-            />
-            <Box
-              sx={{
-                position: 'absolute',
-                bottom: 0,
-                left: 0,
-                width: '100%',
-                height: '40%',
-                background: 'linear-gradient(to bottom, rgba(255,248,225,0) 0%, rgba(255,248,225,1) 100%)',
-                zIndex: 1
-              }}
-            />
-            <Typography
-              variant={isMobile ? "h6" : "h5"}
-              component="h3"
-              sx={{
-                position: 'absolute',
-                bottom: { xs: -5, sm: -8, md: -10 },
-                left: 0,
-                width: '100%',
-                px: { xs: 2, sm: 2.5, md: 3 },
-                fontFamily: '"Cinzel", serif',
-                fontWeight: 600,
-                color: theme.palette.secondary.dark,
-                zIndex: 2,
-                textShadow: '0 1px 2px rgba(255,255,255,0.8)',
-                fontSize: { xs: '1.1rem', sm: '1.3rem', md: '1.5rem' },
-                lineHeight: 1.2
+                mb: 2,
+                fontFamily: '"Cormorant Garamond", serif',
+                fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
+                color: theme.palette.secondary.main,
+                overflow: 'hidden',
+                display: '-webkit-box',
+                WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
+                WebkitBoxOrient: 'vertical',
+                lineHeight: 1.4,
+                transition: 'max-height 0.3s ease',
+                flexGrow: 1
               }}
             >
-              {title}
+              {description}
             </Typography>
-          </Box>
 
-          <CardContent sx={{
-            flexGrow: 1,
-            pt: { xs: 3, sm: 3.5, md: 4 },
-            pb: 2,
-            px: { xs: 2, sm: 2.5, md: 3 },
-            background: theme.palette.background.paper,
-            display: 'flex',
-            flexDirection: 'column',
-            justifyContent: contentJustify,
-            overflow: 'hidden'
-          }}>
-            {/* Show description only when logged OUT */}
-            {!isLoggedIn ? (
-              <Typography
-                variant="body1"
-                sx={{
-                  mb: 2,
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
-                  color: theme.palette.secondary.main,
-                  overflow: 'hidden',
-                  display: '-webkit-box',
-                  WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
-                  WebkitBoxOrient: 'vertical',
-                  lineHeight: 1.4,
-                  flexGrow: 1
-                }}
-              >
-                {description}
-              </Typography>
-            ) : (
-              <Typography
-                variant="body1"
-                sx={{
-                  mb: 2,
-                  fontFamily: '"Cormorant Garamond", serif',
-                  fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
-                  color: theme.palette.secondary.main,
-                  textAlign: 'left',
-                  flexGrow: 1
-                }}
-              >
-                {cue}
-              </Typography>
-            )}
-          </CardContent>
-        </MotionCard>
-      </Box>
+            </>
+          ) : (
+            <Typography
+              variant="body1"
+              sx={{
+                mb: 2,
+                fontFamily: '"Cormorant Garamond", serif',
+                fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
+                color: theme.palette.secondary.main,
+                textAlign: 'left',
+                flexGrow: 1
+              }}
+            >
+              {cue}
+            </Typography>
+          )}
+        </CardContent>
+      </MotionCard>
+    </Box>
 
-    </Grid>
   );
 };
 
@@ -280,27 +288,37 @@ const Services = () => {
           </MotionTypography>
         </MotionBox>
 
-        <Grid
-          container
-          spacing={{ xs: 3, sm: 4, md: 5 }}
-          justifyContent="center"
+        <Box
           sx={{
+            display: 'flex',
+            flexWrap: 'wrap',
+            justifyContent: 'center',
+            gap: { xs: 3, sm: 4, md: 5 },
             width: '100%'
           }}
         >
           {servicesList.map((service, index) => (
-            <ServiceCard
+            <Box
               key={index}
-              title={service.title}
-              destinationUrl={service.destinationUrl}
-              description={service.description}
-              cue={service.cue}
-              imageSrc={service.imageSrc}
-              delay={service.delay}
-              isLoggedIn={isLoggedIn}
-            />
+              sx={{
+                flexBasis: { xs: '100%', sm: '50%', md: '30%' },
+                maxWidth: { xs: '100%', sm: '50%', md: '30%' },
+                display: 'flex',
+                justifyContent: 'center'
+              }}
+            >
+              <ServiceCard
+                title={service.title}
+                destinationUrl={service.destinationUrl}
+                description={service.description}
+                cue={service.cue}
+                imageSrc={service.imageSrc}
+                delay={service.delay}
+                isLoggedIn={isLoggedIn}
+              />
+            </Box>
           ))}
-        </Grid>
+        </Box>
       </Container>
     </Box>
   );

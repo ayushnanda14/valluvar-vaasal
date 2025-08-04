@@ -1,0 +1,142 @@
+[debug] [2025-08-04T15:09:31.720Z] ----------------------------------------------------------------------
+[debug] [2025-08-04T15:09:31.722Z] Command:       /Users/ayushnanda/.nvm/versions/node/v22.12.0/bin/node /Users/ayushnanda/.nvm/versions/node/v22.12.0/bin/firebase emulators:start
+[debug] [2025-08-04T15:09:31.723Z] CLI Version:   14.7.0
+[debug] [2025-08-04T15:09:31.723Z] Platform:      darwin
+[debug] [2025-08-04T15:09:31.723Z] Node Version:  v22.12.0
+[debug] [2025-08-04T15:09:31.723Z] Time:          Mon Aug 04 2025 20:39:31 GMT+0530 (India Standard Time)
+[debug] [2025-08-04T15:09:31.724Z] ----------------------------------------------------------------------
+[debug] 
+[debug] [2025-08-04T15:09:31.821Z] > command requires scopes: ["email","openid","https://www.googleapis.com/auth/cloudplatformprojects.readonly","https://www.googleapis.com/auth/firebase","https://www.googleapis.com/auth/cloud-platform"]
+[debug] [2025-08-04T15:09:31.822Z] > authorizing via signed-in user (valluvarvaasal@gmail.com)
+[debug] [2025-08-04T15:09:31.925Z] java version "22.0.1" 2024-04-16
+
+[debug] [2025-08-04T15:09:31.926Z] Java(TM) SE Runtime Environment (build 22.0.1+8-16)
+Java HotSpot(TM) 64-Bit Server VM (build 22.0.1+8-16, mixed mode, sharing)
+
+[debug] [2025-08-04T15:09:31.929Z] Parsed Java major version: 22
+[info] i  emulators: Starting emulators: functions, hosting, storage, extensions {"metadata":{"emulator":{"name":"hub"},"message":"Starting emulators: functions, hosting, storage, extensions"}}
+[debug] [2025-08-04T15:09:31.930Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:31.930Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:31.930Z] >>> [apiv2][query] GET https://serviceusage.googleapis.com/v1/projects/valluvar-vaasal-app/services/cloudresourcemanager.googleapis.com [none]
+[debug] [2025-08-04T15:09:31.930Z] >>> [apiv2][(partial)header] GET https://serviceusage.googleapis.com/v1/projects/valluvar-vaasal-app/services/cloudresourcemanager.googleapis.com x-goog-quota-user=projects/valluvar-vaasal-app
+[debug] [2025-08-04T15:09:33.567Z] <<< [apiv2][status] GET https://serviceusage.googleapis.com/v1/projects/valluvar-vaasal-app/services/cloudresourcemanager.googleapis.com 200
+[debug] [2025-08-04T15:09:33.567Z] <<< [apiv2][body] GET https://serviceusage.googleapis.com/v1/projects/valluvar-vaasal-app/services/cloudresourcemanager.googleapis.com [omitted]
+[debug] [2025-08-04T15:09:33.567Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:33.567Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:33.567Z] >>> [apiv2][query] GET https://cloudresourcemanager.googleapis.com/v1/projects/valluvar-vaasal-app [none]
+[debug] [2025-08-04T15:09:34.883Z] <<< [apiv2][status] GET https://cloudresourcemanager.googleapis.com/v1/projects/valluvar-vaasal-app 200
+[debug] [2025-08-04T15:09:34.884Z] <<< [apiv2][body] GET https://cloudresourcemanager.googleapis.com/v1/projects/valluvar-vaasal-app {"projectNumber":"903798539312","projectId":"valluvar-vaasal-app","lifecycleState":"ACTIVE","name":"valluvar-vaasal","labels":{"firebase":"enabled","firebase-core":"disabled"},"createTime":"2025-04-02T21:19:21.688594Z"}
+[debug] [2025-08-04T15:09:35.346Z] [logging] Logging Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-04T15:09:35.346Z] [storage] Storage Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[warn] ⚠  hosting: Hosting Emulator unable to start on port 5000, starting on 5002 instead. {"metadata":{"emulator":{"name":"hosting"},"message":"Hosting Emulator unable to start on port 5000, starting on 5002 instead."}}
+[debug] [2025-08-04T15:09:35.347Z] [hosting] Hosting Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-04T15:09:35.347Z] assigned listening specs for emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"storage":[{"address":"127.0.0.1","family":"IPv4","port":9199}],"hosting":[{"address":"127.0.0.1","family":"IPv4","port":5002}]},"metadata":{"message":"assigned listening specs for emulators"}}
+[debug] [2025-08-04T15:09:35.348Z] [hub] writing locator at /var/folders/r4/phsh6wkn7zv7nj2nt_11_glw0000gn/T/hub-valluvar-vaasal-app.json
+[debug] [2025-08-04T15:09:35.350Z] [Extensions] Started Extensions emulator, this is a noop.
+[debug] [2025-08-04T15:09:35.572Z] [functions] Functions Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-04T15:09:35.572Z] [eventarc] Eventarc Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-04T15:09:35.572Z] [tasks] Cloud Tasks Emulator only supports listening on one address (127.0.0.1). Not listening on ::1
+[debug] [2025-08-04T15:09:35.572Z] late-assigned ports for functions and eventarc emulators {"user":{"hub":[{"address":"127.0.0.1","family":"IPv4","port":4400},{"address":"::1","family":"IPv6","port":4400}],"ui":[{"address":"127.0.0.1","family":"IPv4","port":4000},{"address":"::1","family":"IPv6","port":4000}],"logging":[{"address":"127.0.0.1","family":"IPv4","port":4500}],"storage":[{"address":"127.0.0.1","family":"IPv4","port":9199}],"hosting":[{"address":"127.0.0.1","family":"IPv4","port":5002}],"functions":[{"address":"127.0.0.1","family":"IPv4","port":5001}],"eventarc":[{"address":"127.0.0.1","family":"IPv4","port":9299}],"tasks":[{"address":"127.0.0.1","family":"IPv4","port":9499}]},"metadata":{"message":"late-assigned ports for functions and eventarc emulators"}}
+[warn] ⚠  functions: The following emulators are not running, calls to these services from the Functions emulator will affect production: apphosting, auth, firestore, database, pubsub, dataconnect {"metadata":{"emulator":{"name":"functions"},"message":"The following emulators are not running, calls to these services from the Functions emulator will affect production: \u001b[1mapphosting, auth, firestore, database, pubsub, dataconnect\u001b[22m"}}
+[warn] ⚠  functions: Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful! {"metadata":{"emulator":{"name":"functions"},"message":"Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful!"}}
+[debug] [2025-08-04T15:09:36.110Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:36.110Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:36.110Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/adminSdkConfig [none]
+[debug] [2025-08-04T15:09:36.834Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/adminSdkConfig 200
+[debug] [2025-08-04T15:09:36.834Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/adminSdkConfig {"projectId":"valluvar-vaasal-app","storageBucket":"valluvar-vaasal-app.firebasestorage.app"}
+[debug] [2025-08-04T15:09:36.871Z] Ignoring unsupported arg: port {"metadata":{"emulator":{"name":"storage"},"message":"Ignoring unsupported arg: port"}}
+[debug] [2025-08-04T15:09:37.417Z] Temp file directory for storage emulator: /var/folders/r4/phsh6wkn7zv7nj2nt_11_glw0000gn/T/firebase/storage/blobs {"metadata":{"emulator":{"name":"storage"},"message":"Temp file directory for storage emulator: /var/folders/r4/phsh6wkn7zv7nj2nt_11_glw0000gn/T/firebase/storage/blobs"}}
+[debug] [2025-08-04T15:09:37.419Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:37.419Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:37.419Z] >>> [apiv2][query] GET https://firebasehosting.googleapis.com/v1beta1/projects/valluvar-vaasal-app/sites 
+[debug] [2025-08-04T15:09:38.418Z] <<< [apiv2][status] GET https://firebasehosting.googleapis.com/v1beta1/projects/valluvar-vaasal-app/sites 200
+[debug] [2025-08-04T15:09:38.418Z] <<< [apiv2][body] GET https://firebasehosting.googleapis.com/v1beta1/projects/valluvar-vaasal-app/sites {"sites":[{"name":"projects/valluvar-vaasal-app/sites/valluvar-vaasal-app","defaultUrl":"https://valluvar-vaasal-app.web.app","type":"DEFAULT_SITE"}]}
+[debug] [2025-08-04T15:09:38.419Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:38.420Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:38.421Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/webApps/-/config [none]
+[debug] [2025-08-04T15:09:38.993Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/webApps/-/config 200
+[debug] [2025-08-04T15:09:38.994Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app/webApps/-/config {"projectId":"valluvar-vaasal-app","appId":"1:903798539312:web:fe293224d89a4b19d2d9f5","storageBucket":"valluvar-vaasal-app.firebasestorage.app","apiKey":"AIzaSyBUsADQ2U5ClVuJMhXbarnUm-J8nBWAmHU","authDomain":"valluvar-vaasal-app.firebaseapp.com","messagingSenderId":"903798539312","measurementId":"G-M3F09QWXLL"}
+[debug] [2025-08-04T15:09:39.003Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:39.003Z] Checked if tokens are valid: true, expires at: 1754322644846
+[debug] [2025-08-04T15:09:39.005Z] >>> [apiv2][query] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app [none]
+[debug] [2025-08-04T15:09:39.376Z] <<< [apiv2][status] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app 200
+[debug] [2025-08-04T15:09:39.376Z] <<< [apiv2][body] GET https://firebase.googleapis.com/v1beta1/projects/valluvar-vaasal-app {"projectId":"valluvar-vaasal-app","projectNumber":"903798539312","displayName":"valluvar-vaasal","name":"projects/valluvar-vaasal-app","resources":{"hostingSite":"valluvar-vaasal-app"},"state":"ACTIVE","etag":"1_6d465b13-dcc5-4b82-8353-0117a10e29b9"}
+[info] i  hosting[valluvar-vaasal-app]: Serving hosting files from: dist {"metadata":{"emulator":{"name":"hosting"},"message":"Serving hosting files from: \u001b[1mdist\u001b[22m"}}
+[info] ✔  hosting[valluvar-vaasal-app]: Local server: http://127.0.0.1:5002 {"metadata":{"emulator":{"name":"hosting"},"message":"Local server: \u001b[4m\u001b[1mhttp://127.0.0.1:5002\u001b[22m\u001b[24m"}}
+[debug] [2025-08-04T15:09:39.454Z] [Extensions] Connecting Extensions emulator, this is a noop.
+[info] i  functions: Watching "/Users/ayushnanda/Documents/projects/valluvar-vaasal/functions" for Cloud Functions... {"metadata":{"emulator":{"name":"functions"},"message":"Watching \"/Users/ayushnanda/Documents/projects/valluvar-vaasal/functions\" for Cloud Functions..."}}
+[debug] [2025-08-04T15:09:39.458Z] Validating nodejs source
+[warn] ⚠  functions: package.json indicates an outdated version of firebase-functions. Please upgrade using npm install --save firebase-functions@latest in your functions directory. 
+[debug] [2025-08-04T15:09:40.088Z] > [functions] package.json contents: {
+  "name": "functions",
+  "description": "Cloud Functions for Firebase",
+  "scripts": {
+    "lint": "eslint .",
+    "serve": "firebase emulators:start --only functions",
+    "shell": "firebase functions:shell",
+    "start": "npm run shell",
+    "deploy": "firebase deploy --only functions",
+    "logs": "firebase functions:log"
+  },
+  "engines": {
+    "node": "22"
+  },
+  "main": "index.js",
+  "dependencies": {
+    "cors": "^2.8.5",
+    "firebase-admin": "^12.5.0",
+    "firebase-functions": "^6.3.2",
+    "razorpay": "^2.9.6"
+  },
+  "devDependencies": {
+    "eslint": "^8.15.0",
+    "eslint-config-google": "^0.14.0",
+    "firebase-functions-test": "^3.1.0",
+    "firebase-tools": "^14.2.2"
+  },
+  "private": true
+}
+[debug] [2025-08-04T15:09:40.088Z] Building nodejs source
+[debug] [2025-08-04T15:09:40.088Z] Failed to find version of module node: reached end of search path /Users/ayushnanda/Documents/projects/valluvar-vaasal/functions/node_modules
+[info] ✔  functions: Using node@22 from host. 
+[info] i  functions: Loaded environment variables from .env. 
+[debug] [2025-08-04T15:09:40.091Z] Could not find functions.yaml. Must use http discovery
+[debug] [2025-08-04T15:09:40.097Z] Found firebase-functions binary at '/Users/ayushnanda/Documents/projects/valluvar-vaasal/functions/node_modules/.bin/firebase-functions'
+[info] Serving at port 8739
+
+[debug] [2025-08-04T15:09:40.460Z] Got response from /__/functions.yaml {"endpoints":{"checkPhone":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"checkPhone"},"verifyRazorpayPayment":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"verifyRazorpayPayment"},"createRazorpayOrder":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","region":["us-central1"],"labels":{},"callableTrigger":{},"entryPoint":"createRazorpayOrder"},"processRefund":{"availableMemoryMb":null,"timeoutSeconds":null,"minInstances":null,"maxInstances":null,"ingressSettings":null,"concurrency":null,"serviceAccountEmail":null,"vpc":null,"platform":"gcfv2","labels":{},"callableTrigger":{},"entryPoint":"processRefund"}},"specVersion":"v1alpha1","requiredAPIs":[],"extensions":{}}
+[warn] ⚠  functions: Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful! {"metadata":{"emulator":{"name":"functions"},"message":"Application Default Credentials detected. Non-emulated services will access production using these credentials. Be careful!"}}
+[info] ✔  functions: Loaded functions definitions from source: checkPhone, verifyRazorpayPayment, createRazorpayOrder, processRefund. {"metadata":{"emulator":{"name":"functions"},"message":"Loaded functions definitions from source: checkPhone, verifyRazorpayPayment, createRazorpayOrder, processRefund."}}
+[info] ✔  functions[us-central1-checkPhone]: http function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/checkPhone). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/checkPhone)."}}
+[info] ✔  functions[us-central1-verifyRazorpayPayment]: http function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/verifyRazorpayPayment). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/verifyRazorpayPayment)."}}
+[info] ✔  functions[us-central1-createRazorpayOrder]: http function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/createRazorpayOrder). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/createRazorpayOrder)."}}
+[info] ✔  functions[us-central1-processRefund]: http function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/processRefund). {"metadata":{"emulator":{"name":"functions"},"message":"\u001b[1mhttp\u001b[22m function initialized (http://127.0.0.1:5001/valluvar-vaasal-app/us-central1/processRefund)."}}
+[debug] [2025-08-04T15:09:44.518Z] Could not find VSCode notification endpoint: FetchError: request to http://localhost:40001/vscode/notify failed, reason: . If you are not running the Firebase Data Connect VSCode extension, this is expected and not an issue.
+[info] 
+┌─────────────────────────────────────────────────────────────┐
+│ ✔  All emulators ready! It is now safe to connect your app. │
+│ i  View Emulator UI at http://127.0.0.1:4000/               │
+└─────────────────────────────────────────────────────────────┘
+
+┌────────────┬────────────────┬──────────────────────────────────┐
+│ Emulator   │ Host:Port      │ View in Emulator UI              │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Functions  │ 127.0.0.1:5001 │ http://127.0.0.1:4000/functions  │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Hosting    │ 127.0.0.1:5002 │ n/a                              │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Storage    │ 127.0.0.1:9199 │ http://127.0.0.1:4000/storage    │
+├────────────┼────────────────┼──────────────────────────────────┤
+│ Extensions │ 127.0.0.1:5001 │ http://127.0.0.1:4000/extensions │
+└────────────┴────────────────┴──────────────────────────────────┘
+  Emulator Hub host: 127.0.0.1 port: 4400
+  Other reserved ports: 4500
+┌─────────────────────────┬───────────────┬─────────────────────┐
+│ Extension Instance Name │ Extension Ref │ View in Emulator UI │
+└─────────────────────────┴───────────────┴─────────────────────┘
+Issues? Report them at https://github.com/firebase/firebase-tools/issues and attach the *-debug.log files.
+ 
+[info] i  hosting: 127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] "GET / HTTP/1.1" 200 - "http://localhost:5002/login" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" {"metadata":{"emulator":{"name":"hosting"},"message":"127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] \"GET / HTTP/1.1\" 200 - \"http://localhost:5002/login\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\""}}
+[info] i  hosting: 127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] "GET /_next/static/FT2YKFPef5bYmLwRQvYpk/_buildManifest.js HTTP/1.1" 200 - "http://localhost:5002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" {"metadata":{"emulator":{"name":"hosting"},"message":"127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] \"GET /_next/static/FT2YKFPef5bYmLwRQvYpk/_buildManifest.js HTTP/1.1\" 200 - \"http://localhost:5002/\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\""}}
+[info] i  hosting: 127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] "GET /_next/static/FT2YKFPef5bYmLwRQvYpk/_ssgManifest.js HTTP/1.1" 200 80 "http://localhost:5002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" {"metadata":{"emulator":{"name":"hosting"},"message":"127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] \"GET /_next/static/FT2YKFPef5bYmLwRQvYpk/_ssgManifest.js HTTP/1.1\" 200 80 \"http://localhost:5002/\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\""}}
+[info] i  hosting: 127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] "GET /_next/static/chunks/pages/_app-b7c66b4f2fa6a1fb.js HTTP/1.1" 200 - "http://localhost:5002/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36" {"metadata":{"emulator":{"name":"hosting"},"message":"127.0.0.1 - - [04/Aug/2025:15:10:12 +0000] \"GET /_next/static/chunks/pages/_app-b7c66b4f2fa6a1fb.js HTTP/1.1\" 200 - \"http://localhost:5002/\" \"Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/138.0.0.0 Safari/537.36\""}}
