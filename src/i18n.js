@@ -12,7 +12,7 @@ const resources = {
 
 // Function to get saved language from localStorage
 const getInitialLanguage = () => {
-  // Default to English for consistent server/client rendering
+  // Always default to English for consistent server/client rendering
   // Language will be changed on client side after hydration
   return 'en';
 };

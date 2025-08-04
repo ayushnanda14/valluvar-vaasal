@@ -1119,7 +1119,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                 </Box>
                             ) : (
                                 <List sx={{ height: '100%' }}>
-                                    {console.log(messages)}
+                                    {/* {console.log(messages)} */}
                                     {getFilteredMessages().map((message) => {
                                         const isCurrentUser = message.senderId === currentUser.uid;
                                         const isSystem = message.senderId === 'system';

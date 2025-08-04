@@ -432,6 +432,47 @@ const Navbar = () => {
                           {t('navbar.bookings')}
                         </MenuItem>
                         <Divider />
+                        
+                        {/* Language Switcher */}
+                        <Box sx={{ px: 2, py: 1 }}>
+                          <Typography
+                            variant="subtitle2"
+                            sx={{
+                              fontFamily: '"Cinzel", serif',
+                              fontWeight: 500,
+                              mb: 1,
+                              color: 'text.secondary',
+                              fontSize: '0.8rem'
+                            }}
+                          >
+                            {t('navbar.language')}
+                          </Typography>
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+                            {Object.keys(languages).map((lng) => (
+                              <Button
+                                key={lng}
+                                variant={currentLang === lng ? 'contained' : 'outlined'}
+                                size="small"
+                                onClick={() => {
+                                  changeLanguage(lng);
+                                  handleClose();
+                                }}
+                                sx={{
+                                  fontFamily: '"Cinzel", serif',
+                                  fontWeight: 500,
+                                  textTransform: 'none',
+                                  minWidth: 'auto',
+                                  px: 1.5,
+                                  py: 0.5,
+                                  fontSize: '0.75rem'
+                                }}
+                              >
+                                {languages[lng]}
+                              </Button>
+                            ))}
+                          </Box>
+                        </Box>
+                        <Divider />
                         <MenuItem
                           onClick={handleLogout}
                           sx={{

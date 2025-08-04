@@ -36,7 +36,8 @@ import {
   Alert,
   Rating,
   Card,
-  CardContent
+  CardContent,
+  Badge
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
@@ -71,6 +72,7 @@ import {
   toggleFeedbackVisibility,
   getChatExpiryStatus
 } from '../../services/chatService';
+import { convertTimestampToTime } from '@/utils/utils';
 
 const ChatMonitor = ({ userId, userType }) => {
   const theme = useTheme();
@@ -124,6 +126,40 @@ const ChatMonitor = ({ userId, userType }) => {
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
   const [paymentInfo, setPaymentInfo] = useState(null);
 
+  // Notification preferences
+  const [notificationPrefs, setNotificationPrefs] = useState(() => {
+    // Load preferences from localStorage
+    const saved = localStorage.getItem('adminChatNotificationPrefs');
+    return saved ? JSON.parse(saved) : {};
+  });
+
+  const toggleNotificationPref = (chatId) => {
+    const newPrefs = {
+      ...notificationPrefs,
+      [chatId]: !notificationPrefs[chatId]
+    };
+    setNotificationPrefs(newPrefs);
+    localStorage.setItem('adminChatNotificationPrefs', JSON.stringify(newPrefs));
+  };
+
+  // Compute sorted chats with admin chats at the top
+  const sortedChats = React.useMemo(() => {
+    return [...chats].sort((a, b) => {
+      // First priority: chats with active admin chats
+      const aHasAdminChat = adminChats[a.id] ? 1 : 0;
+      const bHasAdminChat = adminChats[b.id] ? 1 : 0;
+
+      if (aHasAdminChat !== bHasAdminChat) {
+        return bHasAdminChat - aHasAdminChat; // Admin chats first
+      }
+
+      // Second priority: sort by updatedAt
+      const aTime = a.updatedAt?.toDate?.() || new Date(0);
+      const bTime = b.updatedAt?.toDate?.() || new Date(0);
+      return bTime - aTime;
+    });
+  }, [chats, adminChats]);
+
   // Effect for fetching chats list with real-time updates
   useEffect(() => {
     let unsubscribe;
@@ -131,7 +167,6 @@ const ChatMonitor = ({ userId, userType }) => {
     const fetchChats = async () => {
       try {
         setLoading(true);
-        const chatsList = [];
 
         // Build the query for regular chats
         let regularChatsQuery;
@@ -151,6 +186,8 @@ const ChatMonitor = ({ userId, userType }) => {
 
         // Set up real-time listener for regular chats
         unsubscribe = onSnapshot(regularChatsQuery, async (querySnapshot) => {
+          const chatsList = [];
+
           // Process each chat and fetch user data
           for (const doc of querySnapshot.docs) {
             const chatData = doc.data();
@@ -187,102 +224,16 @@ const ChatMonitor = ({ userId, userType }) => {
               }
             }
 
-            // Add to chats list if not already present
-            const existingIndex = chatsList.findIndex(c => c.id === chat.id);
-            if (existingIndex >= 0) {
-              chatsList[existingIndex] = chat;
-            } else {
-              chatsList.push(chat);
-            }
+            chatsList.push(chat);
           }
 
-          // Sort by updatedAt
-          chatsList.sort((a, b) => {
-            const aTime = a.updatedAt?.toDate?.() || new Date(0);
-            const bTime = b.updatedAt?.toDate?.() || new Date(0);
-            return bTime - aTime;
-          });
-
           setChats(chatsList);
+          setLoading(false);
           console.log('Regular chats loaded:', chatsList);
         }, (error) => {
           console.error('Error in regular chats listener:', error);
-        });
-
-        // Also fetch admin-client chats
-        const adminChatsRef = collection(db, 'adminClientChats');
-        let adminChatsQuery;
-
-        if (userId && userType === 'admin') {
-          // If userId is provided and user is admin, filter admin chats where the user is the admin
-          adminChatsQuery = query(
-            adminChatsRef,
-            where('adminId', '==', userId),
-            where('status', '==', 'active'),
-            orderBy('updatedAt', 'desc')
-          );
-        } else if (!userId) {
-          // If no userId filter, get all active admin chats
-          adminChatsQuery = query(
-            adminChatsRef,
-            where('status', '==', 'active'),
-            orderBy('updatedAt', 'desc')
-          );
-        }
-
-        // Set up real-time listener for admin chats (only if we have a query)
-        if (adminChatsQuery) {
-          const adminChatsUnsubscribe = onSnapshot(adminChatsQuery, async (querySnapshot) => {
-            // Process each admin chat
-            for (const doc of querySnapshot.docs) {
-              const adminChatData = doc.data();
-              const adminChat = {
-                id: doc.id,
-                ...adminChatData,
-                chatType: 'admin', // Mark as admin chat
-                // Map admin chat fields to regular chat fields for consistency
-                astrologerName: adminChatData.adminName || 'Admin Support',
-                astrologerId: adminChatData.adminId,
-                clientName: adminChatData.clientName || 'Client',
-                clientId: adminChatData.clientId
-              };
-
-              // Add to chats list if not already present
-              const existingIndex = chatsList.findIndex(c => c.id === adminChat.id);
-              if (existingIndex >= 0) {
-                chatsList[existingIndex] = adminChat;
-              } else {
-                chatsList.push(adminChat);
-              }
-            }
-
-            // Sort by updatedAt
-            chatsList.sort((a, b) => {
-              const aTime = a.updatedAt?.toDate?.() || new Date(0);
-              const bTime = b.updatedAt?.toDate?.() || new Date(0);
-              return bTime - aTime;
-            });
-
-            setChats([...chatsList]); // Create new array to trigger re-render
-            console.log('All chats loaded (including admin chats):', chatsList);
-            setLoading(false);
-          }, (error) => {
-            console.error('Error in admin chats listener:', error);
-            setLoading(false);
-          });
-
-          // Store admin chats unsubscribe for cleanup
-          return () => {
-            if (unsubscribe) {
-              unsubscribe();
-            }
-            if (adminChatsUnsubscribe) {
-              adminChatsUnsubscribe();
-            }
-          };
-        } else {
           setLoading(false);
-        }
+        });
       } catch (error) {
         console.error('Error setting up chats listener:', error);
         setLoading(false);
@@ -307,6 +258,20 @@ const ChatMonitor = ({ userId, userType }) => {
       if (!chatId) return;
 
       try {
+        // Check if we have cached messages for this chat
+        const cacheKey = `chatMessages_${chatId}`;
+        const cachedMessages = sessionStorage.getItem(cacheKey);
+
+        if (cachedMessages) {
+          const parsedMessages = JSON.parse(cachedMessages);
+          // Load cached messages immediately for better UX
+          setSelectedChat(prev => ({
+            ...prev,
+            messages: parsedMessages
+          }));
+          scrollToBottom();
+        }
+
         // Get messages subcollection with real-time updates
         const messagesRef = collection(db, 'chats', chatId, 'messages');
         const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
@@ -316,6 +281,9 @@ const ChatMonitor = ({ userId, userType }) => {
             id: doc.id,
             ...doc.data()
           }));
+
+          // Cache the messages
+          sessionStorage.setItem(cacheKey, JSON.stringify(messages));
 
           // Get the chat document for metadata
           const chatDocRef = doc(db, 'chats', chatId);
@@ -359,6 +327,35 @@ const ChatMonitor = ({ userId, userType }) => {
       }
     };
   }, [selectedChat?.id]);
+
+  // Clean up old cache entries on component mount
+  useEffect(() => {
+    const cleanupOldCache = () => {
+      const keys = Object.keys(sessionStorage);
+      const now = Date.now();
+      const oneHourAgo = now - (60 * 60 * 1000); // 1 hour
+
+      keys.forEach(key => {
+        if (key.startsWith('chatMessages_') || key.startsWith('adminChatMessages_') || key.startsWith('messageListeners_')) {
+          try {
+            const data = sessionStorage.getItem(key);
+            if (data) {
+              const parsed = JSON.parse(data);
+              // If it's a timestamp, check if it's old
+              if (parsed.timestamp && parsed.timestamp < oneHourAgo) {
+                sessionStorage.removeItem(key);
+              }
+            }
+          } catch (e) {
+            // If parsing fails, remove the key
+            sessionStorage.removeItem(key);
+          }
+        }
+      });
+    };
+
+    cleanupOldCache();
+  }, []);
 
   // Scroll to bottom of messages
   const scrollToBottom = () => {
@@ -469,6 +466,12 @@ const ChatMonitor = ({ userId, userType }) => {
 
     const listenForNewMessages = async () => {
       try {
+        // Check if we already have active listeners
+        const cacheKey = `messageListeners_${userId}`;
+        if (sessionStorage.getItem(cacheKey)) {
+          return; // Skip if already listening
+        }
+
         // Get all admin-client chats for this admin
         const adminChatsQuery = query(
           collection(db, 'adminClientChats'),
@@ -517,8 +520,12 @@ const ChatMonitor = ({ userId, userType }) => {
           unsubscribers.push(unsubscribe);
         });
 
+        // Mark that we have active listeners
+        sessionStorage.setItem(cacheKey, 'true');
+
         unsubscribe = () => {
           unsubscribers.forEach(unsub => unsub());
+          sessionStorage.removeItem(cacheKey);
         };
       } catch (error) {
         console.error('Error listening for new admin chat messages:', error);
@@ -563,7 +570,9 @@ const ChatMonitor = ({ userId, userType }) => {
       }
     };
 
-    loadAdminChats();
+    if (chats.length > 0) {
+      loadAdminChats();
+    }
   }, [chats]); // Reload when chats change
 
   // Get chat expiry status
@@ -678,13 +687,31 @@ const ChatMonitor = ({ userId, userType }) => {
     }
   };
 
-  // Load admin chat messages
+  // Load admin chat messages with caching
   const loadAdminChatMessages = async (adminChatId) => {
     if (!adminChatId) return;
 
     try {
       setLoadingAdminChat(true);
 
+      // Check if we have cached messages for this chat
+      const cacheKey = `adminChatMessages_${adminChatId}`;
+      const cachedMessages = sessionStorage.getItem(cacheKey);
+
+      if (cachedMessages) {
+        const parsedMessages = JSON.parse(cachedMessages);
+        setAdminChatMessages(parsedMessages);
+        setLoadingAdminChat(false);
+
+        // Scroll to bottom after messages load
+        setTimeout(() => {
+          if (adminChatMessagesEndRef.current) {
+            adminChatMessagesEndRef.current.scrollIntoView({ behavior: 'smooth' });
+          }
+        }, 100);
+      }
+
+      // Set up real-time listener for new messages only
       const messagesRef = collection(db, 'adminClientChats', adminChatId, 'messages');
       const messagesQuery = query(messagesRef, orderBy('timestamp', 'asc'));
 
@@ -696,6 +723,9 @@ const ChatMonitor = ({ userId, userType }) => {
 
         setAdminChatMessages(messages);
         setLoadingAdminChat(false);
+
+        // Cache the messages
+        sessionStorage.setItem(cacheKey, JSON.stringify(messages));
 
         // Scroll to bottom after messages load
         setTimeout(() => {
@@ -969,7 +999,22 @@ const ChatMonitor = ({ userId, userType }) => {
           <Button
             variant="contained"
             color="warning"
-            startIcon={<SupportIcon />}
+            startIcon={
+              <Badge
+                color="error"
+                variant="dot"
+                invisible={!adminChats[selectedChat.id]?.hasNewMessages}
+                sx={{
+                  '& .MuiBadge-dot': {
+                    right: -3,
+                    top: -3,
+                    display: { xs: 'block', md: 'none' }
+                  }
+                }}
+              >
+                <SupportIcon />
+              </Badge>
+            }
             onClick={() => handleOpenAdminChat(selectedChat.id)}
             sx={{ mb: 2, ml: 2 }}
           >
@@ -1222,7 +1267,7 @@ const ChatMonitor = ({ userId, userType }) => {
                             color="text.secondary"
                             sx={{ mt: 0.5 }}
                           >
-                            {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                            {convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
                           </Typography>
                         </Box>
                       </ListItem>
@@ -1255,11 +1300,18 @@ const ChatMonitor = ({ userId, userType }) => {
           {showAdminChat && selectedAdminChatId && (
             <Paper
               sx={{
-                flex: 1,
+                position: { xs: 'fixed', md: 'relative' },
+                top: { xs: 0, md: 'auto' },
+                left: { xs: 0, md: 'auto' },
+                right: { xs: 0, md: 'auto' },
+                bottom: { xs: 0, md: 'auto' },
+                zIndex: { xs: 1300, md: 'auto' },
                 display: 'flex',
                 flexDirection: 'column',
-                width: '100%',
-                maxWidth: '100%'
+                width: { xs: '100vw', md: '100%' },
+                height: { xs: '100vh', md: '100%' },
+                flex: { md: 1 },
+                bgcolor: 'background.paper'
               }}
             >
               <Box sx={{ p: 2, borderBottom: '1px solid #e0e0e0', bgcolor: 'warning.light' }}>
@@ -1311,7 +1363,7 @@ const ChatMonitor = ({ userId, userType }) => {
                       onClick={handleCloseAdminChat}
                       sx={{ color: 'white', borderColor: 'white', '&:hover': { borderColor: 'white', bgcolor: 'rgba(255,255,255,0.1)' } }}
                     >
-                      Close
+                      Close Chat
                     </Button>
                   </Box>
                 </Box>
@@ -1393,7 +1445,7 @@ const ChatMonitor = ({ userId, userType }) => {
                               color="text.secondary"
                               sx={{ mt: 0.5 }}
                             >
-                              {message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                              {convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
                             </Typography>
                           </Box>
                         </ListItem>
@@ -1569,7 +1621,16 @@ const ChatMonitor = ({ userId, userType }) => {
           </Box>
           <List dense>
             {notifications.slice(0, 3).map((notification) => (
-              <ListItem key={notification.id} sx={{ py: 0.5 }}>
+              <ListItem
+                key={notification.id}
+                sx={{ py: 0.5, cursor: 'pointer', '&:hover': { bgcolor: 'rgba(255,255,255,0.1)' } }}
+                onClick={() => {
+                  if (notification.mainChatId) {
+                    handleOpenAdminChat(notification.mainChatId);
+                    setShowNotifications(false);
+                  }
+                }}
+              >
                 <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, width: '100%' }}>
                   <SupportIcon sx={{ fontSize: '1rem' }} />
                   <Typography variant="body2" sx={{ flex: 1 }}>
@@ -1602,7 +1663,7 @@ const ChatMonitor = ({ userId, userType }) => {
         Conversations & Support Chats
       </Typography>
 
-      {chats.length === 0 ? (
+      {sortedChats.length === 0 ? (
         <Typography variant="body1" sx={{ textAlign: 'center', py: 4 }}>
           No conversations found
         </Typography>
@@ -1621,21 +1682,27 @@ const ChatMonitor = ({ userId, userType }) => {
               </TableRow>
             </TableHead>
             <TableBody>
-              {chats.map((chat) => {
+              {sortedChats.map((chat) => {
                 const hasAdminChat = adminChats[chat.id];
                 return (
                   <TableRow
                     key={chat.id}
                     hover
                     onClick={() => handleSelectChat(chat)}
-                    sx={{ cursor: 'pointer' }}
+                    sx={{
+                      cursor: 'pointer',
+                      bgcolor: hasAdminChat ? '#FFE28A' : 'inherit',
+                      '&:hover': {
+                        bgcolor: hasAdminChat ? 'warning.main' : 'action.hover'
+                      }
+                    }}
                   >
                     <TableCell>
                       {chat.clientName || chat.clientId || 'Unknown Client'}
                     </TableCell>
                     <TableCell>
-                      {chat.chatType === 'admin' ? 
-                        (chat.astrologerName || 'Admin Support') : 
+                      {chat.chatType === 'admin' ?
+                        (chat.astrologerName || 'Admin Support') :
                         (chat.astrologerName || chat.astrologerId || 'Unknown Astrologer')
                       }
                     </TableCell>
@@ -1643,21 +1710,35 @@ const ChatMonitor = ({ userId, userType }) => {
                       {chat.chatType === 'admin' ? 'Admin Support' : (SERVICE_TYPES[chat.serviceType] || 'General')}
                     </TableCell>
                     <TableCell>
-                      {chat.supportUserId ? (
-                        <Chip
-                          label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
-                          color="primary"
-                          size="small"
-                          icon={<AdminPanelSettingsIcon />}
-                        />
-                      ) : (
-                        <Chip
-                          label="Unassigned"
-                          color="default"
-                          size="small"
-                          variant="outlined"
-                        />
-                      )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: 'column' }}>
+
+                        {hasAdminChat ? (
+                          chat.supportUserId ? (
+                            <Chip
+                              label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
+                              color="primary"
+                              size="small"
+                              icon={<AdminPanelSettingsIcon />}
+                            />
+                          ) : (
+                            <Typography variant="body2" color="text.secondary">-</Typography>
+                          )
+                        ) : chat.supportUserId ? (
+                          <Chip
+                            label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
+                            color="primary"
+                            size="small"
+                            icon={<AdminPanelSettingsIcon />}
+                          />
+                        ) : (
+                          <Chip
+                            label="Unassigned"
+                            color="default"
+                            size="small"
+                            variant="outlined"
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {chat.updatedAt?.toDate().toLocaleString() || 'Unknown'}

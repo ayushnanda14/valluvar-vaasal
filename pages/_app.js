@@ -61,6 +61,19 @@ function MyApp(props) {
     }
   }, [error]);
 
+  // Initialize language from localStorage on client side
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const savedLanguage = localStorage.getItem('i18nextLng');
+      if (savedLanguage && ['en', 'ta'].includes(savedLanguage)) {
+        // Small delay to ensure hydration is complete
+        setTimeout(() => {
+          i18nInstance.changeLanguage(savedLanguage);
+        }, 100);
+      }
+    }
+  }, []);
+
   return (
     <CacheProvider value={emotionCache}>
       <Head>
