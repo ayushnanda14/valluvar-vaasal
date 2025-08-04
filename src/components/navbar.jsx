@@ -721,6 +721,23 @@ const Navbar = () => {
               {t('auth.signIn')}
             </Button>
           </Link>
+          <Link href="/signup" passHref legacyBehavior>
+            <Button
+              component="a"
+              variant="contained"
+              color="secondary"
+              fullWidth
+              onClick={() => setLoggedOutDrawerOpen(false)}
+              sx={{
+                textTransform: 'none',
+                fontFamily: '"Cinzel", serif',
+                fontWeight: 500,
+                py: 1.5
+              }}
+            >
+              {t('auth.signUp')}
+            </Button>
+          </Link>
         </Box>
       </Drawer>
     </>

@@ -51,7 +51,8 @@
     "logoutSuccess": "Logged out successfully.",
     "error": "Authentication Error: {message}",
     "signIn": "Sign In",
-    "signOut": "Sign Out"
+    "signOut": "Sign Out",
+    "signUp": "Sign Up"
   },
   "dashboard": {
     "title": "Dashboard",
