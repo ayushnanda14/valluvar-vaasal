@@ -29,9 +29,22 @@ export const useAuth = () => useContext(AuthContext);
 // --- 📌 Single RecaptchaVerifier instance (per page load) -------------
 let recaptchaVerifierSingleton = null;
 let recaptchaWidgetId = null;
+let recaptchaContainerIdSingleton = null;
 
 function getOrCreateRecaptcha(containerId) {
   if (typeof window === 'undefined') return null; // SSR safety
+
+  // If an instance exists but was created for a different container, reset it
+  if (recaptchaVerifierSingleton && recaptchaContainerIdSingleton !== containerId) {
+    try {
+      recaptchaVerifierSingleton.clear();
+    } catch (e) {
+      console.warn('[Auth] Failed to clear previous reCAPTCHA instance:', e);
+    }
+    recaptchaVerifierSingleton = null;
+    recaptchaWidgetId = null;
+    recaptchaContainerIdSingleton = null;
+  }
 
   if (recaptchaVerifierSingleton) return recaptchaVerifierSingleton;
 
@@ -47,7 +60,10 @@ function getOrCreateRecaptcha(containerId) {
     'expired-callback': () => console.warn('[Auth] reCAPTCHA expired – will refresh on next verify')
   });
 
-  recaptchaVerifierSingleton.render().then(id => (recaptchaWidgetId = id));
+  recaptchaVerifierSingleton.render().then(id => {
+    recaptchaWidgetId = id;
+    recaptchaContainerIdSingleton = containerId;
+  });
   return recaptchaVerifierSingleton;
 }
 

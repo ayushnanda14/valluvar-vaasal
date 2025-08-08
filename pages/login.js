@@ -25,7 +25,8 @@ import GoogleIcon from '@mui/icons-material/Google';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
 import Head from 'next/head';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
+import { functions as fbFunctions } from '../src/firebase/firebaseConfig';
 
 const MotionBox = motion(Box);
 const MotionPaper = motion(Paper);
@@ -136,8 +137,7 @@ export default function Login() {
 
     try {
       // 1️⃣ check with Cloud Function
-      const functions = getFunctions(); // Get Firebase Functions instance
-      const checkPhone = httpsCallable(functions, 'checkPhone');
+      const checkPhone = httpsCallable(fbFunctions, 'checkPhone');
       const resultCheck = await checkPhone({ phone: formatted });
       const data = resultCheck.data; // Access the data property
 

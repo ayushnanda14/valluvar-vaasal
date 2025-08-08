@@ -3,7 +3,8 @@ import { Button, CircularProgress, Alert, Box, Typography } from '@mui/material'
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
 import { useTranslation } from 'react-i18next';
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
+import { functions as fbFunctions } from '../firebase/firebaseConfig';
 
 const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingStateChange }) => {
   const { t } = useTranslation('common');
@@ -28,8 +29,7 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
     console.log('Phone number for prefill:', currentUser?.phoneNumber);
 
     try {
-      const functions = getFunctions();
-      const createOrderFunc = httpsCallable(functions, 'createRazorpayOrder');
+      const createOrderFunc = httpsCallable(fbFunctions, 'createRazorpayOrder');
       const orderResult = await createOrderFunc({
         amount: amount * 100,
         currency: 'INR'

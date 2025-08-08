@@ -22,7 +22,8 @@ import {
   IconButton,
   Divider,
   useTheme,
-  CircularProgress
+  CircularProgress,
+  Skeleton
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -218,8 +219,46 @@ export default function AstrologerDashboard() {
   const renderReadingsTab = () => {
     if (loading) {
       return (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <Typography>Loading chats...</Typography>
+        <Box>
+          <Box sx={{ mb: 3, display: 'flex', gap: 1 }}>
+            <Skeleton variant="rectangular" width={90} height={32} />
+            <Skeleton variant="rectangular" width={90} height={32} />
+            <Skeleton variant="rectangular" width={110} height={32} />
+          </Box>
+          <TableContainer component={Paper} elevation={1}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  <TableCell><Skeleton width={120} /></TableCell>
+                  <TableCell><Skeleton width={120} /></TableCell>
+                  <TableCell><Skeleton width={140} /></TableCell>
+                  <TableCell><Skeleton width={80} /></TableCell>
+                  <TableCell><Skeleton width={100} /></TableCell>
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {[...Array(6)].map((_, i) => (
+                  <TableRow key={i}>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        <Skeleton variant="circular" width={32} height={32} />
+                        <Skeleton width={140} />
+                      </Box>
+                    </TableCell>
+                    <TableCell><Skeleton width={160} /></TableCell>
+                    <TableCell><Skeleton width={120} /></TableCell>
+                    <TableCell><Skeleton width={80} /></TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', gap: 1 }}>
+                        <Skeleton variant="rectangular" width={64} height={28} />
+                        <Skeleton variant="rectangular" width={88} height={28} />
+                      </Box>
+                    </TableCell>
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
       );
     }
@@ -437,9 +476,40 @@ export default function AstrologerDashboard() {
   const renderRevenueTab = () => {
     if (revenueLoading) {
       return (
-        <Box sx={{ textAlign: 'center', py: 4 }}>
-          <CircularProgress />
-          <Typography sx={{ mt: 2 }}>Loading revenue data...</Typography>
+        <Box>
+          <Grid container spacing={3} sx={{ mb: 4 }}>
+            {[...Array(4)].map((_, i) => (
+              <Grid item xs={12} md={3} key={i}>
+                <Card elevation={2}>
+                  <CardContent>
+                    <Skeleton width={140} />
+                    <Skeleton width={100} height={40} />
+                  </CardContent>
+                </Card>
+              </Grid>
+            ))}
+          </Grid>
+          <Skeleton width={200} height={32} sx={{ mb: 2 }} />
+          <TableContainer component={Paper} elevation={1}>
+            <Table>
+              <TableHead>
+                <TableRow>
+                  {[...Array(5)].map((_, idx) => (
+                    <TableCell key={idx}><Skeleton width={idx === 4 ? 80 : 120} /></TableCell>
+                  ))}
+                </TableRow>
+              </TableHead>
+              <TableBody>
+                {[...Array(5)].map((_, i) => (
+                  <TableRow key={i}>
+                    {[...Array(5)].map((_, j) => (
+                      <TableCell key={j}><Skeleton /></TableCell>
+                    ))}
+                  </TableRow>
+                ))}
+              </TableBody>
+            </Table>
+          </TableContainer>
         </Box>
       );
     }

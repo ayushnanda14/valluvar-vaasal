@@ -29,9 +29,10 @@ function getRazorpayInstance() {
     return razorpayInstance;
 }
 
-// --- checkPhone function (ensure it uses v2 onCall for consistency if not already) ---
+// --- checkPhone function (uses v2 onCall) ---
+// In development you may not have App Check configured. Make it optional.
 exports.checkPhone = onCall(
-    { region: 'us-central1', enforceAppCheck: true },
+    { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' },
     async (request) => {
         const phone = request.data.phone;
         if (!phone) {

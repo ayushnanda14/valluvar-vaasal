@@ -21,7 +21,7 @@ import { useAuth } from '../../src/context/AuthContext';
 export default function AdminSignup() {
   const theme = useTheme();
   const router = useRouter();
-  const { signup } = useAuth();
+  const { signupWithEmail } = useAuth();
   
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -62,7 +62,7 @@ export default function AdminSignup() {
       setLoading(true);
       
       // Create user with admin role
-      await signup(email, password, displayName, ['admin', 'client']);
+      await signupWithEmail(email, password, displayName, ['admin', 'client']);
       
       // Redirect to admin dashboard
       router.push('/admin/dashboard');

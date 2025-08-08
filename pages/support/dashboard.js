@@ -10,7 +10,6 @@ import {
   Chip,
   Button,
   useTheme,
-  CircularProgress,
   Alert,
   List,
   ListItem,
@@ -18,7 +17,8 @@ import {
   ListItemAvatar,
   Avatar,
   Divider,
-  Badge
+  Badge,
+  Skeleton
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -82,16 +82,6 @@ export default function SupportDashboard() {
     return timestamp.toDate().toLocaleString();
   };
 
-  if (loading) {
-    return (
-      <ProtectedRoute requiredRoles={['support']}>
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: '100vh' }}>
-          <CircularProgress />
-        </Box>
-      </ProtectedRoute>
-    );
-  }
-
   return (
     <ProtectedRoute requiredRoles={['support']}>
       <Head>
@@ -151,7 +141,7 @@ export default function SupportDashboard() {
                     <ChatIcon sx={{ mr: 2, color: 'primary.main' }} />
                     <Box>
                       <Typography variant="h4" component="div">
-                        {assignedChats.length}
+                        {loading ? <Skeleton width={40} /> : assignedChats.length}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Assigned Chats
@@ -168,7 +158,7 @@ export default function SupportDashboard() {
                     <MessageIcon sx={{ mr: 2, color: 'success.main' }} />
                     <Box>
                       <Typography variant="h4" component="div">
-                        {assignedChats.filter(chat => chat.status === 'active').length}
+                        {loading ? <Skeleton width={40} /> : assignedChats.filter(chat => chat.status === 'active').length}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Active Chats
@@ -185,7 +175,7 @@ export default function SupportDashboard() {
                     <AccessTimeIcon sx={{ mr: 2, color: 'warning.main' }} />
                     <Box>
                       <Typography variant="h4" component="div">
-                        {assignedChats.filter(chat => chat.status === 'expired').length}
+                        {loading ? <Skeleton width={40} /> : assignedChats.filter(chat => chat.status === 'expired').length}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Expired Chats
@@ -202,7 +192,7 @@ export default function SupportDashboard() {
                     <PersonIcon sx={{ mr: 2, color: 'info.main' }} />
                     <Box>
                       <Typography variant="h4" component="div">
-                        {new Set(assignedChats.map(chat => chat.astrologerId)).size}
+                        {loading ? <Skeleton width={40} /> : new Set(assignedChats.map(chat => chat.astrologerId)).size}
                       </Typography>
                       <Typography variant="body2" color="text.secondary">
                         Unique Astrologers
@@ -220,7 +210,29 @@ export default function SupportDashboard() {
               Your Assigned Chats
             </Typography>
 
-            {assignedChats.length === 0 ? (
+            {loading ? (
+              <List>
+                {[...Array(5)].map((_, idx) => (
+                  <React.Fragment key={idx}>
+                    <ListItem sx={{ bgcolor: 'background.paper', borderRadius: 1, mb: 1 }}>
+                      <ListItemAvatar>
+                        <Skeleton variant="circular" width={40} height={40} />
+                      </ListItemAvatar>
+                      <ListItemText
+                        primary={<Skeleton width="50%" />}
+                        secondary={
+                          <Box>
+                            <Skeleton width="30%" />
+                            <Skeleton width="40%" />
+                          </Box>
+                        }
+                      />
+                    </ListItem>
+                    {idx < 4 && <Divider />}
+                  </React.Fragment>
+                ))}
+              </List>
+            ) : assignedChats.length === 0 ? (
               <Box sx={{ textAlign: 'center', py: 4 }}>
                 <SupportIcon sx={{ fontSize: 60, color: 'text.secondary', mb: 2 }} />
                 <Typography variant="h6" color="text.secondary" sx={{ mb: 1 }}>

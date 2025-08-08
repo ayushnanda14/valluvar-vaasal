@@ -25,7 +25,8 @@ if (!getApps().length) {
 export const auth = getAuth(app);
 export const db = getFirestore(app);
 export const storage = getStorage(app);
-export const functions = getFunctions(app);
+// Bind Functions to the same region used by deployed back-end (us-central1)
+export const functions = getFunctions(app, 'us-central1');
 
 // Configure auth persistence
 setPersistence(auth, browserLocalPersistence);

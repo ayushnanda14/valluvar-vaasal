@@ -170,11 +170,10 @@ export default function Signup() {
             // If it's the "not enabled" error, show additional guidance
             if (err.message && err.message.includes('not enabled')) {
                 setError(`${err.message} 
-        
-Note for developers: You need to enable Phone Authentication in the Firebase Console:
-1. Go to Firebase Console > Authentication > Sign-in method
-2. Enable "Phone" provider
-3. Add your app's domain to the authorized domains`);
+                            Note for developers: You need to enable Phone Authentication in the Firebase Console:
+                            1. Go to Firebase Console > Authentication > Sign-in method
+                            2. Enable "Phone" provider
+                            3. Add your app's domain to the authorized domains`);
             }
         } finally {
             setLoading(false);

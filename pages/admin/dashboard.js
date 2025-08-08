@@ -39,6 +39,7 @@ import {
   InputAdornment,
   CircularProgress,
   Snackbar,
+  Skeleton
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -1585,8 +1586,154 @@ export default function AdminDashboard() {
           </Paper>
 
           {loading ? (
-            <Box sx={{ textAlign: 'center', py: 4 }}>
-              <Typography>Loading...</Typography>
+            <Box>
+              {/* Users Tab Skeleton */}
+              {tabValue === 0 && (
+                <Paper elevation={0}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        <TableCell><Skeleton width={120} /></TableCell>
+                        <TableCell><Skeleton width={80} /></TableCell>
+                        <TableCell><Skeleton width={80} /></TableCell>
+                        <TableCell><Skeleton width={80} /></TableCell>
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {[...Array(6)].map((_, i) => (
+                        <TableRow key={i}>
+                          <TableCell>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                              <Skeleton variant="circular" width={32} height={32} />
+                              <Box sx={{ flex: 1 }}>
+                                <Skeleton width="60%" />
+                                <Skeleton width="40%" />
+                              </Box>
+                            </Box>
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton width={100} />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton width={80} />
+                          </TableCell>
+                          <TableCell>
+                            <Skeleton width={40} />
+                          </TableCell>
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              )}
+
+              {/* Testimonials Tab Skeleton */}
+              {tabValue === 1 && (
+                <Paper elevation={0}>
+                  <Table>
+                    <TableHead>
+                      <TableRow>
+                        {[...Array(7)].map((_, idx) => (
+                          <TableCell key={idx}><Skeleton width={100} /></TableCell>
+                        ))}
+                      </TableRow>
+                    </TableHead>
+                    <TableBody>
+                      {[...Array(5)].map((_, i) => (
+                        <TableRow key={i}>
+                          {[...Array(7)].map((_, j) => (
+                            <TableCell key={j}><Skeleton /></TableCell>
+                          ))}
+                        </TableRow>
+                      ))}
+                    </TableBody>
+                  </Table>
+                </Paper>
+              )}
+
+              {/* Revenue Tab Skeleton */}
+              {tabValue === 2 && (
+                <Box>
+                  <Paper elevation={0} sx={{ p: 3, mb: 4 }}>
+                    <Skeleton height={40} width={200} />
+                    <Skeleton height={56} width={260} />
+                  </Paper>
+                  <Paper elevation={0}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {[...Array(3)].map((_, idx) => (
+                            <TableCell key={idx}><Skeleton width={120} /></TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {[...Array(5)].map((_, i) => (
+                          <TableRow key={i}>
+                            {[...Array(3)].map((_, j) => (
+                              <TableCell key={j}><Skeleton /></TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Paper>
+                </Box>
+              )}
+
+              {/* Astrologers Tab Skeleton */}
+              {tabValue === 3 && (
+                <Box>
+                  <Skeleton width={240} height={32} sx={{ mb: 2 }} />
+                  <Paper elevation={0} sx={{ mb: 4 }}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {[...Array(5)].map((_, idx) => (
+                            <TableCell key={idx}><Skeleton width={120} /></TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {[...Array(4)].map((_, i) => (
+                          <TableRow key={i}>
+                            {[...Array(5)].map((_, j) => (
+                              <TableCell key={j}><Skeleton /></TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Paper>
+                </Box>
+              )}
+
+              {/* Support Users Tab Skeleton */}
+              {tabValue === 4 && (
+                <Box>
+                  <Skeleton width={260} height={40} sx={{ mb: 2 }} />
+                  <Paper elevation={0}>
+                    <Table>
+                      <TableHead>
+                        <TableRow>
+                          {[...Array(7)].map((_, idx) => (
+                            <TableCell key={idx}><Skeleton width={120} /></TableCell>
+                          ))}
+                        </TableRow>
+                      </TableHead>
+                      <TableBody>
+                        {[...Array(5)].map((_, i) => (
+                          <TableRow key={i}>
+                            {[...Array(7)].map((_, j) => (
+                              <TableCell key={j}><Skeleton /></TableCell>
+                            ))}
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
+                  </Paper>
+                </Box>
+              )}
             </Box>
           ) : (
             <>

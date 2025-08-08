@@ -10,11 +10,15 @@ export function useAppCheck() {
     if (typeof window === 'undefined') return;
     
     try {
-      // Initialize App Check
+      // Initialize App Check (no-op in dev)
       const appCheck = initializeAppCheckForClient();
-      
+
       if (appCheck) {
         setIsAppCheckInitialized(true);
+      } else if (process.env.NODE_ENV !== 'production') {
+        // In non-production, we intentionally skip App Check
+        setIsAppCheckInitialized(false);
+        setError(null);
       } else {
         setError('Failed to initialize App Check');
       }

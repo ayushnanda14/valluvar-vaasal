@@ -1,4 +1,5 @@
-import { getFunctions, httpsCallable } from 'firebase/functions';
+import { httpsCallable } from 'firebase/functions';
+import { functions as fbFunctions } from '../firebase/firebaseConfig';
 import { collection, query, where, getDocs, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 
@@ -75,8 +76,7 @@ export const getRefundHistory = async (paymentId) => {
 // Process refund
 export const processRefund = async (refundData) => {
   try {
-    const functions = getFunctions();
-    const processRefundFunc = httpsCallable(functions, 'processRefund');
+    const processRefundFunc = httpsCallable(fbFunctions, 'processRefund');
     
     const result = await processRefundFunc(refundData);
     return result.data;
