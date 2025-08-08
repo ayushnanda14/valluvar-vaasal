@@ -533,6 +533,25 @@ export default function AstrologerSignup() {
                     onChange={(e) => setDisplayName(e.target.value)}
                     required
                   />
+
+                  <TextField
+                    fullWidth
+                    label="Phone Number"
+                    variant="outlined"
+                    margin="normal"
+                    value={phoneNumber}
+                    onChange={(e) => setPhoneNumber(e.target.value)}
+                    required
+                    placeholder="Enter your 10-digit mobile number"
+                    InputProps={{
+                      startAdornment: (
+                        <InputAdornment position="start">
+                          <PhoneIcon color="action" />
+                          <Typography variant="body2" sx={{ ml: 0.5 }}>+91</Typography>
+                        </InputAdornment>
+                      ),
+                    }}
+                  />
                   
                   <TextField
                     fullWidth
@@ -583,6 +602,18 @@ export default function AstrologerSignup() {
                       ))}
                     </Select>
                   </FormControl>
+
+                  <TextField
+                    fullWidth
+                    label="Years of Experience"
+                    variant="outlined"
+                    margin="normal"
+                    type="number"
+                    value={experience}
+                    onChange={(e) => setExperience(e.target.value)}
+                    inputProps={{ min: 0, max: 60 }}
+                    helperText="Optional"
+                  />
                   
                   <Box sx={{ mt: 4, display: 'flex', justifyContent: 'flex-end' }}>
                     <Button
