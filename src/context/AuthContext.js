@@ -68,7 +68,7 @@ function getOrCreateRecaptcha(containerId) {
 }
 
 // Provide a safe way to reset the existing rendered reCAPTCHA widget
-function resetRecaptcha() {
+export function resetRecaptcha() {
   if (typeof window === 'undefined') return;
   try {
     if (window.grecaptcha && recaptchaWidgetId != null) {

@@ -12,40 +12,66 @@ service cloud.firestore {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
     
-    // Allow authenticated users to read/write their own chats
+    // Allow authenticated users to read/write chats they're involved in
     match /chats/{chatId} {
       allow read, write: if request.auth != null && 
-        (resource.data.userId == request.auth.uid || 
-         resource.data.astrologerId == request.auth.uid ||
-         request.auth.token.roles.hasAny(['admin', 'support']));
+        (resource.data.participants.hasAny([request.auth.uid]) ||
+         resource.data.userId == request.auth.uid || 
+         resource.data.astrologerId == request.auth.uid);
     }
     
-    // Allow authenticated users to read/write their own messages
+    // Allow authenticated users to read/write messages in chats they're involved in
     match /chats/{chatId}/messages/{messageId} {
       allow read, write: if request.auth != null && 
         (resource.data.senderId == request.auth.uid ||
-         request.auth.token.roles.hasAny(['admin', 'support']));
+         get(/databases/$(database)/documents/chats/$(chatId)).data.participants.hasAny([request.auth.uid]) ||
+         get(/databases/$(database)/documents/chats/$(chatId)).data.userId == request.auth.uid ||
+         get(/databases/$(database)/documents/chats/$(chatId)).data.astrologerId == request.auth.uid);
     }
     
     // Allow authenticated users to read/write their own payments
     match /payments/{paymentId} {
       allow read, write: if request.auth != null && 
         (resource.data.userId == request.auth.uid ||
-         request.auth.token.roles.hasAny(['admin', 'support']));
+         resource.data.astrologerId == request.auth.uid);
     }
     
     // Allow authenticated users to read/write their own service requests
     match /serviceRequests/{requestId} {
       allow read, write: if request.auth != null && 
         (resource.data.userId == request.auth.uid ||
-         resource.data.astrologerId == request.auth.uid ||
-         request.auth.token.roles.hasAny(['admin', 'support']));
+         resource.data.astrologerId == request.auth.uid);
     }
     
-    // Allow admins to read all documents
+    // Allow authenticated users to read/write admin client chats
+    match /adminClientChats/{chatId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write messages in admin client chats
+    match /adminClientChats/{chatId}/messages/{messageId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write notifications
+    match /users/{userId}/notifications/{notificationId} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+    
+    // Allow authenticated users to read/write refunds
+    match /refunds/{refundId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write signup links
+    match /signupLinks/{linkId} {
+      allow read, write: if request.auth != null;
+    }
+    
+    // Allow authenticated users to read/write all other collections (for admin access)
+    // This is a fallback for admin functionality
     match /{document=**} {
-      allow read, write: if request.auth != null && 
-        request.auth.token.roles.hasAny(['admin']);
+      allow read, write: if request.auth != null;
     }
   }
 }

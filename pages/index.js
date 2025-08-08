@@ -22,7 +22,6 @@ export default function Home() {
           const isAstrologer = await hasRole('astrologer');
           const isSupport = await hasRole('support');
 
-          console.log("ROLES::", currentUser, isAdmin, isAstrologer, isSupport);
           if (isAdmin) {
             router.push('/admin/dashboard');
           } else if (isAstrologer) {

@@ -27,6 +27,7 @@ import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
 import FileUploadSection from '../../src/components/FileUploadSection';
+import ProfilePhotoUploader from '../../src/components/ProfilePhotoUploader';
 import PhoneIcon from '@mui/icons-material/Phone';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import MuiAlert from '@mui/material/Alert';
@@ -908,13 +909,9 @@ export default function AstrologerSignup() {
                       Please upload a clear, professional photo of yourself that will be visible to clients.
                     </Typography>
                     
-                    <FileUploadSection 
-                      files={profilePicture}
-                      onFilesChange={setProfilePicture}
-                      multiple={false}
-                      accept="image/*"
-                      showPreview
-                      icon={<AccountCircleIcon fontSize="large" />}
+                    <ProfilePhotoUploader 
+                      isSignup={true}
+                      onFileChange={setProfilePicture}
                     />
                   </Box>
                   

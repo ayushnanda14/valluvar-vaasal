@@ -7,13 +7,17 @@ import {
   Button,
   Box,
   Typography,
-  IconButton
+  IconButton,
+  FormControlLabel,
+  Switch,
+  useTheme
 } from '@mui/material';
 import CloseIcon from '@mui/icons-material/Close';
 import ReactCrop from 'react-image-crop';
 import 'react-image-crop/dist/ReactCrop.css';
 
-const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
+const ImageCropper = ({ open, onClose, imageFile, onCropComplete, circular = true }) => {
+  const theme = useTheme();
   const [crop, setCrop] = useState({
     unit: 'px',
     width: 300,
@@ -22,6 +26,7 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
     y: 0
   });
   const [imageSrc, setImageSrc] = useState(null);
+  const [isCircular, setIsCircular] = useState(circular);
   const imgRef = useRef(null);
 
   // Load image when file changes
@@ -39,6 +44,13 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
     setCrop(newCrop);
   };
 
+  const createCircularCanvas = (canvas, ctx, size) => {
+    // Create a circular clipping path
+    ctx.beginPath();
+    ctx.arc(size / 2, size / 2, size / 2, 0, 2 * Math.PI);
+    ctx.clip();
+  };
+
   const handleCropComplete = async () => {
     if (!imgRef.current || !crop.width || !crop.height) {
       return;
@@ -47,9 +59,10 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
     const canvas = document.createElement('canvas');
     const ctx = canvas.getContext('2d');
 
-    // Set canvas size to crop dimensions
-    canvas.width = 300;
-    canvas.height = 300;
+    // Set canvas size to 300x300
+    const outputSize = 300;
+    canvas.width = outputSize;
+    canvas.height = outputSize;
 
     // Calculate crop dimensions
     const scaleX = imgRef.current.naturalWidth / imgRef.current.width;
@@ -62,6 +75,11 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
       height: crop.height * scaleY,
     };
 
+    if (isCircular) {
+      // Create circular crop
+      createCircularCanvas(canvas, ctx, outputSize);
+    }
+
     // Draw the cropped image
     ctx.drawImage(
       imgRef.current,
@@ -71,8 +89,8 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
       pixelCrop.height,
       0,
       0,
-      300,
-      300
+      outputSize,
+      outputSize
     );
 
     // Convert to blob
@@ -86,7 +104,7 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
         onCropComplete(croppedFile);
         onClose();
       }
-    }, imageFile.type);
+    }, imageFile.type, 0.9); // 0.9 quality for better file size
   };
 
   const handleClose = () => {
@@ -98,7 +116,12 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
       x: 0,
       y: 0
     });
+    setIsCircular(circular);
     onClose();
+  };
+
+  const handleCircularToggle = (event) => {
+    setIsCircular(event.target.checked);
   };
 
   return (
@@ -115,7 +138,9 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
       }}
     >
       <DialogTitle sx={{ m: 0, p: 2, display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-        <Typography variant="h6">Crop Profile Photo</Typography>
+        <Typography variant="h6" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+          Crop Profile Photo
+        </Typography>
         <IconButton
           aria-label="close"
           onClick={handleClose}
@@ -128,11 +153,36 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
       </DialogTitle>
       
       <DialogContent sx={{ p: 3 }}>
-        <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+        <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: '"Cormorant Garamond", serif' }}>
           Drag and resize the crop area to select the portion of your photo. The final image will be 300x300 pixels.
         </Typography>
         
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', minHeight: 400 }}>
+        <Box sx={{ mb: 2 }}>
+          <FormControlLabel
+            control={
+              <Switch
+                checked={isCircular}
+                onChange={handleCircularToggle}
+                color="primary"
+              />
+            }
+            label={
+              <Typography variant="body2" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                Circular crop (recommended for profile photos)
+              </Typography>
+            }
+          />
+        </Box>
+        
+        <Box sx={{ 
+          display: 'flex', 
+          justifyContent: 'center', 
+          alignItems: 'center', 
+          minHeight: 400,
+          backgroundColor: theme.palette.grey[50],
+          borderRadius: 1,
+          p: 2
+        }}>
           {imageSrc && (
             <ReactCrop
               crop={crop}
@@ -140,20 +190,37 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
               aspect={1}
               minWidth={100}
               minHeight={100}
+              circularCrop={isCircular}
+              style={{
+                maxWidth: '100%',
+                maxHeight: '400px',
+                borderRadius: isCircular ? '50%' : '0',
+                overflow: 'hidden'
+              }}
             >
               <img
                 ref={imgRef}
                 src={imageSrc}
                 alt="Crop preview"
-                style={{ maxWidth: '100%', maxHeight: '400px' }}
+                style={{ 
+                  maxWidth: '100%', 
+                  maxHeight: '400px',
+                  display: 'block'
+                }}
               />
             </ReactCrop>
           )}
         </Box>
+        
+        <Box sx={{ mt: 2, textAlign: 'center' }}>
+          <Typography variant="caption" color="text.secondary" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+            {isCircular ? 'Your photo will be cropped to a perfect circle' : 'Your photo will be cropped to a square'}
+          </Typography>
+        </Box>
       </DialogContent>
       
       <DialogActions sx={{ p: 2 }}>
-        <Button onClick={handleClose} color="inherit">
+        <Button onClick={handleClose} color="inherit" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
           Cancel
         </Button>
         <Button 
@@ -161,6 +228,7 @@ const ImageCropper = ({ open, onClose, imageFile, onCropComplete }) => {
           variant="contained" 
           color="primary"
           disabled={!crop.width || !crop.height}
+          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
         >
           Crop & Save
         </Button>

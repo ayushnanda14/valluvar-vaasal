@@ -158,6 +158,7 @@ export default function AdminDashboard() {
   const [signupLinksListener, setSignupLinksListener] = useState(null);
   const [supportUsersListener, setSupportUsersListener] = useState(null);
   const [supportUsersLoading, setSupportUsersLoading] = useState(false);
+  const [testimonialsListener, setTestimonialsListener] = useState(null);
 
   // Add state for feedback messages
   const [errorMessage, setErrorMessage] = useState('');
@@ -169,6 +170,13 @@ export default function AdminDashboard() {
   const [allAstrologers, setAllAstrologers] = useState([]);
   const [loadingAllAstrologers, setLoadingAllAstrologers] = useState(true);
 
+  // Add state for astrologers listener
+  const [astrologersListener, setAstrologersListener] = useState(null);
+  const [pendingAstrologersListener, setPendingAstrologersListener] = useState(null);
+
+  // Add state for users listener
+  const [usersListener, setUsersListener] = useState(null);
+
   // Get tab from query params
   useEffect(() => {
     if (router.query.tab !== undefined) {
@@ -179,7 +187,102 @@ export default function AdminDashboard() {
     }
   }, [router.query.tab]);
 
-  // Fetch data based on active tab
+  // Real-time listener for users (tab 0)
+  useEffect(() => {
+    if (tabValue === 0) {
+      // Clean up existing listener
+      if (usersListener) {
+        usersListener();
+      }
+
+      setLoading(true);
+
+      // Set up real-time listener for all users
+      const usersRef = collection(db, 'users');
+      const usersQuery = query(usersRef, orderBy('createdAt', 'desc'));
+
+      const unsubscribe = onSnapshot(usersQuery, (querySnapshot) => {
+        const usersList = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          usersList.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt,
+            updatedAt: data.updatedAt?.toDate ? data.updatedAt.toDate() : data.updatedAt
+          });
+        });
+        setUsers(usersList);
+        setLoading(false);
+      }, (error) => {
+        console.error('Error listening to users:', error);
+        setLoading(false);
+      });
+
+      setUsersListener(() => unsubscribe);
+    } else {
+      // Clean up listener when not on users tab
+      if (usersListener) {
+        usersListener();
+        setUsersListener(null);
+      }
+    }
+
+    return () => {
+      if (usersListener) {
+        usersListener();
+      }
+    };
+  }, [tabValue]);
+
+  // Real-time listener for testimonials (tab 1)
+  useEffect(() => {
+    if (tabValue === 1) {
+      // Clean up existing listener
+      if (testimonialsListener) {
+        testimonialsListener();
+      }
+
+      setLoading(true);
+
+      // Set up real-time listener for all testimonials
+      const testimonialsRef = collection(db, 'testimonials');
+      const testimonialsQuery = query(testimonialsRef, orderBy('createdAt', 'desc'));
+
+      const unsubscribe = onSnapshot(testimonialsQuery, (querySnapshot) => {
+        const testimonialsList = [];
+        querySnapshot.forEach((doc) => {
+          const data = doc.data();
+          testimonialsList.push({
+            id: doc.id,
+            ...data,
+            createdAt: data.createdAt?.toDate ? data.createdAt.toDate() : data.createdAt
+          });
+        });
+        setTestimonials(testimonialsList);
+        setLoading(false);
+      }, (error) => {
+        console.error('Error listening to testimonials:', error);
+        setLoading(false);
+      });
+
+      setTestimonialsListener(() => unsubscribe);
+    } else {
+      // Clean up listener when not on testimonials tab
+      if (testimonialsListener) {
+        testimonialsListener();
+        setTestimonialsListener(null);
+      }
+    }
+
+    return () => {
+      if (testimonialsListener) {
+        testimonialsListener();
+      }
+    };
+  }, [tabValue]);
+
+  // Fetch data based on active tab (for non-real-time tabs)
   useEffect(() => {
     let unsubscribe = null;
 
@@ -189,27 +292,12 @@ export default function AdminDashboard() {
       try {
         setLoading(true);
 
-        if (tabValue === 0 || tabValue === 4) {
-          // Users tab or Support Users tab
-          const usersData = await getAllUsers();
-          setUsers(usersData);
-        } else if (tabValue === 1) {
-          // Testimonials tab
-          const testimonialsRef = collection(db, 'testimonials');
-          const q = query(testimonialsRef, orderBy('createdAt', 'desc'));
-          const querySnapshot = await getDocs(q);
-
-          const testimonialsList = [];
-          querySnapshot.forEach((doc) => {
-            testimonialsList.push({
-              id: doc.id,
-              ...doc.data()
-            });
-          });
-
-          setTestimonials(testimonialsList);
-        }
-        // Revenue tab is now handled in a separate useEffect for real-time updates
+        // All tabs now have real-time listeners
+        // Users tab (0) - handled with real-time listener above
+        // Testimonials tab (1) - handled with real-time listener above
+        // Revenue tab (2) - handled in separate useEffect for real-time updates
+        // Astrologers tab (3) - handled with real-time listener below
+        // Support users tab (4) - handled with existing real-time listener
       } catch (error) {
         console.error('Error fetching data:', error);
       } finally {
@@ -225,33 +313,90 @@ export default function AdminDashboard() {
         unsubscribe();
       }
     };
-  }, [currentUser, tabValue, getAllUsers]);
+  }, [currentUser, tabValue]);
 
-  // Add this new useEffect for fetching astrologers
+  // Add this new useEffect for fetching astrologers with real-time listeners
   useEffect(() => {
     if (tabValue === 3) {
-      const getAstrologers = async () => {
-        setLoadingAstrologers(true);
-        setLoadingAllAstrologers(true);
+      // Clean up existing listeners
+      if (astrologersListener) {
+        astrologersListener();
+      }
+      if (pendingAstrologersListener) {
+        pendingAstrologersListener();
+      }
 
-        try {
-          // Fetch pending verification requests
-          const pendingAstrologers = await fetchPendingAstrologers();
-          setPendingAstrologers(pendingAstrologers);
+      setLoadingAstrologers(true);
+      setLoadingAllAstrologers(true);
 
-          // Fetch all astrologers
-          const allAstrologersData = await fetchAllAstrologers();
-          setAllAstrologers(allAstrologersData);
-        } catch (error) {
-          console.error('Error fetching astrologers:', error);
-        } finally {
-          setLoadingAstrologers(false);
-          setLoadingAllAstrologers(false);
-        }
-      };
+      // Set up real-time listener for pending astrologers
+      const pendingAstrologersRef = collection(db, 'users');
+      const pendingAstrologersQuery = query(
+        pendingAstrologersRef, 
+        where('roles', 'array-contains', 'astrologer'), 
+        where('verificationStatus', 'in', ['pending', 'rejected'])
+      );
 
-      getAstrologers();
+      const pendingUnsubscribe = onSnapshot(pendingAstrologersQuery, (querySnapshot) => {
+        const astrologersList = [];
+        querySnapshot.forEach((doc) => {
+          astrologersList.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        setPendingAstrologers(astrologersList);
+        setLoadingAstrologers(false);
+      }, (error) => {
+        console.error('Error listening to pending astrologers:', error);
+        setLoadingAstrologers(false);
+      });
+
+      // Set up real-time listener for all astrologers
+      const allAstrologersRef = collection(db, 'users');
+      const allAstrologersQuery = query(
+        allAstrologersRef, 
+        where('roles', 'array-contains', 'astrologer')
+      );
+
+      const allUnsubscribe = onSnapshot(allAstrologersQuery, (querySnapshot) => {
+        const astrologersList = [];
+        querySnapshot.forEach((doc) => {
+          astrologersList.push({
+            id: doc.id,
+            ...doc.data()
+          });
+        });
+        setAllAstrologers(astrologersList);
+        setLoadingAllAstrologers(false);
+      }, (error) => {
+        console.error('Error listening to all astrologers:', error);
+        setLoadingAllAstrologers(false);
+      });
+
+      // Store unsubscribe functions
+      setPendingAstrologersListener(() => pendingUnsubscribe);
+      setAstrologersListener(() => allUnsubscribe);
+    } else {
+      // Clean up listeners when not on astrologers tab
+      if (astrologersListener) {
+        astrologersListener();
+        setAstrologersListener(null);
+      }
+      if (pendingAstrologersListener) {
+        pendingAstrologersListener();
+        setPendingAstrologersListener(null);
+      }
     }
+
+    return () => {
+      if (astrologersListener) {
+        astrologersListener();
+      }
+      if (pendingAstrologersListener) {
+        pendingAstrologersListener();
+      }
+    };
   }, [tabValue]);
 
   // Real-time listener for signup links
@@ -707,75 +852,6 @@ export default function AdminDashboard() {
             </TableBody>
           </Table>
         </TableContainer>
-
-        {/* Actions Menu */}
-        <Menu
-          anchorEl={anchorEl}
-          open={Boolean(anchorEl)}
-          onClose={handleCloseActionMenu}
-        >
-          <MenuItem onClick={() => {
-            handleOpenRoleDialog(selectedActionUser);
-            handleCloseActionMenu();
-          }}>
-            <ListItemIcon>
-              <EditIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>Edit Roles</ListItemText>
-          </MenuItem>
-
-          {selectedActionUser?.roles?.includes('astrologer') &&
-            (!selectedActionUser?.verificationStatus ||
-              selectedActionUser?.verificationStatus === 'pending' ||
-              selectedActionUser?.verificationStatus === 'rejected') && (
-              <MenuItem onClick={() => {
-                handleOpenAstrologerVerification(selectedActionUser);
-                handleCloseActionMenu();
-              }}>
-                <ListItemIcon>
-                  <VerifiedIcon fontSize="small" color="secondary" />
-                </ListItemIcon>
-                <ListItemText primary="Verify Astrologer" />
-              </MenuItem>
-            )}
-
-          <MenuItem onClick={() => handleViewChats(selectedActionUser?.id)}>
-            <ListItemIcon>
-              <ChatIcon fontSize="small" />
-            </ListItemIcon>
-            <ListItemText>View Chats</ListItemText>
-          </MenuItem>
-
-          {selectedActionUser?.roles?.includes('astrologer') && (
-            <MenuItem onClick={() => {
-              handleOpenServicesDialog(selectedActionUser);
-              handleCloseActionMenu();
-            }}>
-              <ListItemIcon>
-                <TuneIcon fontSize="small" />
-              </ListItemIcon>
-              <ListItemText primary="Manage Services & Pricing" />
-            </MenuItem>
-          )}
-
-          <Divider />
-
-          <MenuItem
-            onClick={() => handleToggleUserStatus(selectedActionUser?.id)}
-            sx={{ color: selectedActionUser?.disabled ? 'success.main' : 'error.main' }}
-          >
-            <ListItemIcon>
-              {selectedActionUser?.disabled ? (
-                <CheckCircleIcon fontSize="small" color="success" />
-              ) : (
-                <BlockIcon fontSize="small" color="error" />
-              )}
-            </ListItemIcon>
-            <ListItemText>
-              {selectedActionUser?.disabled ? 'Enable User' : 'Disable User'}
-            </ListItemText>
-          </MenuItem>
-        </Menu>
       </Box>
     );
   };
@@ -2066,6 +2142,75 @@ export default function AdminDashboard() {
           {successMessage}
         </Alert>
       </Snackbar>
+
+      {/* Actions Menu */}
+      <Menu
+        anchorEl={anchorEl}
+        open={Boolean(anchorEl)}
+        onClose={handleCloseActionMenu}
+      >
+        <MenuItem onClick={() => {
+          handleOpenRoleDialog(selectedActionUser);
+          handleCloseActionMenu();
+        }}>
+          <ListItemIcon>
+            <EditIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>Edit Roles</ListItemText>
+        </MenuItem>
+
+        {selectedActionUser?.roles?.includes('astrologer') &&
+          (!selectedActionUser?.verificationStatus ||
+            selectedActionUser?.verificationStatus === 'pending' ||
+            selectedActionUser?.verificationStatus === 'rejected') && (
+            <MenuItem onClick={() => {
+              handleOpenAstrologerVerification(selectedActionUser);
+              handleCloseActionMenu();
+            }}>
+              <ListItemIcon>
+                <VerifiedIcon fontSize="small" color="secondary" />
+              </ListItemIcon>
+              <ListItemText primary="Verify Astrologer" />
+            </MenuItem>
+          )}
+
+        <MenuItem onClick={() => handleViewChats(selectedActionUser?.id)}>
+          <ListItemIcon>
+            <ChatIcon fontSize="small" />
+          </ListItemIcon>
+          <ListItemText>View Chats</ListItemText>
+        </MenuItem>
+
+        {selectedActionUser?.roles?.includes('astrologer') && (
+          <MenuItem onClick={() => {
+            handleOpenServicesDialog(selectedActionUser);
+            handleCloseActionMenu();
+          }}>
+            <ListItemIcon>
+              <TuneIcon fontSize="small" />
+            </ListItemIcon>
+            <ListItemText primary="Manage Services & Pricing" />
+          </MenuItem>
+        )}
+
+        <Divider />
+
+        <MenuItem
+          onClick={() => handleToggleUserStatus(selectedActionUser?.id)}
+          sx={{ color: selectedActionUser?.disabled ? 'success.main' : 'error.main' }}
+        >
+          <ListItemIcon>
+            {selectedActionUser?.disabled ? (
+              <CheckCircleIcon fontSize="small" color="success" />
+            ) : (
+              <BlockIcon fontSize="small" color="error" />
+            )}
+          </ListItemIcon>
+          <ListItemText>
+            {selectedActionUser?.disabled ? 'Enable User' : 'Disable User'}
+          </ListItemText>
+        </MenuItem>
+      </Menu>
 
       <Snackbar
         open={!!errorMessage}

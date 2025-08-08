@@ -36,7 +36,7 @@ import ChatBox from '../../src/components/ChatBox';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ChatIcon from '@mui/icons-material/Chat';
 import CalendarTodayIcon from '@mui/icons-material/CalendarToday';
-import { collection, query, where, getDocs, orderBy, getDoc, doc } from 'firebase/firestore';
+import { collection, query, where, getDocs, orderBy, getDoc, doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import { getUserChats, markChatAsCompleted } from '../../src/services/chatService';
 import { SERVICE_TYPES } from '@/utils/constants';
@@ -67,38 +67,35 @@ export default function AstrologerDashboard() {
     }
   }, [router.query.tab]);
 
-  // Fetch astrologer profile and verification status
+  // Fetch astrologer profile and verification status with real-time listener
   useEffect(() => {
-    const fetchProfileStatus = async () => {
-      if (!currentUser) return;
+    if (!currentUser) return;
 
-      try {
-        // Check if profile is complete
-        const profileRef = doc(db, 'users', currentUser.uid);
-        const profileDoc = await getDoc(profileRef);
+    // Set up real-time listener for astrologer's profile
+    const profileRef = doc(db, 'users', currentUser.uid);
+    
+    const unsubscribe = onSnapshot(profileRef, (profileDoc) => {
+      if (profileDoc.exists()) {
+        const profileData = profileDoc.data();
 
-        if (profileDoc.exists()) {
-          const profileData = profileDoc.data();
+        // Check if profile has all required fields
+        const hasServices = profileData.services && Object.keys(profileData.services).filter(key => profileData.services[key]).length > 0;
+        const hasPricing = profileData.serviceCharges && Object.keys(profileData.serviceCharges).length > 0;
 
-          // Check if profile has all required fields
-          const hasServices = profileData.services && profileData.services.length > 0;
-          const hasPricing = profileData.serviceCharges && Object.keys(profileData.serviceCharges).length > 0;
-
-          setIsProfileComplete(hasServices && hasPricing);
-          setIsVerified(profileData.verificationStatus === 'verified');
-          setVerificationStatus(profileData.verificationStatus || 'not_submitted');
-          setVerificationMessage(profileData.verificationMessage || '');
-        } else {
-          setIsProfileComplete(false);
-          setIsVerified(false);
-          setVerificationStatus('not_submitted');
-        }
-      } catch (error) {
-        console.error('Error fetching profile status:', error);
+        setIsProfileComplete(hasServices && hasPricing);
+        setIsVerified(profileData.verificationStatus === 'verified');
+        setVerificationStatus(profileData.verificationStatus || 'not_submitted');
+        setVerificationMessage(profileData.verificationMessage || '');
+      } else {
+        setIsProfileComplete(false);
+        setIsVerified(false);
+        setVerificationStatus('not_submitted');
       }
-    };
+    }, (error) => {
+      console.error('Error listening to profile status:', error);
+    });
 
-    fetchProfileStatus();
+    return () => unsubscribe();
   }, [currentUser]);
 
   // Fetch astrologer data

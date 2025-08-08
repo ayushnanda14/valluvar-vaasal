@@ -1,5 +1,5 @@
 import React, { useState } from 'react';
-import { Box, Button, CircularProgress, Typography, Alert } from '@mui/material';
+import { Box, Button, CircularProgress, Typography, Alert, Avatar } from '@mui/material';
 import { useTranslation } from 'react-i18next';
 import { useAuth } from '../context/AuthContext';
 import { doc, updateDoc, serverTimestamp } from 'firebase/firestore';
@@ -9,8 +9,9 @@ import { storage } from '../firebase/firebaseConfig';
 import { updateProfile } from 'firebase/auth';
 import FileUploadSection from './FileUploadSection';
 import ImageCropper from './ImageCropper';
+import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 
-const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
+const ProfilePhotoUploader = ({ onPhotoUpdate, isSignup = false, onFileChange }) => {
   const { t } = useTranslation('common');
   const { currentUser } = useAuth();
   const [photo, setPhoto] = useState([]);
@@ -72,15 +73,78 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
     setPhoto([croppedFile]);
     setSelectedFile(null);
     setShowCropper(false);
+    
+    // For signup process, call the parent's onFileChange
+    if (isSignup && onFileChange) {
+      onFileChange([croppedFile]);
+    }
+  };
+
+  const getInitials = (name) => {
+    if (!name) return '?';
+    return name
+      .split(' ')
+      .map(word => word[0])
+      .join('')
+      .toUpperCase()
+      .substring(0, 2);
+  };
+
+  const getAvatarColor = (name) => {
+    if (!name) return '#B39DDB';
+    
+    const colors = [
+      '#FFCCBC', // Peach
+      '#FFECB3', // Light Amber
+      '#C8E6C9', // Light Green
+      '#B3E5FC', // Light Blue
+      '#D1C4E9', // Light Purple
+      '#F8BBD0', // Light Pink
+      '#B2DFDB', // Light Teal
+      '#DCEDC8', // Light Lime
+    ];
+    
+    const charCode = name.charCodeAt(0);
+    return colors[charCode % colors.length];
   };
 
   return (
     <Box>
-      <Typography variant="subtitle1" sx={{ mb: 1 }}>
+      <Typography variant="h6" sx={{ mb: 2, fontFamily: '"Cormorant Garamond", serif' }}>
         {t('profile.photoTitle', 'Profile Photo')}
       </Typography>
-      <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
-        {t('profile.photoDescription', 'Upload a clear, professional photo of yourself.')}
+      
+      {/* Current Profile Photo Display - Only show for existing users */}
+      {!isSignup && currentUser && (
+        <Box sx={{ display: 'flex', alignItems: 'center', mb: 3 }}>
+          <Avatar 
+            src={currentUser?.photoURL}
+            sx={{ 
+              width: 80, 
+              height: 80, 
+              mr: 2,
+              bgcolor: getAvatarColor(currentUser?.displayName),
+              color: 'white',
+              fontFamily: '"Cinzel", serif',
+              fontWeight: 600,
+              fontSize: '1.5rem'
+            }}
+          >
+            {currentUser?.photoURL ? null : getInitials(currentUser?.displayName)}
+          </Avatar>
+          <Box>
+            <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif', fontWeight: 500 }}>
+              {currentUser?.displayName || 'User'}
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+              {currentUser?.photoURL ? 'Profile photo uploaded' : 'No profile photo yet'}
+            </Typography>
+          </Box>
+        </Box>
+      )}
+
+      <Typography variant="body2" color="text.secondary" sx={{ mb: 2, fontFamily: '"Cormorant Garamond", serif' }}>
+        {t('profile.photoDescription', 'Upload a clear, professional photo of yourself. You can crop it to a perfect circle.')}
       </Typography>
 
       {error && (
@@ -94,23 +158,36 @@ const ProfilePhotoUploader = ({ onPhotoUpdate }) => {
         onFilesChange={handleFileSelect}
         multiple={false}
         accept="image/*"
+        icon={<AccountCircleIcon fontSize="large" />}
       />
 
-      <Button
-        variant="contained"
-        color="primary"
-        onClick={handlePhotoUpload}
-        disabled={loading || photo.length === 0}
-        sx={{ mt: 2 }}
-      >
-        {loading ? <CircularProgress size={24} /> : t('profile.uploadPhoto', 'Upload Photo')}
-      </Button>
+      {/* Upload button - Only show for existing users */}
+      {!isSignup && photo.length > 0 && (
+        <Box sx={{ mt: 2, display: 'flex', alignItems: 'center', gap: 2 }}>
+          <Typography variant="body2" color="text.secondary" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+            Photo selected: {photo[0].name}
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={handlePhotoUpload}
+            disabled={loading}
+            sx={{ 
+              fontFamily: '"Cormorant Garamond", serif',
+              fontSize: '1rem'
+            }}
+          >
+            {loading ? <CircularProgress size={20} /> : t('profile.uploadPhoto', 'Upload Photo')}
+          </Button>
+        </Box>
+      )}
 
       <ImageCropper
         open={showCropper}
         onClose={() => setShowCropper(false)}
         imageFile={selectedFile}
         onCropComplete={handleCropComplete}
+        circular={true}
       />
     </Box>
   );

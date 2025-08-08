@@ -110,7 +110,8 @@ export default function AstrologerProfileManager() {
           const userData = userDocSnap.data();
 
           // Set services from user data
-          const userServices = userData.services || [];
+          const userServices = Object.keys(userData.services || {}).filter(key => userData.services[key]);
+          console.log('userServices', userServices);
           setServices({
             marriageMatching: userServices.includes('marriageMatching'),
             jathakPrediction: userServices.includes('jathakPrediction'),
