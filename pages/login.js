@@ -19,6 +19,7 @@ import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
 import { useAuth } from '../src/context/AuthContext';
 import { getOrCreateRecaptcha } from '../src/context/AuthContext';
+import { resetRecaptcha } from '../src/context/AuthContext';
 import { auth } from '../src/firebase/firebaseConfig';
 import { signInWithPhoneNumber } from 'firebase/auth';
 import GoogleIcon from '@mui/icons-material/Google';
@@ -47,6 +48,7 @@ export default function Login() {
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [phoneStep, setPhoneStep] = useState(0); // 0: enter phone, 1: enter code
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -60,7 +62,19 @@ export default function Login() {
   const handleAuthMethodChange = (event, newValue) => {
     setAuthMethod(newValue);
     setError('');
+    // Reset OTP flow state and reCAPTCHA when switching method
+    setPhoneStep(0);
+    setConfirmationResult(null);
+    setOtpCooldown(0);
+    resetRecaptcha();
   };
+
+  // Cooldown ticker
+  React.useEffect(() => {
+    if (otpCooldown <= 0) return;
+    const t = setInterval(() => setOtpCooldown((s) => (s > 0 ? s - 1 : 0)), 1000);
+    return () => clearInterval(t);
+  }, [otpCooldown]);
 
   const handleEmailLogin = async (e) => {
     e.preventDefault();
@@ -122,6 +136,11 @@ export default function Login() {
     setError('');
     setLoading(true); // Start loading early
 
+    if (otpCooldown > 0) {
+      setLoading(false);
+      return;
+    }
+
     if (!phoneNumber) {
       setError('Please enter your phone number');
       setLoading(false);
@@ -152,6 +171,8 @@ export default function Login() {
       const result = await signInWithPhoneNumber(auth, formatted, verifier);
       setConfirmationResult(result);
       setPhoneStep(1);
+      // start 60s cooldown
+      setOtpCooldown(60);
 
     } catch (err) {
       console.error('Error during phone check or OTP send:', err);
@@ -190,6 +211,8 @@ export default function Login() {
     } catch (err) {
       console.error('Code verification error:', err);
       setError('Failed to verify code: ' + err.message);
+      // On failure, reset reCAPTCHA to avoid stale widget state
+      resetRecaptcha();
     } finally {
       setLoading(false);
     }
@@ -204,6 +227,7 @@ export default function Login() {
     } catch (error) {
       console.error('Google login error:', error);
       setError('Failed to sign in with Google.');
+      resetRecaptcha();
     } finally {
       setLoading(false);
     }
@@ -324,14 +348,14 @@ export default function Login() {
                       variant="contained"
                       color="primary"
                       type="submit"
-                      disabled={loading}
+                      disabled={loading || otpCooldown > 0}
                       sx={{
                         py: 1.5,
                         fontFamily: '"Cinzel", serif',
                         fontSize: '1.1rem'
                       }}
                     >
-                      {loading ? <CircularProgress size={24} /> : 'Send OTP'}
+                      {loading ? <CircularProgress size={24} /> : (otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Send OTP')}
                     </Button>
                   </form>
                 ) : (
@@ -362,7 +386,12 @@ export default function Login() {
                     <Button
                       fullWidth
                       variant="text"
-                      onClick={handleRefresh}
+                      onClick={() => {
+                        resetRecaptcha();
+                        setError('');
+                        setPhoneStep(0);
+                        setConfirmationResult(null);
+                      }}
                       sx={{ mt: 2 }}
                     >
                       Resend OTP

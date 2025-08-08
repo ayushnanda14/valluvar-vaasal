@@ -13,7 +13,7 @@ import {
   Button
 } from '@mui/material';
 import { motion } from 'framer-motion';
-import { collection, getDocs, query, where, orderBy, limit, onSnapshot } from 'firebase/firestore';
+import { collection, getDocs, query, where, orderBy, limit } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import FormatQuoteIcon from '@mui/icons-material/FormatQuote';
 import { useTranslation } from 'react-i18next';
@@ -32,8 +32,6 @@ const Testimonials = ({ isTestimonialsPage }) => {
   const { t } = useTranslation('common');
   
   useEffect(() => {
-    let unsubscribe;
-    
     const fetchTestimonials = async () => {
       try {
         setLoading(true);
@@ -45,36 +43,25 @@ const Testimonials = ({ isTestimonialsPage }) => {
           limit(6)
         );
         
-        // Use onSnapshot for real-time updates
-        unsubscribe = onSnapshot(q, (querySnapshot) => {
-          const testimonialsList = [];
-          querySnapshot.forEach((doc) => {
-            testimonialsList.push({
-              id: doc.id,
-              ...doc.data()
-            });
+        // Use getDocs for public read access (no auth required)
+        const querySnapshot = await getDocs(q);
+        const testimonialsList = [];
+        querySnapshot.forEach((doc) => {
+          testimonialsList.push({
+            id: doc.id,
+            ...doc.data()
           });
-          
-          setTestimonials(testimonialsList);
-          setLoading(false);
-        }, (error) => {
-          console.error('Error in testimonials listener:', error);
-          setLoading(false);
         });
+        
+        setTestimonials(testimonialsList);
       } catch (error) {
-        console.error('Error setting up testimonials listener:', error);
+        console.error('Error fetching testimonials:', error);
+      } finally {
         setLoading(false);
       }
     };
     
     fetchTestimonials();
-    
-    // Clean up listener when component unmounts
-    return () => {
-      if (unsubscribe) {
-        unsubscribe();
-      }
-    };
   }, []);
   
   // Function to get initials from name

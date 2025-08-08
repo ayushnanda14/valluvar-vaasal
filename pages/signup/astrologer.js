@@ -913,6 +913,7 @@ export default function AstrologerSignup() {
                       onFilesChange={setProfilePicture}
                       multiple={false}
                       accept="image/*"
+                      showPreview
                       icon={<AccountCircleIcon fontSize="large" />}
                     />
                   </Box>
@@ -926,6 +927,7 @@ export default function AstrologerSignup() {
                       files={aadharFiles}
                       onFilesChange={setAadharFiles}
                       multiple={false}
+                      showPreview
                     />
                   </Box>
                   
@@ -938,6 +940,7 @@ export default function AstrologerSignup() {
                       files={certificateFiles}
                       onFilesChange={setCertificateFiles}
                       multiple={true}
+                      showPreview
                     />
                   </Box>
                   
@@ -950,6 +953,7 @@ export default function AstrologerSignup() {
                       files={experienceFiles}
                       onFilesChange={setExperienceFiles}
                       multiple={true}
+                      showPreview
                     />
                   </Box>
                   

@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useEffect, useMemo, useState } from 'react';
 import { 
   Box, 
   Button, 
@@ -33,7 +33,14 @@ const VisuallyHiddenInput = styled('input')({
   width: 1,
 });
 
-export default function FileUploadSection({ files, onFilesChange, multiple = true }) {
+export default function FileUploadSection({ 
+  files, 
+  onFilesChange, 
+  multiple = true,
+  accept = '.pdf,.jpg,.jpeg,.png,.doc,.docx',
+  showPreview = false,
+  previewMaxHeight = 140
+}) {
   const { t, i18n } = useTranslation('common');
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -54,6 +61,20 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
       setDragActive(false);
     }
   };
+
+  // Create/revoke object URLs for image previews
+  const [previewUrls, setPreviewUrls] = useState([]);
+  useEffect(() => {
+    if (!showPreview) return;
+    const urls = files
+      .filter((f) => f && f.type && f.type.startsWith('image/'))
+      .map((file) => ({ file, url: URL.createObjectURL(file) }));
+    setPreviewUrls(urls);
+    return () => {
+      urls.forEach(({ url }) => URL.revokeObjectURL(url));
+    };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [files, showPreview]);
   
   const handleDrop = (e) => {
     e.preventDefault();
@@ -177,7 +198,7 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
             type="file" 
             onChange={handleFileChange} 
             multiple={multiple}
-            accept=".pdf,.jpg,.jpeg,.png,.doc,.docx"
+            accept={accept}
           />
         </Button>
       </Paper>
@@ -261,6 +282,47 @@ export default function FileUploadSection({ files, onFilesChange, multiple = tru
               </ListItem>
             ))}
           </List>
+
+          {showPreview && previewUrls.length > 0 && (
+            <Box sx={{ mt: 2 }}>
+              <Typography variant="subtitle2" sx={{ mb: 1 }}>Image preview</Typography>
+              <Box
+                sx={{
+                  display: 'grid',
+                  gridTemplateColumns: 'repeat(auto-fill, minmax(120px, 1fr))',
+                  gap: 2
+                }}
+              >
+                {previewUrls.map(({ file, url }, idx) => (
+                  <Box
+                    key={`${file.name}-${idx}`}
+                    sx={{
+                      border: '1px solid',
+                      borderColor: 'divider',
+                      borderRadius: 1,
+                      p: 1,
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      backgroundColor: 'background.paper'
+                    }}
+                  >
+                    <Box
+                      component="img"
+                      src={url}
+                      alt={file.name}
+                      sx={{
+                        maxWidth: '100%',
+                        maxHeight: previewMaxHeight,
+                        objectFit: 'contain',
+                        borderRadius: '4px'
+                      }}
+                    />
+                  </Box>
+                ))}
+              </Box>
+            </Box>
+          )}
         </Box>
       )}
     </Box>

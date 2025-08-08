@@ -67,6 +67,26 @@ function getOrCreateRecaptcha(containerId) {
   return recaptchaVerifierSingleton;
 }
 
+// Provide a safe way to reset the existing rendered reCAPTCHA widget
+function resetRecaptcha() {
+  if (typeof window === 'undefined') return;
+  try {
+    if (window.grecaptcha && recaptchaWidgetId != null) {
+      window.grecaptcha.reset(recaptchaWidgetId);
+      console.debug('[Auth] reCAPTCHA widget reset');
+    } else if (recaptchaVerifierSingleton) {
+      // Fallback: clear so it can be re-created cleanly on next use
+      recaptchaVerifierSingleton.clear();
+      recaptchaVerifierSingleton = null;
+      recaptchaWidgetId = null;
+      recaptchaContainerIdSingleton = null;
+      console.debug('[Auth] reCAPTCHA verifier cleared');
+    }
+  } catch (e) {
+    console.warn('[Auth] Failed to reset reCAPTCHA:', e);
+  }
+}
+
 // ---------------------------------------------------------------------
 export function AuthProvider({ children }) {
   const [currentUser, setCurrentUser] = useState(null);
