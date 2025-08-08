@@ -727,7 +727,7 @@ export default function AdminDashboard() {
           {selectedActionUser?.roles?.includes('astrologer') &&
             (!selectedActionUser?.verificationStatus ||
               selectedActionUser?.verificationStatus === 'pending' ||
-              selectedActionUser?.verificationStatus === 'radmejected') && (
+              selectedActionUser?.verificationStatus === 'rejected') && (
               <MenuItem onClick={() => {
                 handleOpenAstrologerVerification(selectedActionUser);
                 handleCloseActionMenu();
@@ -2004,7 +2004,7 @@ export default function AdminDashboard() {
                   onChange={(e) => setVerificationStatus(e.target.value)}
                   input={<OutlinedInput label="Verification Status" />}
                 >
-                  <MenuItem value="approved">Approve</MenuItem>
+                  <MenuItem value="verified">Approve</MenuItem>
                   <MenuItem value="rejected">Reject</MenuItem>
                   <MenuItem value="pending">Keep Pending</MenuItem>
                 </Select>
