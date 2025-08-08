@@ -67,6 +67,7 @@ export default function AstrologerSignup() {
   const [password, setPassword] = useState('');
   const [displayName, setDisplayName] = useState('');
   const [phoneNumber, setPhoneNumber] = useState('');
+  const [experience, setExperience] = useState('');
   const [verificationCode, setVerificationCode] = useState('');
   const [confirmationResult, setConfirmationResult] = useState(null);
   const [phoneStep, setPhoneStep] = useState(0);
@@ -255,8 +256,20 @@ export default function AstrologerSignup() {
   const handleEmailSignup = async (e) => {
     e.preventDefault();
     
-    if (!email || !password || !displayName || !district) {
-      setError('Please fill in all required fields, including District');
+    if (!email || !password || !displayName || !district || !phoneNumber) {
+      setError('Please fill in all required fields, including Phone Number and District');
+      return;
+    }
+
+    // Validate phone number format (basic validation here, full verification next step)
+    if (!validateIndianPhoneNumber(phoneNumber)) {
+      setError('Please enter a valid Indian phone number (10 digits)');
+      return;
+    }
+
+    // Validate years of experience (optional but if provided must be 0-60)
+    if (experience !== '' && (isNaN(experience) || Number(experience) < 0 || Number(experience) > 60)) {
+      setError('Please enter a valid number of years of experience (0-60)');
       return;
     }
     
@@ -402,6 +415,7 @@ export default function AstrologerSignup() {
         district: district,
         services: services,
         pricing: pricing,
+        experience: experience === '' ? null : Number(experience),
         documents: {
           aadharCard: uploadedUrls.aadharCard || null,
           certificates: uploadedUrls.certificates || [],

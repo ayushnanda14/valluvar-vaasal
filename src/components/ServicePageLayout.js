@@ -410,6 +410,7 @@ export default function ServicePageLayout({
       });
 
       // Create conversation threads with each selected astrologer
+      const createdChatIds = [];
       for (const astrologer of selectedAstrologers) {
         const conversationRef = await addDoc(collection(db, 'chats'), {
           participants: [currentUser.uid, astrologer.id],
@@ -432,6 +433,8 @@ export default function ServicePageLayout({
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
+
+        createdChatIds.push(conversationRef.id);
 
         // Add initial system message to the conversation
         await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
@@ -539,8 +542,13 @@ export default function ServicePageLayout({
         localStorage.removeItem(localStorageKey);
       }
 
-      // Redirect to success page after payment
-      router.push('/service-success');
+      // Redirect to the created chat after payment
+      if (createdChatIds.length > 0) {
+        router.push({ pathname: '/messages', query: { chatId: createdChatIds[0] } });
+      } else {
+        // Fallback to success page if for some reason no chat was created
+        router.push('/service-success');
+      }
     } catch (err) {
       console.error('Payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
