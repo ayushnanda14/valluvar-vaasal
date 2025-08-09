@@ -14,6 +14,7 @@ import { motion } from 'framer-motion';
 import Link from 'next/link';
 import { useAuth } from '../src/context/AuthContext';
 import Head from 'next/head';
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 const MotionPaper = motion(Paper);
@@ -21,6 +22,7 @@ const MotionPaper = motion(Paper);
 export default function ResetPassword() {
   const theme = useTheme();
   const { resetPassword } = useAuth();
+  const { t } = useTranslation('common');
 
   const [email, setEmail] = useState('');
   const [error, setError] = useState('');
@@ -35,10 +37,10 @@ export default function ResetPassword() {
       setError('');
       setLoading(true);
       await resetPassword(email);
-      setMessage('Check your email for further instructions');
+      setMessage(t('resetPassword.successMessage'));
     } catch (error) {
       console.error('Password reset error:', error);
-      setError('Failed to reset password. Please check your email address.');
+      setError(t('resetPassword.errorMessage'));
     } finally {
       setLoading(false);
     }
@@ -47,8 +49,8 @@ export default function ResetPassword() {
   return (
     <>
       <Head>
-        <title>Reset Password | Valluvar Vaasal</title>
-        <meta name="description" content="Reset your Valluvar Vaasal account password" />
+        <title>{t('resetPassword.title')} | {t('brand')}</title>
+        <meta name="description" content={t('resetPassword.description')} />
       </Head>
 
       <Box sx={{
@@ -88,7 +90,7 @@ export default function ResetPassword() {
                   color: theme.palette.secondary.dark
                 }}
               >
-                Reset Password
+                {t('resetPassword.heading')}
               </Typography>
 
               {error && (
@@ -113,7 +115,7 @@ export default function ResetPassword() {
                     color: theme.palette.secondary.main
                   }}
                 >
-                  Enter your email address and we&apos;ll send you a link to reset your password.
+                  {t('resetPassword.instructions')}
                 </Typography>
 
                 <TextField
@@ -143,7 +145,7 @@ export default function ResetPassword() {
                     fontSize: '1rem'
                   }}
                 >
-                  Reset Password
+                  {t('resetPassword.button')}
                 </Button>
 
                 <Box sx={{ mt: 4, textAlign: 'center' }}>
@@ -157,7 +159,7 @@ export default function ResetPassword() {
                       fontWeight: 600
                     }}
                   >
-                    Back to Login
+                    {t('resetPassword.backToLogin')}
                   </MuiLink>
                 </Box>
               </Box>

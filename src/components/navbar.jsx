@@ -157,7 +157,7 @@ const Navbar = () => {
           borderBottom: 'none'
         }}
       >
-        <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '5px' }}>
+        <Container sx={{ width: '100% !important', maxWidth: '100% !important', margin: '0', padding: '0px' }}>
           {isMobileNav ? (
             // Single container mobile layout
             <Box sx={{
@@ -296,7 +296,7 @@ const Navbar = () => {
               {/* Left-aligned Logo */}
               <Link href="/" passHref legacyBehavior>
                 <a aria-label="Valluvar Vaasal Home" style={{ display: 'inline-flex', alignItems: 'center' }}>
-                  <Image src="/images/vv-logo.svg" alt="Valluvar Vaasal" width={32} height={32} />
+                  <Image src="/images/vv-logo.svg" alt="Valluvar Vaasal" width={50} height={50} />
                 </a>
               </Link>
               {/* Brand – absolutely centered */}

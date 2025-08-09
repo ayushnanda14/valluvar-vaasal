@@ -28,6 +28,7 @@ import EmailIcon from '@mui/icons-material/Email';
 import Head from 'next/head';
 import { httpsCallable } from 'firebase/functions';
 import { functions as fbFunctions } from '../src/firebase/firebaseConfig';
+import { useTranslation } from 'react-i18next';
 
 const MotionBox = motion(Box);
 const MotionPaper = motion(Paper);
@@ -36,6 +37,7 @@ export default function Login() {
   const theme = useTheme();
   const router = useRouter();
   const { loginWithEmail, loginWithGoogle, verifyCodeAndSignUp } = useAuth();
+  const { t } = useTranslation('common');
 
   const [authMethod, setAuthMethod] = useState('phone'); // Changed default to 'phone'
 
@@ -86,7 +88,7 @@ export default function Login() {
       router.push('/');
     } catch (error) {
       console.error('Login error:', error);
-      setError('Failed to sign in. Please check your credentials.');
+      setError(t('login.errors.generic'));
     } finally {
       setLoading(false);
     }
@@ -142,14 +144,14 @@ export default function Login() {
     }
 
     if (!phoneNumber) {
-      setError('Please enter your phone number');
+      setError(t('login.errors.phoneRequired'));
       setLoading(false);
       return;
     }
 
     const formatted = formatIndianPhoneNumber(phoneNumber);
     if (!validateIndianPhoneNumber(phoneNumber)) {
-      setError('Enter valid 10-digit Indian number');
+      setError(t('login.errors.invalidIndianNumber'));
       setLoading(false);
       return;
     }
@@ -161,7 +163,7 @@ export default function Login() {
       const data = resultCheck.data; // Access the data property
 
       if (!data.exists) {
-        setError('No account found for this number. Please sign up first.');
+        setError(t('login.errors.noAccountForNumber'));
         setLoading(false);
         return;
       }
@@ -177,13 +179,13 @@ export default function Login() {
     } catch (err) {
       console.error('Error during phone check or OTP send:', err);
       if (err.code === 'functions/internal' || err.code === 'auth/internal-error') {
-        setError('An internal server error occurred. Please try again later.');
+        setError(t('login.errors.internal'));
       } else if (err.code === 'auth/quota-exceeded') {
-        setError('SMS quota exceeded. Please try again later.');
+        setError(t('login.errors.quota'));
       } else if (err.code === 'auth/app-not-authorized' || err.code === 'auth/invalid-app-credential') {
-        setError('Domain not authorised or invalid app credential. Check Firebase setup.');
+        setError(t('login.errors.appAuth'));
       } else if (err.code === 'functions/invalid-argument') {
-        setError('Invalid phone number format sent to server.');
+        setError(t('login.errors.invalidArg'));
       } else {
         setError(err.message || 'An unexpected error occurred.');
       }
@@ -196,7 +198,7 @@ export default function Login() {
     e.preventDefault();
 
     if (!verificationCode) {
-      setError('Please enter the verification code');
+      setError(t('login.errors.codeRequired'));
       return;
     }
 
@@ -226,7 +228,7 @@ export default function Login() {
       router.push('/');
     } catch (error) {
       console.error('Google login error:', error);
-      setError('Failed to sign in with Google.');
+      setError(t('login.errors.googleFailed'));
       resetRecaptcha();
     } finally {
       setLoading(false);
@@ -255,8 +257,8 @@ export default function Login() {
   return (
     <>
       <Head>
-        <title>Login | Valluvar Vaasal</title>
-        <meta name="description" content="Sign in to your Valluvar Vaasal account" />
+        <title>{t('login.title')} | {t('brand')}</title>
+        <meta name="description" content={t('login.description')} />
       </Head>
 
       <Box sx={{
@@ -289,7 +291,7 @@ export default function Login() {
                 mb: 4
               }}
             >
-              Sign In
+              {t('login.heading')}
             </Typography>
 
             <Tabs
@@ -300,7 +302,7 @@ export default function Login() {
             >
               <Tab
                 value="phone"
-                label="Mobile Number"
+                label={t('login.phoneLabel')}
                 icon={<PhoneIcon />}
                 iconPosition="start"
                 sx={{ fontFamily: '"Cinzel", serif' }}
@@ -340,7 +342,7 @@ export default function Login() {
                           </InputAdornment>
                         ),
                       }}
-                      placeholder="Enter 10-digit mobile number"
+                      placeholder={t('login.phonePlaceholder')}
                       sx={{ mb: 3 }}
                     />
                     <Button
@@ -355,18 +357,18 @@ export default function Login() {
                         fontSize: '1.1rem'
                       }}
                     >
-                      {loading ? <CircularProgress size={24} /> : (otpCooldown > 0 ? `Resend in ${otpCooldown}s` : 'Send OTP')}
+                      {loading ? <CircularProgress size={24} /> : (otpCooldown > 0 ? t('login.resendInSeconds', { seconds: otpCooldown }) : t('login.sendOtp'))}
                     </Button>
                   </form>
                 ) : (
                   <form onSubmit={handleVerifyCode}>
                     <TextField
                       fullWidth
-                      label="Verification Code"
+                      label={t('login.verificationCodeLabel')}
                       value={verificationCode}
                       onChange={(e) => setVerificationCode(e.target.value)}
                       margin="normal"
-                      placeholder="Enter 6-digit code"
+                      placeholder={t('login.verificationCodePlaceholder')}
                       sx={{ mb: 3 }}
                     />
                     <Button
@@ -381,7 +383,7 @@ export default function Login() {
                         fontSize: '1.1rem'
                       }}
                     >
-                      {loading ? <CircularProgress size={24} /> : 'Verify OTP'}
+                      {loading ? <CircularProgress size={24} /> : t('login.verifyOtp')}
                     </Button>
                     <Button
                       fullWidth
@@ -394,7 +396,7 @@ export default function Login() {
                       }}
                       sx={{ mt: 2 }}
                     >
-                      Resend OTP
+                      {t('login.resendOtp')}
                     </Button>
                   </form>
                 )}
@@ -403,7 +405,7 @@ export default function Login() {
               <form onSubmit={handleEmailLogin}>
                 <TextField
                   fullWidth
-                  label="Email"
+                  label={t('login.emailLabel')}
                   value={email}
                   onChange={(e) => setEmail(e.target.value)}
                   margin="normal"
@@ -418,7 +420,7 @@ export default function Login() {
                 />
                 <TextField
                   fullWidth
-                  label="Password"
+                  label={t('login.passwordLabel')}
                   type="password"
                   value={password}
                   onChange={(e) => setPassword(e.target.value)}
@@ -437,15 +439,13 @@ export default function Login() {
                     fontSize: '1.1rem'
                   }}
                 >
-                  {loading ? <CircularProgress size={24} /> : 'Sign In'}
+                  {loading ? <CircularProgress size={24} /> : t('login.signInButton')}
                 </Button>
               </form>
             )}
 
             <Divider sx={{ my: 3 }}>
-              <Typography variant="body2" color="text.secondary">
-                OR
-              </Typography>
+              <Typography variant="body2" color="text.secondary">{t('login.dividerOr')}</Typography>
             </Divider>
 
             <Button
@@ -459,17 +459,12 @@ export default function Login() {
                 fontSize: '1.1rem'
               }}
             >
-              Continue with Google
+              {t('login.continueWithGoogle')}
             </Button>
 
             <Box sx={{ mt: 3, textAlign: 'center' }}>
-              <Typography variant="body2">
-                Don&apos;t have an account?{' '}
-                <MuiLink href="/signup" color="primary">Sign up</MuiLink>
-              </Typography>
-              <Typography variant="body2" sx={{ mt: 1 }}>
-                <MuiLink href="/reset-password" color="primary">Forgot password?</MuiLink>
-              </Typography>
+              <Typography variant="body2">{t('login.noAccount')}{' '}<MuiLink href="/signup" color="primary">{t('login.signUp')}</MuiLink></Typography>
+              <Typography variant="body2" sx={{ mt: 1 }}><MuiLink href="/reset-password" color="primary">{t('login.forgotPassword')}</MuiLink></Typography>
             </Box>
           </MotionPaper>
         </Container>

@@ -23,11 +23,13 @@ import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
 import PhoneIcon from '@mui/icons-material/Phone';
 import EmailIcon from '@mui/icons-material/Email';
+import { useTranslation } from 'react-i18next';
 
 export default function Signup() {
     const theme = useTheme();
     const router = useRouter();
     const { signupWithEmail, sendVerificationCode, verifyCodeAndSignUp } = useAuth();
+    const { t } = useTranslation('common');
 
     const [authMethod, setAuthMethod] = useState('email'); // 'email' or 'phone'
 
@@ -60,12 +62,12 @@ export default function Signup() {
 
         // Validation
         if (!email || !password || !confirmPassword || !displayName) {
-            setError('Please fill in all required fields');
+            setError(t('signup.errors.fillAll'));
             return;
         }
 
         if (password !== confirmPassword) {
-            setError('Passwords do not match');
+            setError(t('signup.errors.passwordMismatch'));
             return;
         }
 
@@ -80,14 +82,14 @@ export default function Signup() {
             console.log('[pages/signup.js] Entered catch block for handleEmailSignup');
             console.error('[pages/signup.js] Raw signup error object:', err);
 
-            let errorMessage = 'Failed to create an account. Please try again.'; // Default error message
+            let errorMessage = t('signup.errors.createFailed');
 
             if (err && err.code === 'auth/email-already-in-use') {
-                errorMessage = 'This email address is already in use. Please try a different email or log in.';
+                errorMessage = t('signup.errors.emailInUse');
             } else if (err && err.code === 'auth/weak-password') {
-                errorMessage = 'The password is too weak. Please choose a stronger password (at least 6 characters).';
+                errorMessage = t('signup.errors.weakPassword');
             } else if (err && typeof err.message === 'string') {
-                errorMessage = 'Failed to create an account: ' + err.message;
+                errorMessage = t('signup.errors.createFailed');
             }
 
             console.log(`[pages/signup.js] Setting error state to: "${errorMessage}"`);
@@ -140,13 +142,13 @@ export default function Signup() {
         e.preventDefault();
 
         if (!phoneNumber) {
-            setError('Please enter your phone number');
+            setError(t('signup.errors.phoneRequired'));
             return;
         }
 
         // Validate Indian phone number
         if (!validateIndianPhoneNumber(phoneNumber)) {
-            setError('Please enter a valid Indian phone number (10 digits)');
+            setError(t('signup.errors.invalidIndianNumber'));
             return;
         }
 
@@ -165,7 +167,7 @@ export default function Signup() {
             console.error('Phone verification error:', err);
 
             // Display user-friendly error message
-            setError(err.message || 'Failed to send verification code. Please try again.');
+            setError(err.message || t('signup.errors.sendCodeFailed'));
 
             // If it's the "not enabled" error, show additional guidance
             if (err.message && err.message.includes('not enabled')) {
@@ -184,7 +186,7 @@ export default function Signup() {
         e.preventDefault();
 
         if (!verificationCode || !displayName) {
-            setError('Please fill in all required fields');
+            setError(t('signup.errors.fillAll'));
             return;
         }
 
@@ -196,7 +198,7 @@ export default function Signup() {
             router.push('/dashboard');
         } catch (err) {
             console.error('Code verification error:', err);
-            setError('Failed to verify code: ' + err.message);
+            setError(t('signup.errors.verifyCodeFailed', { message: err.message }));
         } finally {
             setLoading(false);
         }
@@ -219,8 +221,8 @@ export default function Signup() {
     return (
         <>
             <Head>
-                <title>Sign Up | Valluvar Vaasal</title>
-                <meta name="description" content="Create an account to access personalized cosmic guidance" />
+                <title>{t('signup.title')} | {t('brand')}</title>
+                <meta name="description" content={t('signup.description')} />
             </Head>
 
             <Box sx={{
@@ -256,7 +258,7 @@ export default function Signup() {
                                     textAlign: 'center'
                                 }}
                             >
-                                Create an Account
+                                {t('signup.heading')}
                             </Typography>
 
                             {error && (
@@ -286,7 +288,7 @@ export default function Signup() {
                             >
                                 <Tab
                                     icon={<EmailIcon />}
-                                    label="Email"
+                                    label={t('signup.tabEmail')}
                                     value="email"
                                     sx={{
                                         fontFamily: '"Cormorant Garamond", serif',
@@ -295,7 +297,7 @@ export default function Signup() {
                                 />
                                 <Tab
                                     icon={<PhoneIcon />}
-                                    label="Phone"
+                                    label={t('signup.tabPhone')}
                                     value="phone"
                                     sx={{
                                         fontFamily: '"Cormorant Garamond", serif',
@@ -311,7 +313,7 @@ export default function Signup() {
                                     <input type="password" style={{ display: 'none' }} />
 
                                     <TextField
-                                        label="Full Name"
+                                        label={t('signup.fullName')}
                                         variant="outlined"
                                         fullWidth
                                         margin="normal"
@@ -323,7 +325,7 @@ export default function Signup() {
                                     />
 
                                     <TextField
-                                        label="Email Address"
+                                        label={t('signup.emailAddress')}
                                         variant="outlined"
                                         fullWidth
                                         margin="normal"
@@ -343,7 +345,7 @@ export default function Signup() {
                                     />
 
                                     <TextField
-                                        label="Password"
+                                        label={t('signup.password')}
                                         variant="outlined"
                                         fullWidth
                                         margin="normal"
@@ -356,7 +358,7 @@ export default function Signup() {
                                     />
 
                                     <TextField
-                                        label="Confirm Password"
+                                        label={t('signup.confirmPassword')}
                                         variant="outlined"
                                         fullWidth
                                         margin="normal"
@@ -383,32 +385,32 @@ export default function Signup() {
                                             fontSize: '1.1rem'
                                         }}
                                     >
-                                        {loading ? <CircularProgress size={24} /> : 'Create Account'}
+                                        {loading ? <CircularProgress size={24} /> : t('signup.createAccount')}
                                     </Button>
                                 </form>
                             ) : (
                                 <>
                                     <Stepper activeStep={phoneStep} sx={{ mb: 3 }}>
                                         <Step>
-                                            <StepLabel>Phone Number</StepLabel>
+                                                <StepLabel>{t('signup.steps.phone')}</StepLabel>
                                         </Step>
                                         <Step>
-                                            <StepLabel>Verification</StepLabel>
+                                                <StepLabel>{t('signup.steps.verification')}</StepLabel>
                                         </Step>
                                     </Stepper>
 
                                     {phoneStep === 0 ? (
                                         <form onSubmit={handleSendVerificationCode} autoComplete="off">
                                             <TextField
-                                                label="Phone Number"
+                                                label={t('signup.phoneLabel')}
                                                 fullWidth
                                                 margin="normal"
                                                 variant="outlined"
                                                 value={phoneNumber}
                                                 onChange={(e) => setPhoneNumber(e.target.value)}
                                                 required
-                                                placeholder="Enter 10-digit mobile number"
-                                                helperText="Indian mobile number only (e.g., 9876543210)"
+                                                placeholder={t('signup.phonePlaceholder')}
+                                                helperText={t('signup.phoneHelper')}
                                                 autoComplete="off"
                                                 InputProps={{
                                                     startAdornment: (
@@ -438,13 +440,13 @@ export default function Signup() {
                                                     fontSize: '1.1rem'
                                                 }}
                                             >
-                                                {loading ? <CircularProgress size={24} /> : 'Send Verification Code'}
+                                                {loading ? <CircularProgress size={24} /> : t('signup.sendVerification')}
                                             </Button>
                                         </form>
                                     ) : (
                                         <form onSubmit={handleVerifyCode} autoComplete="off">
                                             <TextField
-                                                label="Full Name"
+                                                label={t('signup.fullName')}
                                                 variant="outlined"
                                                 fullWidth
                                                 margin="normal"
@@ -456,7 +458,7 @@ export default function Signup() {
                                             />
 
                                             <TextField
-                                                label="Verification Code"
+                                                label={t('signup.verificationCode')}
                                                 variant="outlined"
                                                 fullWidth
                                                 margin="normal"
@@ -481,7 +483,7 @@ export default function Signup() {
                                                     fontSize: '1.1rem'
                                                 }}
                                             >
-                                                {loading ? <CircularProgress size={24} /> : 'Verify & Create Account'}
+                                                {loading ? <CircularProgress size={24} /> : t('signup.verifyAndCreate')}
                                             </Button>
 
                                             <Button
@@ -491,7 +493,7 @@ export default function Signup() {
                                                 onClick={() => setPhoneStep(0)}
                                                 sx={{ mb: 2 }}
                                             >
-                                                Back to Phone Number
+                                                {t('signup.backToPhone')}
                                             </Button>
                                         </form>
                                     )}
@@ -509,7 +511,7 @@ export default function Signup() {
                                         }
                                     }}
                                 >
-                                    Already have an account? Sign in
+                                    {t('signup.alreadyHave')}
                                 </MuiLink>
                             </Box>
 
@@ -529,13 +531,13 @@ export default function Signup() {
                                         textAlign: 'center'
                                     }}
                                 >
-                                    Are you an Astrologer?
+                                    {t('signup.astrologerCtaTitle')}
                                 </Typography>
                                 <Typography
                                     variant="body2"
                                     sx={{ mb: 2, textAlign: 'center' }}
                                 >
-                                    Join our platform to offer your services and connect with clients.
+                                    {t('signup.astrologerCtaText')}
                                 </Typography>
                                 <Button
                                     fullWidth
@@ -547,7 +549,7 @@ export default function Signup() {
                                         fontSize: '1rem'
                                     }}
                                 >
-                                    Sign Up as Astrologer
+                                    {t('signup.astrologerCtaButton')}
                                 </Button>
                             </Box>
                         </Paper>
