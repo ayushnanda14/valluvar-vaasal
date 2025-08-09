@@ -888,7 +888,7 @@ export default function AdminDashboard() {
                 />
               </TableCell>
               <TableCell>
-                {testimonial.createdAt ? new Date(testimonial.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                {testimonial.createdAt ? new Date(testimonial.createdAt).toLocaleDateString() : 'N/A'}
               </TableCell>
               <TableCell>
                 {!testimonial.approved && (
