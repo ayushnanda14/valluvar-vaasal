@@ -1,0 +1,19 @@
+{
+  "name": "Valluvar Vaasal",
+  "short_name": "Valluvar",
+  "description": "Authentic Tamil astrology & spiritual guidance.",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#FFF8E1",
+  "theme_color": "#FF9800",
+  "icons": [
+    {
+      "src": "/images/vv-logo.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}
+
+

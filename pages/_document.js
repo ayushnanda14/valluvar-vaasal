@@ -11,6 +11,9 @@ export default class MyDocument extends Document {
         <Head>
           {this.props.emotionStyleTags}
           <link rel="shortcut icon" href="/favicon.ico" />
+          <link rel="icon" type="image/svg+xml" href="/images/vv-logo.svg" />
+          <link rel="apple-touch-icon" href="/images/vv-logo-192.png" />
+          <link rel="manifest" href="/manifest.webmanifest" />
           <link
             href="https://fonts.googleapis.com/css2?family=Poppins:wght@300;400;500;600;700&display=swap"
             rel="stylesheet"

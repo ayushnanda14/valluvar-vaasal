@@ -25,6 +25,7 @@ import AssignmentIcon from '@mui/icons-material/Assignment';
 import LanguageIcon from '@mui/icons-material/Language';
 import AccountCircleIcon from '@mui/icons-material/AccountCircle';
 import Link from 'next/link';
+import Image from 'next/image';
 import Head from 'next/head';
 import { useAuth } from '../context/AuthContext';
 import { useRouter } from 'next/router';
@@ -167,8 +168,12 @@ const Navbar = () => {
               py: 1,
               px: 2
             }}>
-              {/* Left side - Blank div for future logo */}
-              <Box sx={{ width: 40, height: 40 }} />
+              {/* Left side - Logo */}
+              <Link href="/" passHref legacyBehavior>
+                <a aria-label="Valluvar Vaasal Home" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <Image src="/images/vv-logo.svg" alt="Valluvar Vaasal" width={36} height={36} priority />
+                </a>
+              </Link>
 
               {/* Center - Title */}
               <Link href="/" passHref legacyBehavior>
@@ -288,6 +293,12 @@ const Navbar = () => {
                 px: { xs: 2, md: 3 }
               }}
             >
+              {/* Left-aligned Logo */}
+              <Link href="/" passHref legacyBehavior>
+                <a aria-label="Valluvar Vaasal Home" style={{ display: 'inline-flex', alignItems: 'center' }}>
+                  <Image src="/images/vv-logo.svg" alt="Valluvar Vaasal" width={32} height={32} />
+                </a>
+              </Link>
               {/* Brand – absolutely centered */}
               <Link href="/" passHref legacyBehavior>
                 <Typography

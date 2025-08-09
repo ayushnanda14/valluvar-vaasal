@@ -72,6 +72,114 @@ exports.verifyRazorpayPayment = onCall(
     }
 );
 
+// --- submitTestimonial (anonymous-friendly with App Check + rate limiting) ---
+exports.submitTestimonial = onCall(
+  {
+    region: 'us-central1',
+    enforceAppCheck: false,
+    consumeAppCheck: 'optional',
+  },
+  async (request) => {
+    try {
+      const data = request.data || {};
+      const { text, name, service, rating, isAnonymous } = data;
+
+      // Basic validation
+      const trimmedText = (text || '').toString().trim();
+      if (trimmedText.length < 10 || trimmedText.length > 1000) {
+        throw new HttpsError('invalid-argument', 'Testimonial text must be between 10 and 1000 characters.');
+      }
+
+      const allowedServices = new Set(['Marriage Matching', 'Jathak Prediction', 'Jathak Writing']);
+      if (!service || !allowedServices.has(service)) {
+        throw new HttpsError('invalid-argument', 'Invalid service selected.');
+      }
+
+      const numericRating = Number(rating);
+      if (!Number.isFinite(numericRating) || numericRating < 1 || numericRating > 5) {
+        throw new HttpsError('invalid-argument', 'Rating must be between 1 and 5.');
+      }
+
+      const finalName = isAnonymous ? 'Anonymous' : (name || '').toString().trim();
+      if (!isAnonymous && finalName.length === 0) {
+        throw new HttpsError('invalid-argument', 'Name is required unless submitting anonymously.');
+      }
+
+      // Naive content sanitization / profanity guard (minimal)
+      const blocked = ['http://', 'https://']; // prevent links
+      if (blocked.some((b) => trimmedText.toLowerCase().includes(b))) {
+        throw new HttpsError('failed-precondition', 'Links are not allowed in testimonials.');
+      }
+
+      // Rate limiting (per App Check appId + IP hash) - max 3 per 24h, 1 per minute
+      const appId = request.app?.appId || 'unknown-app';
+      const ip = request.rawRequest?.ip || request.rawRequest?.headers['x-forwarded-for'] || '0.0.0.0';
+      const rateKey = crypto
+        .createHash('sha256')
+        .update(`${appId}::${ip}`)
+        .digest('hex');
+
+      const db = admin.firestore();
+      const now = Date.now();
+      const oneMinuteMs = 60 * 1000;
+      const oneDayMs = 24 * 60 * 60 * 1000;
+      const rateDocRef = db.collection('rateLimits').doc(`testimonials:${rateKey}`);
+      const rateSnap = await rateDocRef.get();
+      const rateData = rateSnap.exists ? rateSnap.data() : {};
+
+      const lastAt = rateData.lastSubmittedAt || 0;
+      const windowStart = rateData.windowStart || 0;
+      const count = rateData.count || 0;
+
+      if (now - lastAt < oneMinuteMs) {
+        throw new HttpsError('resource-exhausted', 'Please wait a minute before submitting another testimonial.');
+      }
+
+      if (now - windowStart > oneDayMs) {
+        // reset window
+        rateData.windowStart = now;
+        rateData.count = 0;
+      }
+
+      if (rateData.count >= 3) {
+        throw new HttpsError('resource-exhausted', 'Submission limit reached. Please try again tomorrow.');
+      }
+
+      // Build testimonial document
+      const testimonialDoc = {
+        text: trimmedText,
+        name: finalName || 'Anonymous',
+        service,
+        rating: numericRating,
+        createdAt: admin.firestore.FieldValue.serverTimestamp(),
+        approved: false,
+        userId: request.auth?.uid || null,
+        // Store non-reversible rate key for abuse tracing (no raw IP)
+        rateKey,
+      };
+
+      await db.collection('testimonials').add(testimonialDoc);
+
+      // Update rate limit state
+      await rateDocRef.set(
+        {
+          lastSubmittedAt: now,
+          windowStart: rateData.windowStart ?? now,
+          count: (rateData.count ?? 0) + 1,
+          updatedAt: now,
+        },
+        { merge: true }
+      );
+
+      return { success: true };
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      console.error('submitTestimonial error:', err);
+      throw new HttpsError('internal', 'Failed to submit testimonial');
+    }
+  }
+);
+
 // --- createRazorpayOrder function (ensure it uses v2 onCall) ---
 exports.createRazorpayOrder = onCall(
     { region: 'us-central1', enforceAppCheck: false, consumeAppCheck: 'optional' },

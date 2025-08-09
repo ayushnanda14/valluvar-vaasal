@@ -20,8 +20,8 @@ import {
 import Head from 'next/head';
 import Testimonials from '../src/components/testimonials';
 import { useAuth } from '../src/context/AuthContext';
-import { collection, addDoc, serverTimestamp } from 'firebase/firestore';
-import { db } from '../src/firebase/firebaseConfig';
+import { httpsCallable } from 'firebase/functions';
+import { functions } from '../src/firebase/firebaseConfig';
 import { useTranslation } from 'react-i18next';
 
 export default function TestimonialsPage() {
@@ -63,24 +63,23 @@ export default function TestimonialsPage() {
             return;
         }
 
-        if (!currentUser && !name.trim()) {
+        if (!isAnonymous && !name.trim()) {
             setError(t('testimonials.validation.nameRequired'));
             setSubmitting(false);
             return;
         }
 
         try {
+            const submitFn = httpsCallable(functions, 'submitTestimonial');
             const testimonialData = {
                 text: testimonialText.trim(),
-                name: isAnonymous ? 'Anonymous' : (name || currentUser?.displayName || 'Anonymous'),
+                name: name || currentUser?.displayName || '',
                 service,
                 rating,
-                createdAt: serverTimestamp(),
-                approved: false, // New testimonials need approval
-                userId: currentUser?.uid || null
+                isAnonymous
             };
 
-            await addDoc(collection(db, 'testimonials'), testimonialData);
+            await submitFn(testimonialData);
             setSuccess(true);
             setTestimonialText('');
             setName('');
@@ -207,7 +206,8 @@ export default function TestimonialsPage() {
                                     required
                                 />
 
-                                {!currentUser && <TextField
+                                {!isAnonymous && (
+                                <TextField
                                     label={t('testimonials.name')}
                                     variant="outlined"
                                     fullWidth
@@ -221,7 +221,8 @@ export default function TestimonialsPage() {
                                         sx: { fontFamily: '"Cormorant Garamond", serif' }
                                     }}
                                     required
-                                />}
+                                />
+                                )}
 
                                 <FormControl
                                     fullWidth
@@ -278,7 +279,7 @@ export default function TestimonialsPage() {
                                     />
                                 </Box>
 
-                                {currentUser && <FormControlLabel
+                                <FormControlLabel
                                     control={
                                         <Checkbox
                                             checked={isAnonymous}
@@ -298,7 +299,7 @@ export default function TestimonialsPage() {
                                         </Typography>
                                     }
                                     sx={{ mb: 3 }}
-                                />}
+                                />
 
                                 <Typography
                                     variant="body2"
