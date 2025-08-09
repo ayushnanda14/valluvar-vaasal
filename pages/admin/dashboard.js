@@ -831,7 +831,7 @@ export default function AdminDashboard() {
                       ))}
                     </TableCell>
                     <TableCell>
-                      {user.createdAt ? new Date(user.createdAt.toDate()).toLocaleDateString() : 'N/A'}
+                      {user?.createdAt ? new Date(user?.createdAt).toLocaleDateString() : 'N/A'}
                     </TableCell>
                     <TableCell>
                       <IconButton
