@@ -17,7 +17,8 @@ import {
     CardContent,
     CardActionArea,
     LinearProgress,
-    Collapse
+    Collapse,
+    Chip
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -50,6 +51,7 @@ import {
 } from '../services/chatService';
 import { doc, onSnapshot } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
+import { formatLocalDate, formatLocalTime } from '@/utils/utils';
 import FilePreviewModal from './FilePreviewModal';
 import FeedbackPrompt from './FeedbackPrompt';
 import GenericModal from './GenericModal';
@@ -1167,18 +1169,42 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                                 </Typography>
                                                             </Paper>
                                                         ) : (
-                                                            // Regular system message
-                                                            <Paper
-                                                                sx={{
-                                                                    display: 'inline-block',
-                                                                    px: 2,
-                                                                    py: 1,
-                                                                    bgcolor: 'grey.100',
-                                                                    maxWidth: '80%'
-                                                                }}
-                                                            >
-                                                                <Typography variant="body2">{message.text}</Typography>
-                                                            </Paper>
+                                                    // Regular system message with structured metadata chips
+                                                    <Paper
+                                                        sx={{
+                                                            display: 'inline-block',
+                                                            px: 2,
+                                                            py: 1,
+                                                            bgcolor: 'grey.100',
+                                                            maxWidth: '90%'
+                                                        }}
+                                                    >
+                                                        <Typography variant="body2" sx={{ mb: message.metadata ? 1 : 0 }}>{message.text}</Typography>
+                                                        {message.metadata && (
+                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                                {message.metadata.jathakWriting && (
+                                                                    <>
+                                                                        <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
+                                                                        <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
+                                                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
+                                                                        <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
+                                                                    </>
+                                                                )}
+                                                                {message.metadata.jathakPrediction && (
+                                                                    <>
+                                                                        <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
+                                                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
+                                                                        {message.metadata.jathakPrediction.birthTime && (
+                                                                            <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
+                                                                        )}
+                                                                        {message.metadata.jathakPrediction.zodiac && (
+                                                                            <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
+                                                                        )}
+                                                                    </>
+                                                                )}
+                                                            </Box>
+                                                        )}
+                                                    </Paper>
                                                         )}
                                                     </Box>
                                                 ) : (

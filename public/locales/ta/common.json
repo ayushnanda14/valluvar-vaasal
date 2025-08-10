@@ -332,6 +332,19 @@
       }
     }
   },
+  "jathakPrediction": {
+    "form": {
+      "title": "விவரங்களை உள்ளிடவும்",
+      "name": "முழு பெயர்",
+      "birthDate": "பிறந்த தேதி",
+      "birthTime": "பிறந்த நேரம் (விருப்பம்)",
+      "zodiac": "இராசி / நட்சத்திரம் (விருப்பம்)",
+      "errors": {
+        "nameRequired": "பெயர் தேவை",
+        "birthDateRequired": "பிறந்த தேதி தேவை"
+      }
+    }
+  },
   "uploadLabels": {
     "firstPerson": "முதல் நபர்",
     "secondPerson": "இரண்டாம் நபர்",

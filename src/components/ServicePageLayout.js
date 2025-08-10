@@ -39,12 +39,14 @@ import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'fire
 import { db, storage } from '../firebase/firebaseConfig';
 import FileUploadSection from './FileUploadSection';
 import JathakWritingForm from './JathakWritingForm';
+import JathakPredictionForm from './JathakPredictionForm';
 import PaymentSummary from './PaymentSummary';
 import { getDownloadURL, ref, uploadBytes } from 'firebase/storage';
 import { SERVICE_TYPES } from '@/utils/constants';
 import PaymentButton from './PaymentButton';
 import { useTranslation } from 'react-i18next';
 import { createPaymentRecords } from '../services/createPaymentRecords';
+import { formatLocalDate, formatLocalTime } from '@/utils/utils';
 
 // Define the list of districts (should match the signup list)
 const TAMIL_NADU_DISTRICTS = [
@@ -68,7 +70,7 @@ export default function ServicePageLayout({
 }) {
   const theme = useTheme();
   const router = useRouter();
-  const { currentUser } = useAuth();
+  const { currentUser, loading: authLoading, authInitialized } = useAuth();
   const { t, i18n } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
 
@@ -100,6 +102,13 @@ export default function ServicePageLayout({
     additionalNotes: ''
   });
   const [jathakFormErrors, setJathakFormErrors] = useState({});
+  const [predictionFormData, setPredictionFormData] = useState({
+    name: '',
+    birthDate: '',
+    birthTime: '',
+    zodiac: ''
+  });
+  const [predictionFormErrors, setPredictionFormErrors] = useState({});
 
   // Load state from localStorage on mount
   useEffect(() => {
@@ -247,12 +256,14 @@ export default function ServicePageLayout({
     fetchAstrologersByDistrict();
   }, [selectedDistrict, serviceType, step, t]);
 
-  // Check if user is logged in
+  // Check if user is logged in (wait until auth is initialized)
   useEffect(() => {
+    if (!authInitialized) return; // wait for auth to finish restoring session
     if (!currentUser) {
-      router.push(`/login?redirect=${router.pathname}`);
+      const redirectTo = encodeURIComponent(router.asPath || router.pathname);
+      router.push(`/login?redirect=${redirectTo}`);
     }
-  }, [currentUser, router]);
+  }, [authInitialized, currentUser, router]);
 
   const handleAstrologerSelect = (astrologer) => {
     setSelectedAstrologers(prev => {
@@ -291,6 +302,17 @@ export default function ServicePageLayout({
     return errors;
   };
 
+  const validatePredictionForm = () => {
+    const errors = {};
+    if (!predictionFormData.name?.trim()) {
+      errors.name = t('jathakPrediction.form.errors.nameRequired', 'Name is required');
+    }
+    if (!predictionFormData.birthDate) {
+      errors.birthDate = t('jathakPrediction.form.errors.birthDateRequired', 'Date of birth is required');
+    }
+    return errors;
+  };
+
   const handleNextStep = () => {
     setError('');
     if (step === 1) {
@@ -304,15 +326,28 @@ export default function ServicePageLayout({
         }
         setJathakFormErrors({});
       } else {
+        // For jathak prediction, validate minimal form before files
+        if (serviceType === 'jathakPrediction') {
+          const formErrors = validatePredictionForm();
+          if (Object.keys(formErrors).length > 0) {
+            setPredictionFormErrors(formErrors);
+            setToast({ open: true, message: t('jathakPrediction.form.errors.birthDateRequired'), severity: 'error' });
+            return;
+          }
+          setPredictionFormErrors({});
+        }
         if (dualUpload && isMobile) {
           // For mobile dual upload, let the substep buttons handle navigation
           return;
         }
         
-        if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
-          const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: defaultDualUploadLabels[0], label2: defaultDualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
-          setToast({ open: true, message: errorMessage, severity: 'error' });
-          return;
+        // For prediction, document upload is optional
+        if (serviceType !== 'jathakPrediction') {
+          if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
+            const errorMessage = dualUpload ? t('servicePage.errors.uploadDual', { label1: defaultDualUploadLabels[0], label2: defaultDualUploadLabels[1] }) : t('servicePage.errors.uploadSingle');
+            setToast({ open: true, message: errorMessage, severity: 'error' });
+            return;
+          }
         }
       }
       
@@ -503,33 +538,69 @@ export default function ServicePageLayout({
           }
 
                   // Add a system message about the uploaded files or form data
-        const systemMessageText = serviceType === 'jathakWriting' && jathakWritingOption === 'baby'
-          ? t('servicePage.systemMessage.jathakFormSubmitted', {
-              name: currentUser.displayName || 'User',
-              personName: jathakFormData.name,
-              birthPlace: jathakFormData.birthPlace,
-              birthDate: jathakFormData.birthDate,
-              birthTime: jathakFormData.birthTime
-            })
-          : t('servicePage.systemMessage.uploadedFiles', {
-              name: currentUser.displayName || 'User',
-              count: fileReferences.length
-            });
+        let systemMessageText;
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          systemMessageText = t('systemMessage.jathakFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime
+          });
+        } else if (serviceType === 'jathakPrediction') {
+          const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
+          const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
+          systemMessageText = t('systemMessage.predictionFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: predictionFormData.name,
+            birthDate: formatLocalDate(predictionFormData.birthDate),
+            timePart,
+            zodiacPart
+          });
+        } else {
+          systemMessageText = t('systemMessage.uploadedFiles', {
+            name: currentUser.displayName || 'User',
+            count: fileReferences.length
+          });
+        }
 
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+        // Build a consistent payload for system message metadata
+        const messagePayload = {
           senderId: 'system',
           text: systemMessageText,
           timestamp: serverTimestamp(),
           read: false,
-          ...(serviceType === 'jathakWriting' && jathakWritingOption === 'baby' 
-            ? { jathakFormData: jathakFormData }
-            : { fileReferences: fileReferences.map(f => ({
-                name: f.name,
-                url: f.url,
-                type: f.type
-              }))
-          })
-        });
+          metadata: {
+            serviceType,
+            jathakWriting: undefined,
+            jathakPrediction: undefined,
+            files: undefined,
+          }
+        };
+
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          messagePayload.metadata.jathakWriting = {
+            name: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime,
+            additionalNotes: jathakFormData.additionalNotes,
+            option: jathakWritingOption
+          };
+        } else if (serviceType === 'jathakPrediction') {
+          messagePayload.metadata.jathakPrediction = {
+            name: predictionFormData.name,
+            birthDate: predictionFormData.birthDate,
+            birthTime: predictionFormData.birthTime || null,
+            zodiac: predictionFormData.zodiac || null
+          };
+        }
+
+        if (fileReferences.length > 0) {
+          messagePayload.metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
+        }
+
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), messagePayload);
         } catch (err) {
           console.error('Error uploading files:', err);
           setError(t('servicePage.errors.fileUploadFailed'));
@@ -563,9 +634,9 @@ export default function ServicePageLayout({
     setToast({ ...toast, open: false });
   };
 
-  if (!currentUser) {
-    return <CircularProgress />;
-  }
+  // While auth is initializing, show a loader. If no user after init, we'll redirect.
+  if (!authInitialized) return <CircularProgress />;
+  if (!currentUser) return null;
 
   return (
     <>
@@ -795,6 +866,15 @@ export default function ServicePageLayout({
                     </Box>
                   )}
 
+                  {/* Jathak Prediction minimal form */}
+                  {serviceType === 'jathakPrediction' && (
+                    <JathakPredictionForm
+                      formData={predictionFormData}
+                      onFormDataChange={setPredictionFormData}
+                      errors={predictionFormErrors}
+                    />
+                  )}
+
                   {/* Show preserved selections */}
                   {selectedDistrict && selectedAstrologers.length > 0 && (
                     <Alert severity="info" sx={{ mb: 3 }}>
@@ -832,7 +912,7 @@ export default function ServicePageLayout({
                       onFormDataChange={setJathakFormData}
                       errors={jathakFormErrors}
                     />
-                  ) : (
+                   ) : (
                     dualUpload ? (
                       isMobile ? (
                         // Mobile: Step-wise upload

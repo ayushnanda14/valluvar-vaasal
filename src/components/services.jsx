@@ -21,11 +21,9 @@ const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 
 const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay, isLoggedIn }) => {
-    const theme = useTheme();
+  const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
-  const isDesktop = useMediaQuery(theme.breakpoints.up('md'));
-  const { t } = useTranslation('common');
   const router = useRouter();
 
   // Determine the optimal object position based on screen size
@@ -39,14 +37,23 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
   }
 
   // Dynamic card dimensions based on viewport
-  const cardHeight = {
+  const cardHeight = isLoggedIn ? {
+    xs: '300px',
+    md: '350px',
+    lg: '400px',
+    xl: '400px'
+  } : {
     xs: '350px',
     md: '400px',
     lg: '500px',
     xl: '500px'
   };
 
-  const cardWidth = '100%';
+  const cardWidth = {
+    xs: '85vw',
+    sm: '50vw',
+    md: '100%'
+  };
 
   const imageHeight = {
     xs: '200px',
@@ -66,7 +73,7 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
       height: '100%',
       cursor: isLoggedIn ? 'pointer' : 'default',
       '&:hover': {
-        transform: isLoggedIn ? 'translateY(-7px)' : 'none',
+        transform: isLoggedIn ? 'translateY(-7px)' : 'translateY(-3px)',
         transition: 'all 0.3s ease'
       },
       '&:not(:hover)': {
@@ -94,13 +101,15 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
             transform: isLoggedIn ? 'translateY(-5px)' : 'none',
             transition: 'all 0.3s ease',
             height: 'auto',
-            overflow: 'visible',
+            // overflow: 'visible',
+            // borderRadius: '16px',
             '& .service-description': {
               transition: 'all 0.3s ease',
               WebkitLineClamp: 'unset',
               overflow: 'visible',
               display: 'block',
-              maxHeight: '1000px'
+              maxHeight: '1000px',
+              // borderRadius: '16px',
             },
             '& .MuiCardContent-root': {
               overflow: 'visible'
@@ -169,24 +178,24 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
           {!isLoggedIn ? (
             <>
               <Typography
-              className="service-description"
-              variant="body1"
-              sx={{
-                mb: 2,
-                fontFamily: '"Cormorant Garamond", serif',
-                fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
-                color: theme.palette.secondary.main,
-                overflow: 'hidden',
-                display: '-webkit-box',
-                WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
-                WebkitBoxOrient: 'vertical',
-                lineHeight: 1.4,
-                transition: 'max-height 0.3s ease',
-                flexGrow: 1
-              }}
-            >
-              {description}
-            </Typography>
+                className="service-description"
+                variant="body1"
+                sx={{
+                  mb: 2,
+                  fontFamily: '"Cormorant Garamond", serif',
+                  fontSize: { xs: '0.95rem', sm: '1.05rem', md: '1.1rem' },
+                  color: theme.palette.secondary.main,
+                  overflow: 'hidden',
+                  display: '-webkit-box',
+                  WebkitLineClamp: { xs: 3, sm: 4, md: 4 },
+                  WebkitBoxOrient: 'vertical',
+                  lineHeight: 1.4,
+                  transition: 'max-height 0.3s ease',
+                  flexGrow: 1
+                }}
+              >
+                {description}
+              </Typography>
 
             </>
           ) : (
@@ -301,7 +310,7 @@ const Services = () => {
             <Box
               key={index}
               sx={{
-                flexBasis: { xs: '100%', sm: '50%', md: '30%' },
+                // flexBasis: { xs: '100%', sm: '50%', md: '33vw' },
                 maxWidth: { xs: '100%', sm: '50%', md: '30%' },
                 display: 'flex',
                 justifyContent: 'center'

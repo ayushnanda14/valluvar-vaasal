@@ -59,6 +59,7 @@ import { db } from '../../firebase/firebaseConfig';
 import FilePreviewModal from '../FilePreviewModal';
 import RefundDialog from '../RefundDialog';
 import { SERVICE_TYPES } from '@/utils/constants';
+import { formatLocalDate, formatLocalTime } from '@/utils/utils';
 import {
   getAllAdmins,
   autoAssignAdminToChat,
@@ -1214,7 +1215,33 @@ const ChatMonitor = ({ userId, userType }) => {
 
                             {/* Message text (only show if not a voice message) */}
                             {message.type !== 'voice' && (
-                              <Typography variant="body1">{message.text}</Typography>
+                              <>
+                                <Typography variant="body1" sx={{ mb: message.metadata ? 1 : 0 }}>{message.text}</Typography>
+                                {message.metadata && (
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
+                                  {message.metadata.jathakWriting && (
+                                    <>
+                                      <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
+                                      <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
+                                      <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
+                                      <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
+                                    </>
+                                  )}
+                                  {message.metadata.jathakPrediction && (
+                                    <>
+                                      <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
+                                      <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
+                                      {message.metadata.jathakPrediction.birthTime && (
+                                        <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
+                                      )}
+                                      {message.metadata.jathakPrediction.zodiac && (
+                                        <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
+                                      )}
+                                    </>
+                                  )}
+                                </Box>
+                                )}
+                              </>
                             )}
 
                             {/* Single file reference */}

@@ -194,6 +194,7 @@ const Testimonials = ({ isTestimonialsPage }) => {
                 key={testimonial.id}
                 sx={{
                   minWidth: { xs: '280px', sm: '320px', md: '360px' },
+                  maxWidth: { xs: '280px', sm: '320px', md: '360px' },
                   flexShrink: 0,
                 }}
               >

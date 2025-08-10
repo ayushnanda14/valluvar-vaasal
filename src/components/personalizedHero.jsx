@@ -255,7 +255,7 @@ const PersonalizedHero = () => {
                 {t('personalizedHero.chooseFavourite', 'Choose your favourite among the best astrologers from your favourite district.')}
               </Typography>
 
-              {!currentUser && (
+              {/* {!currentUser && (
                 <MotionButton
                   variant="contained"
                   color="primary"
@@ -273,7 +273,7 @@ const PersonalizedHero = () => {
                 >
                   {t('personalizedHero.ctaGuest')}
                 </MotionButton>
-              )}
+              )} */}
             </MotionBox>
           </Box>
 

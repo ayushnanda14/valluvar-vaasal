@@ -253,7 +253,7 @@
     "newReadingButton": "New Reading",
     "seeAllChatsButton": "See All Chats",
     "guestPlaceholder": "See what others are saying about their journey.",
-    "chooseFavourite": "Choose your favourite among the best astrologers from your favourite district."
+    "chooseFavourite": "Choose your favourite among the best astrologers from your district."
   },
   "date": {
     "today": "Today",
@@ -338,14 +338,28 @@
       }
     }
   },
+  "jathakPrediction": {
+    "form": {
+      "title": "Enter Details",
+      "name": "Full Name",
+      "birthDate": "Date of Birth",
+      "birthTime": "Birth Time (optional)",
+      "zodiac": "Zodiac / Natchathiram (optional)",
+      "errors": {
+        "nameRequired": "Name is required",
+        "birthDateRequired": "Date of birth is required"
+      }
+    }
+  },
   "uploadLabels": {
     "firstPerson": "First Person",
     "secondPerson": "Second Person",
     "jathak": "Jathak"
   },
   "systemMessage": {
-    "uploadedFiles": "{{name}} has uploaded {{count}} document(s) for review.",
-    "jathakFormSubmitted": "{{name}} has submitted birth details for {{personName}} (Birth Place: {{birthPlace}}, Date: {{birthDate}}, Time: {{birthTime}}) for jathak writing."
+    "uploadedFiles": "{{name}} uploaded {{count}} document(s) for review.",
+    "jathakFormSubmitted": "{{name}} submitted birth details for {{personName}} (Birth Place: {{birthPlace}}, Date: {{birthDate}}, Time: {{birthTime}}).",
+    "predictionFormSubmitted": "{{name}} submitted details for Jathak Prediction (Name: {{personName}}, DOB: {{birthDate}}{{timePart}}{{zodiacPart}})."
   },
   "fileUpload": {
     "dragDropTitle": "Drag & Drop Files Here",
