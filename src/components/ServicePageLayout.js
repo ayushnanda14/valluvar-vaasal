@@ -314,6 +314,7 @@ export default function ServicePageLayout({
 
   const handleNextStep = () => {
     setError('');
+    console.log('serviceType', serviceType, step, uploadSubstep, files, secondFiles);
     if (step === 1) {
       // For jathak writing service with baby option, validate form instead of files
       if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
@@ -335,10 +336,7 @@ export default function ServicePageLayout({
           }
           setPredictionFormErrors({});
         }
-        if (dualUpload && isMobile) {
-          // For mobile dual upload, let the substep buttons handle navigation
-          return;
-        }
+        // Allow proceeding on mobile dual upload once both files are present
 
         // For prediction, document upload is optional
         if (serviceType !== 'jathakPrediction') {
@@ -956,7 +954,7 @@ export default function ServicePageLayout({
                           {uploadSubstep === 2 && (
                             <Box>
                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
+                                {t('servicePage.steps.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
                               </Typography>
                               <FileUploadSection
                                 files={secondFiles}
@@ -985,11 +983,12 @@ export default function ServicePageLayout({
                                 >
                                   {t('servicePage.previous', 'Previous')}
                                 </Button>
-                                <Button
+                                {/* <Button
                                   variant="contained"
                                   onClick={() => {
                                     if (secondFiles.length > 0) {
                                       // Both files uploaded, proceed to next step
+                                      console.log('proceeding to next step', uploadSubstep);
                                       handleNextStep();
                                     } else {
                                       setToast({
@@ -1010,7 +1009,7 @@ export default function ServicePageLayout({
                                   }}
                                 >
                                   {t('servicePage.proceedToNext', 'Proceed to Next Step')}
-                                </Button>
+                                </Button> */}
                               </Box>
                             </Box>
                           )}
@@ -1071,6 +1070,7 @@ export default function ServicePageLayout({
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
+                       disabled={dualUpload && isMobile && secondFiles.length === 0}
                       sx={{
                         py: { xs: 1.5, md: 2 },
                         px: { xs: 2, md: 4 },

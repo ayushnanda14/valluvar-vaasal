@@ -4,6 +4,18 @@
     "title": "Authentic Tamil Astrology & Spiritual Guidance",
     "description": "Explore ancient Tamil astrology with Valluvar Vaasal. Get personalized Jathakam predictions, marriage matching, and spiritual insights."
   },
+  "common": {
+    "loading": "Loading...",
+    "error": "Error",
+    "success": "Success",
+    "warning": "Warning",
+    "info": "Info",
+    "close": "Close",
+    "cancel": "Cancel",
+    "save": "Save",
+    "bride": "Bride",
+    "groom": "Groom"
+  },
   "navbar": {
     "home": "Home",
     "services": "Services",
@@ -423,5 +435,16 @@
     "expiredWithFeedback": "The 24-hour conversation window has passed.",
     "expiredWithoutFeedback": "You can no longer send messages in this conversation (24-hour window expired).",
     "thankYouForFeedback": "Thank you for your feedback!"
+  },
+  "admin": {
+    "title": "Admin Dashboard",
+    "description": "Manage your admin dashboard on Valluvar Vaasal.",
+    "welcome": "Welcome, {name}!",
+    "bookReading": "Book a New Reading",
+    "viewAstrologers": "View Astrologers",
+    "recentReadings": "Recent Readings",
+    "noReadings": "No recent readings found.",
+    "viewAllReadings": "View All Readings",
+    "exploreServices": "Explore Our Services"
   }
 }

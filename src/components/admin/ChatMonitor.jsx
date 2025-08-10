@@ -78,11 +78,6 @@ import { convertTimestampToTime } from '@/utils/utils';
 const ChatMonitor = ({ userId, userType }) => {
   const theme = useTheme();
 
-  // Debug log to check if userId is available
-  useEffect(() => {
-    console.log('ChatMonitor userId:', userId);
-  }, [userId]);
-
   const [chats, setChats] = useState([]);
   const [selectedChat, setSelectedChat] = useState(null);
   const [loading, setLoading] = useState(true);
@@ -230,7 +225,6 @@ const ChatMonitor = ({ userId, userType }) => {
 
           setChats(chatsList);
           setLoading(false);
-          console.log('Regular chats loaded:', chatsList);
         }, (error) => {
           console.error('Error in regular chats listener:', error);
           setLoading(false);
@@ -316,7 +310,7 @@ const ChatMonitor = ({ userId, userType }) => {
     };
 
     // If there's a selected chat ID, fetch its messages
-    console.log('selectedChat', selectedChat);
+    // console.log('selectedChat', selectedChat);
     if (selectedChat?.id) {
       fetchChatMessages(selectedChat.id);
     }
@@ -391,7 +385,7 @@ const ChatMonitor = ({ userId, userType }) => {
       try {
         const users = await getAllAssignableUsers();
         setAssignableUsers(users);
-        console.log('users', users);
+        // console.log('users', users);
         setAdmins(users.admins); // Keep for backward compatibility
         setSupportUsers(users.supportUsers.concat(users.admins));
       } catch (error) {
@@ -565,7 +559,7 @@ const ChatMonitor = ({ userId, userType }) => {
         });
 
         setAdminChats(adminChatsMap);
-        console.log('Admin chats loaded:', adminChatsMap);
+        //  console.log('Admin chats loaded:', adminChatsMap);
       } catch (error) {
         console.error('Error loading admin chats:', error);
       }
@@ -842,7 +836,7 @@ const ChatMonitor = ({ userId, userType }) => {
 
       try {
         const { getPaymentForChat } = await import('../../services/refundService');
-        console.log('selectedChat', selectedChat);
+        //  console.log('selectedChat', selectedChat);
         const payment = await getPaymentForChat(selectedChat.id);
         setPaymentInfo(payment);
       } catch (error) {
@@ -1218,28 +1212,28 @@ const ChatMonitor = ({ userId, userType }) => {
                               <>
                                 <Typography variant="body1" sx={{ mb: message.metadata ? 1 : 0 }}>{message.text}</Typography>
                                 {message.metadata && (
-                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
-                                  {message.metadata.jathakWriting && (
-                                    <>
-                                      <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
-                                      <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
-                                      <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
-                                      <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
-                                    </>
-                                  )}
-                                  {message.metadata.jathakPrediction && (
-                                    <>
-                                      <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
-                                      <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
-                                      {message.metadata.jathakPrediction.birthTime && (
-                                        <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
-                                      )}
-                                      {message.metadata.jathakPrediction.zodiac && (
-                                        <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
-                                      )}
-                                    </>
-                                  )}
-                                </Box>
+                                  <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mt: 0.5 }}>
+                                    {message.metadata.jathakWriting && (
+                                      <>
+                                        <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
+                                        <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
+                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
+                                        <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
+                                      </>
+                                    )}
+                                    {message.metadata.jathakPrediction && (
+                                      <>
+                                        <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
+                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
+                                        {message.metadata.jathakPrediction.birthTime && (
+                                          <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
+                                        )}
+                                        {message.metadata.jathakPrediction.zodiac && (
+                                          <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
+                                        )}
+                                      </>
+                                    )}
+                                  </Box>
                                 )}
                               </>
                             )}
@@ -1472,7 +1466,7 @@ const ChatMonitor = ({ userId, userType }) => {
                               color="text.secondary"
                               sx={{ mt: 0.5 }}
                             >
-                              {convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                              {message.timestamp && (convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time')}
                             </Typography>
                           </Box>
                         </ListItem>
@@ -1742,7 +1736,7 @@ const ChatMonitor = ({ userId, userType }) => {
                         {hasAdminChat ? (
                           chat.supportUserId ? (
                             <Chip
-                              label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
+                              label={supportUsers.find(a => a.id === chat.supportUserId || a.id === chat.adminId)?.displayName || 'Unknown Support'}
                               color="primary"
                               size="small"
                               icon={<AdminPanelSettingsIcon />}
@@ -1752,7 +1746,14 @@ const ChatMonitor = ({ userId, userType }) => {
                           )
                         ) : chat.supportUserId ? (
                           <Chip
-                            label={supportUsers.find(a => a.id === chat.supportUserId)?.displayName || 'Unknown Support'}
+                            label={supportUsers.find(a => a.id === chat.supportUserId || a.id === chat.adminId)?.displayName || 'Unknown Support'}
+                            color="primary"
+                            size="small"
+                            icon={<AdminPanelSettingsIcon />}
+                          />
+                        ) : chat.adminId ? (
+                          <Chip
+                            label={supportUsers.find(a => a.id === chat.adminId)?.displayName || 'Unknown Support'}
                             color="primary"
                             size="small"
                             icon={<AdminPanelSettingsIcon />}

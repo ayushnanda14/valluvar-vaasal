@@ -62,7 +62,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
-import { createSupportSignupLink, getAllSignupLinks } from '../../src/services/adminService';
+import { createSupportSignupLink } from '../../src/services/adminService';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
@@ -332,8 +332,8 @@ export default function AdminDashboard() {
       // Set up real-time listener for pending astrologers
       const pendingAstrologersRef = collection(db, 'users');
       const pendingAstrologersQuery = query(
-        pendingAstrologersRef, 
-        where('roles', 'array-contains', 'astrologer'), 
+        pendingAstrologersRef,
+        where('roles', 'array-contains', 'astrologer'),
         where('verificationStatus', 'in', ['pending', 'rejected'])
       );
 
@@ -355,7 +355,7 @@ export default function AdminDashboard() {
       // Set up real-time listener for all astrologers
       const allAstrologersRef = collection(db, 'users');
       const allAstrologersQuery = query(
-        allAstrologersRef, 
+        allAstrologersRef,
         where('roles', 'array-contains', 'astrologer')
       );
 
@@ -1117,17 +1117,17 @@ export default function AdminDashboard() {
         ) : (
           <TableContainer component={Paper} elevation={0}>
             <Table>
-                          <TableHead>
-              <TableRow>
-                <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Verification Status</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Services</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
-              </TableRow>
-            </TableHead>
+              <TableHead>
+                <TableRow>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Email</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Phone</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Verification Status</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Services</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
+                  <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
+                </TableRow>
+              </TableHead>
               <TableBody>
                 {allAstrologers.map((astrologer) => (
                   <TableRow

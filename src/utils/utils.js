@@ -1,5 +1,8 @@
 const convertTimestampToTime = (timestamp) => {
-    return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+    if (timestamp && timestamp.seconds && timestamp.nanoseconds) {
+        return new Date(timestamp.seconds * 1000 + timestamp.nanoseconds / 1000000);
+    }
+    return null;
 }
 
 // Format a date string (YYYY-MM-DD) to a human readable local format

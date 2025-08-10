@@ -10,7 +10,7 @@ export default function MarriageMatching() {
       description={t('services.marriageMatching.description', 'Upload horoscopes and get marriage compatibility analysis from our expert astrologers.')}
       serviceType="marriageMatching"
       dualUpload={true}
-      dualUploadLabels={['Bride', 'Groom']}
+      dualUploadLabels={[t('common.bride'), t('common.groom')]}
       multipleUploads={true}
     />
   );
