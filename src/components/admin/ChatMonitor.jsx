@@ -74,6 +74,7 @@ import {
   getChatExpiryStatus
 } from '../../services/chatService';
 import { convertTimestampToTime } from '@/utils/utils';
+import { playNotificationSound } from '@/utils/notificationSound';
 
 const ChatMonitor = ({ userId, userType }) => {
   const theme = useTheme();
@@ -117,6 +118,21 @@ const ChatMonitor = ({ userId, userType }) => {
   // Admin notifications state
   const [notifications, setNotifications] = useState([]);
   const [showNotifications, setShowNotifications] = useState(false);
+  // Admin-controlled per-chat sound preference for astrologer-client chats
+  const [soundEnabledForChat, setSoundEnabledForChat] = useState(() => {
+    if (typeof window === 'undefined') return {};
+    try {
+      const saved = localStorage.getItem('adminSoundEnabledForChat');
+      return saved ? JSON.parse(saved) : {};
+    } catch {
+      return {};
+    }
+  });
+  const toggleSoundForChat = (chatId) => {
+    const newPrefs = { ...soundEnabledForChat, [chatId]: !soundEnabledForChat[chatId] };
+    setSoundEnabledForChat(newPrefs);
+    try { localStorage.setItem('adminSoundEnabledForChat', JSON.stringify(newPrefs)); } catch {}
+  };
 
   // Refund dialog state
   const [refundDialogOpen, setRefundDialogOpen] = useState(false);
@@ -507,6 +523,7 @@ const ChatMonitor = ({ userId, userType }) => {
 
                   setNotifications(prev => [newNotification, ...prev]);
                   setShowNotifications(true);
+                  playNotificationSound();
                 }
               }
             });
@@ -535,6 +552,41 @@ const ChatMonitor = ({ userId, userType }) => {
       }
     };
   }, [userId]);
+
+  // Listen for new messages in regular astrologer-client chats. Only play sound if admin enabled.
+  useEffect(() => {
+    if (!userId) return;
+
+    let unsubscribe;
+
+    const listenForRegularChatMessages = async () => {
+      try {
+        const chatsRef = collection(db, 'chats');
+        const q = query(chatsRef, orderBy('updatedAt', 'desc'));
+        unsubscribe = onSnapshot(q, (snapshot) => {
+          snapshot.docChanges().forEach((change) => {
+            if (change.type === 'modified' || change.type === 'added') {
+              const chat = change.doc.data();
+              const chatId = change.doc.id;
+              if (!soundEnabledForChat[chatId]) return;
+              const lastMessage = chat.lastMessage;
+              if (lastMessage && lastMessage.senderId && lastMessage.senderId !== userId) {
+                playNotificationSound();
+              }
+            }
+          });
+        });
+      } catch (error) {
+        console.error('Error listening for regular chat messages:', error);
+      }
+    };
+
+    listenForRegularChatMessages();
+
+    return () => {
+      if (unsubscribe) unsubscribe();
+    };
+  }, [userId, soundEnabledForChat]);
 
   // Load admin-client chats for all main chats
   useEffect(() => {
@@ -1805,7 +1857,7 @@ const ChatMonitor = ({ userId, userType }) => {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1 }}>
+                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         <Button
                           variant="outlined"
                           size="small"
@@ -1816,6 +1868,20 @@ const ChatMonitor = ({ userId, userType }) => {
                         >
                           View
                         </Button>
+                        <FormControlLabel
+                          control={
+                            <Switch
+                              checked={!!soundEnabledForChat[chat.id]}
+                              onChange={(e) => {
+                                e.stopPropagation();
+                                toggleSoundForChat(chat.id);
+                              }}
+                              size="small"
+                            />
+                          }
+                          onClick={(e) => e.stopPropagation()}
+                          label="Sound"
+                        />
                         {/* {hasAdminChat && (
                           <Button
                             variant="contained"

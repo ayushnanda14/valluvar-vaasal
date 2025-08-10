@@ -58,6 +58,7 @@ import FeedbackPrompt from './FeedbackPrompt';
 import GenericModal from './GenericModal';
 import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
+import { playNotificationSound } from '@/utils/notificationSound';
 
 
 export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null, onLoadingChange }) {
@@ -104,6 +105,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
     const [windowFocused, setWindowFocused] = useState(true);
     const [atBottom, setAtBottom] = useState(true);
     const lastMessageIdRef = useRef(null);
+    const hasInitializedMessagesRef = useRef(false);
 
     // 24-hour window control – allow sending only within 24 h for clients
     const [sendAllowed, setSendAllowed] = useState(true);
@@ -900,26 +902,32 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
     useEffect(() => {
         if (!messages || messages.length === 0) return;
         const lastMessage = messages[messages.length - 1];
-        // Only notify if the last message is not from the current user
+
+        // On first load, set initialized and remember last message without notifying
+        if (!hasInitializedMessagesRef.current) {
+            hasInitializedMessagesRef.current = true;
+            lastMessageIdRef.current = lastMessage.id;
+            return;
+        }
+
+        // Only notify if the last message is not from the current user and it's new
         if (lastMessage.senderId !== currentUser?.uid && lastMessage.id !== lastMessageIdRef.current) {
             lastMessageIdRef.current = lastMessage.id;
             let content = lastMessage.text || 'New message';
 
-            // Handle single file reference
             if (lastMessage.fileReference?.name) {
                 content = `Sent a file: ${lastMessage.fileReference.name}`;
-            }
-            // Handle multiple file references
-            else if (lastMessage.fileReferences && lastMessage.fileReferences.length > 0) {
+            } else if (lastMessage.fileReferences && lastMessage.fileReferences.length > 0) {
                 content = `Sent ${lastMessage.fileReferences.length} file(s)`;
             }
 
+            // Play audible notification
+            playNotificationSound();
+
             setNewMessageContent(content);
-            // If window not focused or not at bottom, show snackbar
             if (!windowFocused || !atBottom) {
                 setShowNewMessageSnackbar(true);
             }
-            // Browser notification if permission granted and window not focused
             if ('Notification' in window && Notification.permission === 'granted' && !windowFocused) {
                 const notif = new Notification(otherUser?.displayName || 'New Message', {
                     body: content,
