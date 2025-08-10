@@ -5,6 +5,7 @@ import {
     query,
     orderBy,
     limit,
+  startAfter,
     serverTimestamp,
     doc,
     getDoc,
@@ -26,17 +27,17 @@ export const getUserChats = (userId, callback) => {
         where('participants', 'array-contains', userId),
         orderBy('updatedAt', 'desc')
     );
-    
+
     return onSnapshot(q, async (snapshot) => {
         const chats = [];
-        
+
         for (const _doc of snapshot.docs) {
             const chatData = _doc.data();
-            
+
             // Get other participant details
             const otherParticipantId = chatData.participants.find(id => id !== userId);
             let otherParticipant = null;
-            
+
             if (otherParticipantId) {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
@@ -52,25 +53,121 @@ export const getUserChats = (userId, callback) => {
                     console.error("Error fetching other participant:", error);
                 }
             }
-            
+
             chats.push({
                 id: _doc.id,
                 ...chatData,
                 otherParticipant
             });
         }
-        
+
         callback(chats);
     }, (error) => {
         console.error("Error listening to user chats:", error);
     });
 };
 
+// Real-time listener for the most recent chats with pagination size
+export const listenUserChatsPage = (userId, pageSize = 10, callback) => {
+    const chatsRef = collection(db, 'chats');
+    const q = query(
+        chatsRef,
+        where('participants', 'array-contains', userId),
+        orderBy('updatedAt', 'desc'),
+        limit(pageSize)
+    );
+
+    return onSnapshot(q, async (snapshot) => {
+        const docs = snapshot.docs;
+        const chats = await Promise.all(docs.map(async (_doc) => {
+            const chatData = _doc.data();
+            const otherParticipantId = chatData.participants.find(id => id !== userId);
+            let otherParticipant = null;
+            if (otherParticipantId) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        otherParticipant = {
+                            id: otherParticipantId,
+                            displayName: userData.displayName || 'User',
+                            photoURL: userData.photoURL || null
+                        };
+                    }
+                } catch (error) {
+                    console.error("Error fetching other participant:", error);
+                }
+            }
+            return {
+                id: _doc.id,
+                ...chatData,
+                otherParticipant
+            };
+        }));
+
+        const lastDoc = docs.length > 0 ? docs[docs.length - 1] : null;
+        callback({ chats, lastDoc });
+    }, (error) => {
+        console.error('Error listening to paginated user chats:', error);
+    });
+};
+
+// Fetch older chats (next page) after the last document from previous page
+export const fetchMoreUserChats = async (userId, lastDoc, pageSize = 10) => {
+    if (!lastDoc) return { chats: [], lastDoc: null, hasMore: false };
+
+    const chatsRef = collection(db, 'chats');
+    const q = query(
+        chatsRef,
+        where('participants', 'array-contains', userId),
+        orderBy('updatedAt', 'desc'),
+        limit(pageSize),
+        // Use the document snapshot cursor
+        startAfter(lastDoc)
+    );
+
+    try {
+        const snapshot = await getDocs(q);
+        const docs = snapshot.docs;
+        const chats = await Promise.all(docs.map(async (_doc) => {
+            const chatData = _doc.data();
+            const otherParticipantId = chatData.participants.find(id => id !== userId);
+            let otherParticipant = null;
+            if (otherParticipantId) {
+                try {
+                    const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
+                    if (userDoc.exists()) {
+                        const userData = userDoc.data();
+                        otherParticipant = {
+                            id: otherParticipantId,
+                            displayName: userData.displayName || 'User',
+                            photoURL: userData.photoURL || null
+                        };
+                    }
+                } catch (error) {
+                    console.error("Error fetching other participant:", error);
+                }
+            }
+            return {
+                id: _doc.id,
+                ...chatData,
+                otherParticipant
+            };
+        }));
+
+        const newLastDoc = docs.length > 0 ? docs[docs.length - 1] : null;
+        return { chats, lastDoc: newLastDoc, hasMore: docs.length === pageSize };
+    } catch (error) {
+        console.error('Error fetching more user chats:', error);
+        return { chats: [], lastDoc: null, hasMore: false };
+    }
+};
+
 // Get messages for a specific chat
 export const getChatMessages = (chatId, callback) => {
     const messagesRef = collection(db, 'chats', chatId, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    
+
     // Return the unsubscribe function so we can clean up when component unmounts
     return onSnapshot(q, (snapshot) => {
         const messages = snapshot.docs.map(doc => ({
@@ -120,22 +217,22 @@ export const sendFileMessage = async (chatId, senderId, file, description = '') 
         const chatDoc = await getDoc(doc(db, 'chats', chatId));
         const chatData = chatDoc.exists() ? chatDoc.data() : {};
         const serviceType = chatData.serviceType || 'general';
-        
+
         // Determine appropriate file naming based on service type
         let newFileName;
         const fileExtension = file.name.split('.').pop();
-        
+
         // Query existing files to determine appropriate numbering
         const filesQuery = query(collection(db, 'chats', chatId, 'files'));
         const filesSnapshot = await getDocs(filesQuery);
         const existingFiles = filesSnapshot.docs.map(doc => doc.data());
-        
+
         if (serviceType === 'marriageMatching') {
             // For marriage matching, try to determine if this is bride or groom
             // Default to "Jathak" if we can't determine
             const brideFiles = existingFiles.filter(f => f.name.startsWith('Bride_'));
             const groomFiles = existingFiles.filter(f => f.name.startsWith('Groom_'));
-            
+
             if (brideFiles.length <= groomFiles.length) {
                 newFileName = `Bride_Jathak_${brideFiles.length + 1}.${fileExtension}`;
             } else {
@@ -146,12 +243,12 @@ export const sendFileMessage = async (chatId, senderId, file, description = '') 
             const jathakFiles = existingFiles.filter(f => f.name.startsWith('Jathak_'));
             newFileName = `Jathak_${jathakFiles.length + 1}.${fileExtension}`;
         }
-        
+
         // 1. Upload file to Firebase Storage
         const storageRef = ref(storage, `chats/${chatId}/files/${newFileName}`);
         const uploadTask = await uploadBytes(storageRef, file);
         const downloadURL = await getDownloadURL(uploadTask.ref);
-        
+
         // 2. Create file reference in files subcollection
         const fileRef = await addDoc(collection(db, 'chats', chatId, 'files'), {
             name: newFileName,
@@ -163,7 +260,7 @@ export const sendFileMessage = async (chatId, senderId, file, description = '') 
             uploadedAt: serverTimestamp(),
             serviceType: serviceType // Include the service type
         });
-        
+
         // 3. Add message referencing the file
         const messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), {
             senderId,
@@ -178,7 +275,7 @@ export const sendFileMessage = async (chatId, senderId, file, description = '') 
             },
             text: description || `Sent a file: ${file.name}`
         });
-        
+
         // 4. Update the last message in the chat document
         await updateDoc(doc(db, 'chats', chatId), {
             lastMessage: {
@@ -188,7 +285,7 @@ export const sendFileMessage = async (chatId, senderId, file, description = '') 
             },
             updatedAt: serverTimestamp()
         });
-        
+
         return messageRef.id;
     } catch (error) {
         console.error('Error sending file message:', error);
@@ -244,12 +341,12 @@ export const sendVoiceMessage = async (chatId, senderId, audioBlob, duration) =>
         // Create a unique filename for the voice message
         const timestamp = new Date().getTime();
         const fileName = `voice_message_${timestamp}.webm`;
-        
+
         // 1. Upload audio file to Firebase Storage
         const storageRef = ref(storage, `chats/${chatId}/voice/${fileName}`);
         const uploadTask = await uploadBytes(storageRef, audioBlob);
         const downloadURL = await getDownloadURL(uploadTask.ref);
-        
+
         // 2. Add message referencing the voice file
         const messageRef = await addDoc(collection(db, 'chats', chatId, 'messages'), {
             senderId,
@@ -263,7 +360,7 @@ export const sendVoiceMessage = async (chatId, senderId, audioBlob, duration) =>
             },
             text: 'Voice message' // Default text for the message
         });
-        
+
         // 3. Update the last message in the chat document
         await updateDoc(doc(db, 'chats', chatId), {
             lastMessage: {
@@ -273,7 +370,7 @@ export const sendVoiceMessage = async (chatId, senderId, audioBlob, duration) =>
             },
             updatedAt: serverTimestamp()
         });
-        
+
         return messageRef.id;
     } catch (error) {
         console.error('Error sending voice message:', error);
@@ -293,7 +390,7 @@ export const submitFeedback = async (chatId, feedbackData) => {
             },
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error submitting feedback:', error);
@@ -309,13 +406,13 @@ export const assignAdminToChat = async (chatId, adminId, assignedBy) => {
             assignedBy,
             assignedAt: new Date().toISOString()
         };
-        
+
         await updateDoc(doc(db, 'chats', chatId), {
             adminId,
             adminAssignmentHistory: arrayUnion(adminAssignment),
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error assigning admin to chat:', error);
@@ -332,13 +429,13 @@ export const extendChatExpiry = async (chatId, extensionHours, extendedBy) => {
             console.log('Chat not found', chatId);
             throw new Error('Chat not found');
         }
-        
+
         const chatData = chatDoc.data();
-        const currentExpiry = chatData.expiryTimestamp || 
+        const currentExpiry = chatData.expiryTimestamp ||
             (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
-        
+
         const newExpiry = currentExpiry + (extensionHours * 60 * 60 * 1000);
-        
+
         await updateDoc(doc(db, 'chats', chatId), {
             expiryTimestamp: Timestamp.fromMillis(newExpiry),
             extensionHistory: arrayUnion({
@@ -349,7 +446,7 @@ export const extendChatExpiry = async (chatId, extensionHours, extendedBy) => {
             }),
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error extending chat expiry:', error);
@@ -362,17 +459,17 @@ export const createAdminClientChat = async (mainChatId, clientId, adminId = null
     try {
         // Get client details
         const clientDoc = await getDoc(doc(db, 'users', clientId));
-        
+
         if (!clientDoc.exists()) {
             throw new Error('Client not found');
         }
-        
+
         const clientData = clientDoc.data();
-        
+
         // If no adminId provided, auto-assign one
         let adminData = null;
         let actualAdminId = adminId;
-        
+
         if (!actualAdminId) {
             try {
                 const { autoAssignAdminToChat } = await import('./adminService');
@@ -396,7 +493,7 @@ export const createAdminClientChat = async (mainChatId, clientId, adminId = null
             }
             adminData = adminDoc.data();
         }
-        
+
         // Create the admin-client chat
         const adminChatRef = await addDoc(collection(db, 'adminClientChats'), {
             mainChatId,
@@ -422,19 +519,19 @@ export const createAdminClientChat = async (mainChatId, clientId, adminId = null
                 senderId: actualAdminId
             }
         });
-        
-                            // Add initial system message to admin chat
-                    await addDoc(collection(db, 'adminClientChats', adminChatRef.id, 'messages'), {
-                        text: `Support chat initiated by ${adminData.displayName}. How can we help you?`,
-                        senderId: 'system',
-                        timestamp: serverTimestamp(),
-                        read: false,
-                        type: 'text'
-                    });
 
-                    // Notify admin about the new client chat
-                    await notifyAdminAboutClientChat(adminChatRef.id, clientId, clientData.displayName || 'Client');
-        
+        // Add initial system message to admin chat
+        await addDoc(collection(db, 'adminClientChats', adminChatRef.id, 'messages'), {
+            text: `Support chat initiated by ${adminData.displayName}. How can we help you?`,
+            senderId: 'system',
+            timestamp: serverTimestamp(),
+            read: false,
+            type: 'text'
+        });
+
+        // Notify admin about the new client chat
+        await notifyAdminAboutClientChat(adminChatRef.id, clientId, clientData.displayName || 'Client');
+
         // Add system message to main chat about admin chat creation
         await addDoc(collection(db, 'chats', mainChatId, 'messages'), {
             text: `Admin support chat created. Click to open admin chat.`,
@@ -445,7 +542,7 @@ export const createAdminClientChat = async (mainChatId, clientId, adminId = null
             adminChatId: adminChatRef.id,
             isAdminChatLink: true
         });
-        
+
         return adminChatRef.id;
     } catch (error) {
         console.error('Error creating admin-client chat:', error);
@@ -461,9 +558,9 @@ export const getExistingAdminChat = async (mainChatId) => {
             where('mainChatId', '==', mainChatId),
             where('status', '==', 'active')
         );
-        
+
         const querySnapshot = await getDocs(adminChatsQuery);
-        
+
         if (!querySnapshot.empty) {
             const adminChatDoc = querySnapshot.docs[0];
             return {
@@ -471,7 +568,7 @@ export const getExistingAdminChat = async (mainChatId) => {
                 ...adminChatDoc.data()
             };
         }
-        
+
         return null;
     } catch (error) {
         console.error('Error checking for existing admin chat:', error);
@@ -487,9 +584,9 @@ export const getUnresolvedAdminChats = async (mainChatId) => {
             where('mainChatId', '==', mainChatId),
             where('status', '==', 'active')
         );
-        
+
         const querySnapshot = await getDocs(adminChatsQuery);
-        
+
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()
@@ -534,7 +631,7 @@ export const notifyAdminAboutClientChat = async (adminChatId, clientId, clientNa
 export const getAdminClientChatMessages = (adminChatId, callback) => {
     const messagesRef = collection(db, 'adminClientChats', adminChatId, 'messages');
     const q = query(messagesRef, orderBy('timestamp', 'asc'));
-    
+
     return onSnapshot(q, (snapshot) => {
         const messages = snapshot.docs.map(doc => ({
             id: doc.id,
@@ -584,17 +681,17 @@ export const getAdminClientChats = (adminId, callback) => {
         where('adminId', '==', adminId),
         orderBy('updatedAt', 'desc')
     );
-    
+
     return onSnapshot(q, async (snapshot) => {
         const chats = [];
-        
+
         for (const _doc of snapshot.docs) {
             const chatData = _doc.data();
-            
+
             // Get other participant details
             const otherParticipantId = chatData.participants.find(id => id !== adminId);
             let otherParticipant = null;
-            
+
             if (otherParticipantId) {
                 try {
                     const userDoc = await getDoc(doc(db, 'users', otherParticipantId));
@@ -610,14 +707,14 @@ export const getAdminClientChats = (adminId, callback) => {
                     console.error("Error fetching other participant:", error);
                 }
             }
-            
+
             chats.push({
                 id: _doc.id,
                 ...chatData,
                 otherParticipant
             });
         }
-        
+
         callback(chats);
     }, (error) => {
         console.error("Error listening to admin client chats:", error);
@@ -631,7 +728,7 @@ export const toggleFeedbackVisibility = async (chatId, visibleToAstrologer) => {
             'feedback.visibleToAstrologer': visibleToAstrologer,
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error toggling feedback visibility:', error);
@@ -641,49 +738,49 @@ export const toggleFeedbackVisibility = async (chatId, visibleToAstrologer) => {
 
 // Get chat expiry status
 export const getChatExpiryStatus = async (chatId) => {
-  try {
-    console.log('Getting chat expiry status', chatId);
-    const chatDoc = await getDoc(doc(db, 'chats', chatId));
-    if (!chatDoc.exists()) {
-      throw new Error('Chat not found');
+    try {
+        console.log('Getting chat expiry status', chatId);
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (!chatDoc.exists()) {
+            throw new Error('Chat not found');
+        }
+
+        const chatData = chatDoc.data();
+        const expiryTimestamp = chatData.expiryTimestamp ||
+            (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
+
+        const now = Date.now();
+        const isExpired = now > expiryTimestamp;
+        const timeUntilExpiry = Math.max(0, expiryTimestamp - now);
+
+        return {
+            isExpired,
+            timeUntilExpiry,
+            expiryTimestamp: Timestamp.fromMillis(expiryTimestamp),
+            hasBeenExtended: !!chatData.expiryTimestamp
+        };
+    } catch (error) {
+        console.error('Error getting chat expiry status:', error);
+        throw error;
     }
-    
-    const chatData = chatDoc.data();
-    const expiryTimestamp = chatData.expiryTimestamp || 
-      (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
-    
-    const now = Date.now();
-    const isExpired = now > expiryTimestamp;
-    const timeUntilExpiry = Math.max(0, expiryTimestamp - now);
-    
-    return {
-      isExpired,
-      timeUntilExpiry,
-      expiryTimestamp: Timestamp.fromMillis(expiryTimestamp),
-      hasBeenExtended: !!chatData.expiryTimestamp
-    };
-  } catch (error) {
-    console.error('Error getting chat expiry status:', error);
-    throw error;
-  }
 };
 
 // Mark chat as completed
 export const markChatAsCompleted = async (chatId, completedBy) => {
-  try {
-    await updateDoc(doc(db, 'chats', chatId), {
-      status: 'completed',
-      completedAt: serverTimestamp(),
-      completedBy: completedBy,
-      updatedAt: serverTimestamp()
-    });
-    
-    return true;
-  } catch (error) {
-    console.error('Error marking chat as completed:', error);
-    throw error;
-  }
-}; 
+    try {
+        await updateDoc(doc(db, 'chats', chatId), {
+            status: 'completed',
+            completedAt: serverTimestamp(),
+            completedBy: completedBy,
+            updatedAt: serverTimestamp()
+        });
+
+        return true;
+    } catch (error) {
+        console.error('Error marking chat as completed:', error);
+        throw error;
+    }
+};
 
 // Assign a support user to a chat
 export const assignSupportUserToChat = async (chatId, supportUserId, assignedBy) => {
@@ -693,13 +790,13 @@ export const assignSupportUserToChat = async (chatId, supportUserId, assignedBy)
             assignedBy,
             assignedAt: new Date().toISOString()
         };
-        
+
         await updateDoc(doc(db, 'chats', chatId), {
             supportUserId,
             supportAssignmentHistory: arrayUnion(supportAssignment),
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error assigning support user to chat:', error);
@@ -714,14 +811,14 @@ export const sendMessageOnBehalfOfAstrologer = async (chatId, messageText, suppo
         if (!chatDoc.exists()) {
             throw new Error('Chat not found');
         }
-        
+
         const chatData = chatDoc.data();
         const astrologerId = chatData.astrologerId;
-        
+
         if (!astrologerId) {
             throw new Error('No astrologer found for this chat');
         }
-        
+
         // Add message to chat
         const messagesRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesRef, {
@@ -732,14 +829,17 @@ export const sendMessageOnBehalfOfAstrologer = async (chatId, messageText, suppo
             type: 'text',
             sentBySupport: true
         });
-        
+
         // Update chat's last message
         await updateDoc(doc(db, 'chats', chatId), {
-            lastMessage: messageText,
-            lastMessageTime: serverTimestamp(),
+            lastMessage: {
+                text: messageText,
+                timestamp: serverTimestamp(),
+                senderId: supportUserId
+            },
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error sending message on behalf of astrologer:', error);
@@ -754,14 +854,14 @@ export const sendMessageToAstrologer = async (chatId, messageText, supportUserId
         if (!chatDoc.exists()) {
             throw new Error('Chat not found');
         }
-        
+
         const chatData = chatDoc.data();
         const astrologerId = chatData.astrologerId;
-        
+
         if (!astrologerId) {
             throw new Error('No astrologer found for this chat');
         }
-        
+
         // Add message to chat
         const messagesRef = collection(db, 'chats', chatId, 'messages');
         await addDoc(messagesRef, {
@@ -771,14 +871,17 @@ export const sendMessageToAstrologer = async (chatId, messageText, supportUserId
             type: 'text',
             sentToAstrologer: true
         });
-        
+
         // Update chat's last message
         await updateDoc(doc(db, 'chats', chatId), {
-            lastMessage: messageText,
-            lastMessageTime: serverTimestamp(),
+            lastMessage: {
+                text: messageText,
+                timestamp: serverTimestamp(),
+                senderId: supportUserId
+            },
             updatedAt: serverTimestamp()
         });
-        
+
         return true;
     } catch (error) {
         console.error('Error sending message to astrologer:', error);
@@ -794,9 +897,9 @@ export const getSupportUserAssignedChats = async (supportUserId) => {
             where('supportUserId', '==', supportUserId),
             orderBy('updatedAt', 'desc')
         );
-        
+
         const querySnapshot = await getDocs(chatsQuery);
-        
+
         return querySnapshot.docs.map(doc => ({
             id: doc.id,
             ...doc.data()

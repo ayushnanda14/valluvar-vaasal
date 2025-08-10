@@ -344,7 +344,21 @@
       "name": "Full Name",
       "birthDate": "Date of Birth",
       "birthTime": "Birth Time (optional)",
-      "zodiac": "Zodiac / Natchathiram (optional)",
+      "zodiac": "Zodiac (optional)",
+      "zodiacOptions": [
+        "Aries",
+        "Taurus",
+        "Gemini",
+        "Cancer",
+        "Leo",
+        "Virgo",
+        "Libra",
+        "Scorpio",
+        "Sagittarius",
+        "Capricorn",
+        "Aquarius",
+        "Pisces"
+      ],
       "errors": {
         "nameRequired": "Name is required",
         "birthDateRequired": "Date of birth is required"

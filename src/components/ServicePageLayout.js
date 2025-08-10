@@ -208,7 +208,6 @@ export default function ServicePageLayout({
             districts.add(data.district);
           }
         });
-        console.log('districts:: ', districts, filteredDocs);
         setAvailableDistricts(districts);
       } catch (err) {
         console.error('Error fetching available districts:', err);
@@ -285,7 +284,7 @@ export default function ServicePageLayout({
     setSecondFiles(newFiles);
   };
 
-    const validateJathakForm = () => {
+  const validateJathakForm = () => {
     const errors = {};
     if (!jathakFormData.name?.trim()) {
       errors.name = t('jathakWriting.form.errors.nameRequired', 'Name is required');
@@ -340,7 +339,7 @@ export default function ServicePageLayout({
           // For mobile dual upload, let the substep buttons handle navigation
           return;
         }
-        
+
         // For prediction, document upload is optional
         if (serviceType !== 'jathakPrediction') {
           if (files.length === 0 || (dualUpload && secondFiles.length === 0)) {
@@ -350,7 +349,7 @@ export default function ServicePageLayout({
           }
         }
       }
-      
+
       // Check if we have saved district and astrologer selections
       if (selectedDistrict && selectedAstrologers.length > 0) {
         // Skip directly to payment step
@@ -372,7 +371,7 @@ export default function ServicePageLayout({
       }
       setStep(3);
     }
-    
+
     // Scroll to top when moving to next step
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -384,7 +383,7 @@ export default function ServicePageLayout({
     if (step === 3) setStep(2);
     else if (step === 2) setStep(1.5);
     else if (step === 1.5) setStep(1);
-    
+
     // Scroll to top when moving to previous step
     setTimeout(() => {
       window.scrollTo({ top: 0, behavior: 'smooth' });
@@ -446,6 +445,7 @@ export default function ServicePageLayout({
 
       // Create conversation threads with each selected astrologer
       const createdChatIds = [];
+      const messageText = `Service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`;
       for (const astrologer of selectedAstrologers) {
         const conversationRef = await addDoc(collection(db, 'chats'), {
           participants: [currentUser.uid, astrologer.id],
@@ -464,7 +464,11 @@ export default function ServicePageLayout({
           serviceRequestId: serviceRequestRef.id,
           serviceType: serviceType,
           razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID in chat doc
-          lastMessage: null,
+          lastMessage: {
+            text: messageText,
+            timestamp: serverTimestamp(),
+            senderId: 'system'
+          },
           createdAt: serverTimestamp(),
           updatedAt: serverTimestamp()
         });
@@ -474,7 +478,7 @@ export default function ServicePageLayout({
         // Add initial system message to the conversation
         await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
           senderId: 'system',
-          text: `Service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`,
+          text: messageText,
           timestamp: serverTimestamp(),
           read: false
         });
@@ -537,70 +541,63 @@ export default function ServicePageLayout({
             await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
           }
 
-                  // Add a system message about the uploaded files or form data
-        let systemMessageText;
-        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-          systemMessageText = t('systemMessage.jathakFormSubmitted', {
-            name: currentUser.displayName || 'User',
-            personName: jathakFormData.name,
-            birthPlace: jathakFormData.birthPlace,
-            birthDate: jathakFormData.birthDate,
-            birthTime: jathakFormData.birthTime
-          });
-        } else if (serviceType === 'jathakPrediction') {
-          const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
-          const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
-          systemMessageText = t('systemMessage.predictionFormSubmitted', {
-            name: currentUser.displayName || 'User',
-            personName: predictionFormData.name,
-            birthDate: formatLocalDate(predictionFormData.birthDate),
-            timePart,
-            zodiacPart
-          });
-        } else {
-          systemMessageText = t('systemMessage.uploadedFiles', {
-            name: currentUser.displayName || 'User',
-            count: fileReferences.length
-          });
-        }
-
-        // Build a consistent payload for system message metadata
-        const messagePayload = {
-          senderId: 'system',
-          text: systemMessageText,
-          timestamp: serverTimestamp(),
-          read: false,
-          metadata: {
-            serviceType,
-            jathakWriting: undefined,
-            jathakPrediction: undefined,
-            files: undefined,
+          // Add a system message about the uploaded files or form data
+          let systemMessageText;
+          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+            systemMessageText = t('systemMessage.jathakFormSubmitted', {
+              name: currentUser.displayName || 'User',
+              personName: jathakFormData.name,
+              birthPlace: jathakFormData.birthPlace,
+              birthDate: jathakFormData.birthDate,
+              birthTime: jathakFormData.birthTime
+            });
+          } else if (serviceType === 'jathakPrediction') {
+            const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
+            const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
+            systemMessageText = t('systemMessage.predictionFormSubmitted', {
+              name: currentUser.displayName || 'User',
+              personName: predictionFormData.name,
+              birthDate: formatLocalDate(predictionFormData.birthDate),
+              timePart,
+              zodiacPart
+            });
+          } else {
+            systemMessageText = t('systemMessage.uploadedFiles', {
+              name: currentUser.displayName || 'User',
+              count: fileReferences.length
+            });
           }
-        };
 
-        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-          messagePayload.metadata.jathakWriting = {
-            name: jathakFormData.name,
-            birthPlace: jathakFormData.birthPlace,
-            birthDate: jathakFormData.birthDate,
-            birthTime: jathakFormData.birthTime,
-            additionalNotes: jathakFormData.additionalNotes,
-            option: jathakWritingOption
-          };
-        } else if (serviceType === 'jathakPrediction') {
-          messagePayload.metadata.jathakPrediction = {
-            name: predictionFormData.name,
-            birthDate: predictionFormData.birthDate,
-            birthTime: predictionFormData.birthTime || null,
-            zodiac: predictionFormData.zodiac || null
-          };
-        }
+          // Build a consistent payload for system message metadata (avoid undefined fields)
+          const metadata = { serviceType };
+          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+            metadata.jathakWriting = {
+              name: jathakFormData.name,
+              birthPlace: jathakFormData.birthPlace,
+              birthDate: jathakFormData.birthDate,
+              birthTime: jathakFormData.birthTime,
+              additionalNotes: jathakFormData.additionalNotes,
+              option: jathakWritingOption
+            };
+          } else if (serviceType === 'jathakPrediction') {
+            metadata.jathakPrediction = {
+              name: predictionFormData.name,
+              birthDate: predictionFormData.birthDate,
+              ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
+              ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
+            };
+          }
+          if (fileReferences.length > 0) {
+            metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
+          }
 
-        if (fileReferences.length > 0) {
-          messagePayload.metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
-        }
-
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), messagePayload);
+          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+            senderId: 'system',
+            text: systemMessageText,
+            timestamp: serverTimestamp(),
+            read: false,
+            metadata
+          });
         } catch (err) {
           console.error('Error uploading files:', err);
           setError(t('servicePage.errors.fileUploadFailed'));
@@ -905,23 +902,23 @@ export default function ServicePageLayout({
                     </Alert>
                   )}
 
-                                    {/* Show form for new jathak writing, file upload for old jathak writing */}
+                  {/* Show form for new jathak writing, file upload for old jathak writing */}
                   {serviceType === 'jathakWriting' && jathakWritingOption === 'baby' ? (
                     <JathakWritingForm
                       formData={jathakFormData}
                       onFormDataChange={setJathakFormData}
                       errors={jathakFormErrors}
                     />
-                   ) : (
+                  ) : (
                     dualUpload ? (
                       isMobile ? (
                         // Mobile: Step-wise upload
                         <Box>
                           {uploadSubstep === 1 && (
                             <Box>
-                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                 {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {t('uploadLabels.firstPerson')} {t('uploadLabels.jathak')}
-                               </Typography>
+                              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {t('uploadLabels.firstPerson')} {t('uploadLabels.jathak')}
+                              </Typography>
                               <FileUploadSection
                                 files={files}
                                 onFilesChange={handleFilesChange}
@@ -958,9 +955,9 @@ export default function ServicePageLayout({
                           )}
                           {uploadSubstep === 2 && (
                             <Box>
-                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                 {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
-                               </Typography>
+                              <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
+                                {t('servicePage.uploadStep', { step: 2, total: 2 })}: {defaultDualUploadLabels[1]} {t('uploadLabels.jathak')}
+                              </Typography>
                               <FileUploadSection
                                 files={secondFiles}
                                 onFilesChange={handleSecondFilesChange}

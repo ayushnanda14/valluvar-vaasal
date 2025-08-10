@@ -1,0 +1,28 @@
+useEffect(() => {
+    async function testChats() {
+      const chats = await getDocs(query(collection(db, 'chats')));
+      chats.docs.map((doc, index) => ({ ...doc, id: doc.id, data: doc.data() }))
+        .forEach(async (chat, index) => {
+          console.log('MessagesPage: chat', index, chat, chat.id);
+          if (chat && chat.id) {
+            const messages = await getDocs(query(collection(db, 'chats', chat.id, 'messages'), orderBy('timestamp', 'desc'), limit(1)));
+            console.log('MessagesPage: messages', index, messages);
+            const lastMessage = messages.docs[0].data().text;
+            const lastMessageTimestamp = messages.docs[0].data().timestamp;
+            const lastMessageSenderId = messages.docs[0].data().senderId;
+            console.log('MessagesPage: lastMessage', index, lastMessage);
+            if (!chat.lastMessage) {
+              await updateDoc(doc(db, 'chats', chat.id), {
+                lastMessage: {
+                  text: lastMessage,
+                  timestamp: lastMessageTimestamp,
+                  senderId: lastMessageSenderId
+                }
+              });
+            }
+          }
+        });
+    }
+    testChats();
+
+  }, []);

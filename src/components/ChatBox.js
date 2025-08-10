@@ -18,7 +18,8 @@ import {
     CardActionArea,
     LinearProgress,
     Collapse,
-    Chip
+    Chip,
+    Skeleton
 } from '@mui/material';
 import SendIcon from '@mui/icons-material/Send';
 import AttachFileIcon from '@mui/icons-material/AttachFile';
@@ -59,7 +60,7 @@ import Snackbar from '@mui/material/Snackbar';
 import MuiAlert from '@mui/material/Alert';
 
 
-export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null }) {
+export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null, onLoadingChange }) {
     const { t } = useTranslation('common');
     const { currentUser, hasRole, userRoles } = useAuth();
     const [messages, setMessages] = useState([]);
@@ -115,7 +116,6 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
 
     // Feedback modal state
     const [feedbackModalOpen, setFeedbackModalOpen] = useState(false);
-    const [showFeedbackPrompt, setShowFeedbackPrompt] = useState(false);
     const [feedbackSubmitted, setFeedbackSubmitted] = useState(false);
     const [submittedFeedbackData, setSubmittedFeedbackData] = useState(null);
     const [modalMode, setModalMode] = useState('feedback'); // 'feedback' or 'admin-chat'
@@ -174,6 +174,7 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                     const unresolvedAdminChats = await getUnresolvedAdminChats(chatId);
 
                     if (unresolvedAdminChats.length > 0) {
+                        setFeedbackModalOpen(false);
                         // There are unresolved admin chats, show admin chat prompt
                         setAdminChatAvailableForChat(prev => new Set([...prev, chatId]));
                     } else {
@@ -963,6 +964,13 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
         setShowFiles(!showFiles);
     };
 
+    // Notify parent about loading state changes
+    useEffect(() => {
+        if (typeof onLoadingChange === 'function') {
+            onLoadingChange(loading);
+        }
+    }, [loading, onLoadingChange]);
+
     return (
         <>
             {modalMode === 'admin-chat' && feedbackModalOpen ? (
@@ -1116,9 +1124,19 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                     >
                         <>
                             {loading ? (
-                                <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100%' }}>
-                                    <CircularProgress />
-                                </Box>
+                                <List sx={{ height: '100%' }}>
+                                    {Array.from({ length: 8 }).map((_, idx) => (
+                                        <ListItem key={idx} sx={{ alignItems: 'flex-start' }}>
+                                            <Box sx={{ display: 'flex', gap: 1, width: '100%' }}>
+                                                <Skeleton variant="circular" width={40} height={40} />
+                                                <Box sx={{ flex: 1 }}>
+                                                    <Skeleton variant="rectangular" height={22} sx={{ mb: 1, maxWidth: 300 }} />
+                                                    <Skeleton variant="rectangular" height={60} sx={{ borderRadius: 1 }} />
+                                                </Box>
+                                            </Box>
+                                        </ListItem>
+                                    ))}
+                                </List>
                             ) : (
                                 <List sx={{ height: '100%' }}>
                                     {/* {console.log(messages)} */}
@@ -1169,42 +1187,42 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                                                                 </Typography>
                                                             </Paper>
                                                         ) : (
-                                                    // Regular system message with structured metadata chips
-                                                    <Paper
-                                                        sx={{
-                                                            display: 'inline-block',
-                                                            px: 2,
-                                                            py: 1,
-                                                            bgcolor: 'grey.100',
-                                                            maxWidth: '90%'
-                                                        }}
-                                                    >
-                                                        <Typography variant="body2" sx={{ mb: message.metadata ? 1 : 0 }}>{message.text}</Typography>
-                                                        {message.metadata && (
-                                                            <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
-                                                                {message.metadata.jathakWriting && (
-                                                                    <>
-                                                                        <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
-                                                                        <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
-                                                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
-                                                                        <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
-                                                                    </>
-                                                                )}
-                                                                {message.metadata.jathakPrediction && (
-                                                                    <>
-                                                                        <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
-                                                                        <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
-                                                                        {message.metadata.jathakPrediction.birthTime && (
-                                                                            <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
+                                                            // Regular system message with structured metadata chips
+                                                            <Paper
+                                                                sx={{
+                                                                    display: 'inline-block',
+                                                                    px: 2,
+                                                                    py: 1,
+                                                                    bgcolor: 'grey.100',
+                                                                    maxWidth: '90%'
+                                                                }}
+                                                            >
+                                                                <Typography variant="body2" sx={{ mb: message.metadata ? 1 : 0 }}>{message.text}</Typography>
+                                                                {message.metadata && (
+                                                                    <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1 }}>
+                                                                        {message.metadata.jathakWriting && (
+                                                                            <>
+                                                                                <Chip size="small" label={`Name: ${message.metadata.jathakWriting.name}`} />
+                                                                                <Chip size="small" label={`Birth Place: ${message.metadata.jathakWriting.birthPlace}`} />
+                                                                                <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakWriting.birthDate)}`} />
+                                                                                <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakWriting.birthTime)}`} />
+                                                                            </>
                                                                         )}
-                                                                        {message.metadata.jathakPrediction.zodiac && (
-                                                                            <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
+                                                                        {message.metadata.jathakPrediction && (
+                                                                            <>
+                                                                                <Chip size="small" label={`Name: ${message.metadata.jathakPrediction.name}`} />
+                                                                                <Chip size="small" label={`DOB: ${formatLocalDate(message.metadata.jathakPrediction.birthDate)}`} />
+                                                                                {message.metadata.jathakPrediction.birthTime && (
+                                                                                    <Chip size="small" label={`Time: ${formatLocalTime(message.metadata.jathakPrediction.birthTime)}`} />
+                                                                                )}
+                                                                                {message.metadata.jathakPrediction.zodiac && (
+                                                                                    <Chip size="small" label={`Zodiac: ${message.metadata.jathakPrediction.zodiac}`} />
+                                                                                )}
+                                                                            </>
                                                                         )}
-                                                                    </>
+                                                                    </Box>
                                                                 )}
-                                                            </Box>
-                                                        )}
-                                                    </Paper>
+                                                            </Paper>
                                                         )}
                                                     </Box>
                                                 ) : (
