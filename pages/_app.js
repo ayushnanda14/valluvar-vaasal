@@ -96,7 +96,7 @@ function MyApp(props) {
   return (
     <CacheProvider value={emotionCache}>
       <Head>
-        <title>Next.js + Firebase + MUI Boilerplate</title>
+        <title>Valluvar Vaasal</title>
         <meta name="viewport" content="initial-scale=1, width=device-width" />
         <script
           src="https://checkout.razorpay.com/v1/checkout.js"
