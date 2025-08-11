@@ -915,7 +915,7 @@ export default function ServicePageLayout({
                           {uploadSubstep === 1 && (
                             <Box>
                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {t('uploadLabels.firstPerson')} {t('uploadLabels.jathak')}
+                                  {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
                               </Typography>
                               <FileUploadSection
                                 files={files}
@@ -937,16 +937,19 @@ export default function ServicePageLayout({
                                     }
                                   }}
                                   sx={{
-                                    whiteSpace: 'nowrap',
-                                    overflow: 'hidden',
-                                    textOverflow: 'ellipsis',
+                                    // whiteSpace: 'nowrap',
+                                    // overflow: 'hidden',
+                                    // textOverflow: 'ellipsis',
+                                    wordWrap: 'break-word',
+                                    overflowWrap: 'break-word',
+                                    hyphens: 'auto',
                                     maxWidth: '100%',
                                     minWidth: { xs: 'auto', md: '200px' },
                                     px: { xs: 2, md: 3 },
                                     py: { xs: 1.5, md: 2 }
                                   }}
                                 >
-                                  {t('servicePage.nextUploadStep', 'Next: Upload Second Person')}
+                                  {t('servicePage.nextUploadStep', 'Next: Upload Groom\'s Jathak')}
                                 </Button>
                               </Box>
                             </Box>

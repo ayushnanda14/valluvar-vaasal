@@ -287,6 +287,7 @@
     "paymentDescription": "Payment for {{service}} service",
     "demoImageTitle": "Example of a Jathak Document",
     "demoImageAlt": "Example Jathak Document",
+    "nextUploadStep": "Next: Upload Groom's Jathak",
     "errors": {
       "loadDistricts": "Failed to load available districts. Please try again later.",
       "loadAstrologers": "Failed to load astrologers for this district. Please try again.",

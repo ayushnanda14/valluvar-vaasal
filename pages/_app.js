@@ -6,15 +6,18 @@ import { CacheProvider } from '@emotion/react';
 import createEmotionCache from '../src/createEmotionCache';
 import { ThemeProvider } from '@mui/material/styles';
 import CssBaseline from '@mui/material/CssBaseline';
+import Box from '@mui/material/Box';
+import Skeleton from '@mui/material/Skeleton';
 import theme from '../src/theme';
 import { AuthProvider } from '../src/context/AuthContext';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useAppCheck } from '../src/hooks/useAppCheck';
 import Navbar from '@/components/navbar';
 import Footer from '@/components/footer';
 import '../src/i18n';
 import { I18nextProvider } from 'react-i18next';
 import i18nInstance from '../src/i18n'; // Import the configured i18n instance
+import { useRouter } from 'next/router';
 
 // Safe polyfill for crypto.randomUUID()
 if (typeof window !== 'undefined') {
@@ -53,6 +56,8 @@ function MyApp(props) {
 
   // Initialize App Check
   const { isAppCheckInitialized, error } = useAppCheck();
+  const router = useRouter();
+  const [routeLoading, setRouteLoading] = useState(false);
 
   // Log any App Check initialization errors
   useEffect(() => {
@@ -74,6 +79,20 @@ function MyApp(props) {
     }
   }, []);
 
+  // Show a skeleton during Next.js route transitions
+  useEffect(() => {
+    const handleStart = () => setRouteLoading(true);
+    const handleEnd = () => setRouteLoading(false);
+    router.events.on('routeChangeStart', handleStart);
+    router.events.on('routeChangeComplete', handleEnd);
+    router.events.on('routeChangeError', handleEnd);
+    return () => {
+      router.events.off('routeChangeStart', handleStart);
+      router.events.off('routeChangeComplete', handleEnd);
+      router.events.off('routeChangeError', handleEnd);
+    };
+  }, [router.events]);
+
   return (
     <CacheProvider value={emotionCache}>
       <Head>
@@ -88,9 +107,22 @@ function MyApp(props) {
         <CssBaseline />
         <AuthProvider>
           <I18nextProvider i18n={i18nInstance}>
-            <Navbar />
-            <Component {...pageProps} />
-            <Footer />
+            <Box sx={{ display: 'flex', minHeight: '100vh', flexDirection: 'column' }}>
+              <Navbar />
+              <Box component="main" sx={{ flexGrow: 1 }}>
+                {(routeLoading || !Component) ? (
+                  <Box sx={{ px: 2, py: 4 }}>
+                    <Skeleton variant="rectangular" height={300} sx={{ borderRadius: 2, mb: 2 }} />
+                    <Skeleton variant="text" height={40} width="60%" sx={{ mb: 1 }} />
+                    <Skeleton variant="text" height={30} width="40%" sx={{ mb: 1 }} />
+                    <Skeleton variant="rectangular" height={200} sx={{ borderRadius: 2, mb: 2 }} />
+                  </Box>
+                ) : (
+                  <Component {...pageProps} />
+                )}
+              </Box>
+              <Footer />
+            </Box>
           </I18nextProvider>
         </AuthProvider>
       </ThemeProvider>

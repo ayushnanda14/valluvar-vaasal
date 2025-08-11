@@ -185,8 +185,9 @@ export default function FileUploadSection({
           variant="contained"
           color="primary"
           sx={{
-            whiteSpace: 'nowrap',
             overflow: 'hidden',
+            wordWrap: 'break-word',
+            overflowWrap: 'break-word',
             textOverflow: 'ellipsis',
             maxWidth: '100%',
             minWidth: { xs: 'auto', md: '120px' },

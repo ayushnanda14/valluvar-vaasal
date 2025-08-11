@@ -458,7 +458,8 @@ const Navbar = () => {
                           >
                             {t('navbar.language')}
                           </Typography>
-                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap' }}>
+
+                          <Box sx={{ display: 'flex', gap: 1, flexWrap: 'wrap', flexDirection: { xs: 'column', sm: 'row' } }}>
                             {Object.keys(languages).map((lng) => (
                               <Button
                                 key={lng}
@@ -564,7 +565,7 @@ const Navbar = () => {
           >
             {t('navbar.language')}
           </Typography>
-          <Box sx={{ display: 'flex', gap: 1 }}>
+          <Box sx={{ display: 'flex', gap: 1, flexDirection: { xs: 'column', sm: 'row' } }}>
             {Object.keys(languages).map((lng) => (
               <Button
                 key={lng}
@@ -628,7 +629,9 @@ const Navbar = () => {
                 sx={{
                   color: 'text.secondary',
                   mb: 2,
-                  textAlign: 'center'
+                  textAlign: 'center',
+                  wordWrap: 'break-word',
+                  lineBreak: {xs: 'anywhere', sm: 'auto'},
                 }}
               >
                 {currentUser.email}
@@ -639,7 +642,7 @@ const Navbar = () => {
                 router.push('/profile');
                 setDrawerOpen(false);
               }}>
-                <ListItemIcon><PersonIcon /></ListItemIcon>
+                <ListItemIcon sx={{ minWidth: { xs: '40px', sm: 'auto' } }}><PersonIcon /></ListItemIcon>
                 <ListItemText
                   primary={t('navbar.profile')}
                   primaryTypographyProps={{
@@ -652,7 +655,7 @@ const Navbar = () => {
                 router.push('/bookings');
                 setDrawerOpen(false);
               }}>
-                <ListItemIcon><AssignmentIcon /></ListItemIcon>
+                <ListItemIcon sx={{ minWidth: {xs: '40px', sm: 'auto'} }}><AssignmentIcon /></ListItemIcon>
                 <ListItemText
                   primary={t('navbar.bookings')}
                   primaryTypographyProps={{
@@ -662,7 +665,7 @@ const Navbar = () => {
                 />
               </ListItem>
               <ListItem button onClick={handleLogout}>
-                <ListItemIcon><LogoutIcon /></ListItemIcon>
+                <ListItemIcon sx={{ minWidth: { xs: '40px', sm: 'auto' } }}><LogoutIcon /></ListItemIcon>
                 <ListItemText
                   primary={t('auth.signOut')}
                   primaryTypographyProps={{
