@@ -197,7 +197,8 @@ export default function ServicePageLayout({
         const astrologersSnapshot = await getDocs(astrologersQuery);
         const filteredDocs = astrologersSnapshot.docs.filter(doc => {
           const data = doc.data();
-          return data.services && data.services.includes(serviceType);
+          console.log('data', data);
+          return data.services && Object.keys(data.services).includes(serviceType);
         });
 
         // Extract districts from the filtered results
