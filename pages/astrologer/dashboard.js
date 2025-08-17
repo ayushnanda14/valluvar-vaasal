@@ -142,11 +142,13 @@ export default function AstrologerDashboard() {
               const revenueSnapshot = await getDocs(revenueQuery);
               console.log('Revenue snapshot size:', revenueSnapshot.size);
 
-              const revenueData = revenueSnapshot.docs.map(doc => {
-                const data = { id: doc.id, ...doc.data() };
-                console.log('Payment record:', data);
-                return data;
-              });
+              const revenueData = revenueSnapshot.docs
+                .map(doc => {
+                  const data = { id: doc.id, ...doc.data() };
+                  console.log('Payment record:', data);
+                  return data;
+                })
+                .filter(payment => !payment.isDemoPayment); // Exclude demo payments from revenue
 
               setRevenue(revenueData);
               console.log('Total revenue records found:', revenueData.length);
@@ -415,10 +417,34 @@ export default function AstrologerDashboard() {
                             {chat.otherParticipant?.displayName?.[0]?.toUpperCase() || '?'}
                           </Box>
                         )}
-                        {chat.otherParticipant?.displayName || 'Unknown Client'}
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          {chat.otherParticipant?.displayName || 'Unknown Client'}
+                          {chat.isDemoUser && (
+                            <Chip
+                              label="Demo"
+                              size="small"
+                              color="success"
+                              variant="outlined"
+                              sx={{ fontSize: '0.7rem' }}
+                            />
+                          )}
+                        </Box>
                       </Box>
                     </TableCell>
-                    <TableCell>{SERVICE_TYPES[chat.serviceType] || 'General Consultation'}</TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {SERVICE_TYPES[chat.serviceType] || 'General Consultation'}
+                        {chat.isDemoUser && (
+                          <Chip
+                            label="Demo"
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        )}
+                      </Box>
+                    </TableCell>
                     <TableCell>
                       {chat.updatedAt?.toDate().toLocaleDateString() || 'Unknown date'}
                     </TableCell>
@@ -685,17 +711,28 @@ export default function AstrologerDashboard() {
           }}
         >
           <Container maxWidth="lg">
-            <Typography
-              variant="h4"
-              component="h1"
-              gutterBottom
-              sx={{
-                fontFamily: '"Playfair Display", serif',
-                fontWeight: 600
-              }}
-            >
-              Astrologer Dashboard
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                gutterBottom
+                sx={{
+                  fontFamily: '"Playfair Display", serif',
+                  fontWeight: 600
+                }}
+              >
+                Astrologer Dashboard
+              </Typography>
+              {currentUser?.isDemoUser && (
+                <Chip
+                  label="Demo User"
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontSize: '0.8rem' }}
+                />
+              )}
+            </Box>
             <Typography
               variant="subtitle1"
               sx={{

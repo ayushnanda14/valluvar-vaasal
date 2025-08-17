@@ -70,89 +70,135 @@ export default function Bookings() {
     checkRoles();
   }, [currentUser, hasRole]);
 
-  // Fetch bookings
+  // Fetch bookings (derived from chats/serviceRequests instead of a non-existent 'bookings' collection)
   useEffect(() => {
     const fetchBookings = async () => {
       if (!currentUser) return;
-      
       try {
         setLoading(true);
-        let bookingsQuery;
-        
+
+        const bookingsData = [];
+
         if (isClient) {
-          bookingsQuery = query(
-            collection(db, 'bookings'),
+          // For clients: one booking per chat with selected astrologers
+          const chatsQuery = query(
+            collection(db, 'chats'),
             where('clientId', '==', currentUser.uid),
             orderBy('createdAt', 'desc')
           );
+          const chatsSnap = await getDocs(chatsQuery);
+          for (const chatDoc of chatsSnap.docs) {
+            const chat = { id: chatDoc.id, ...chatDoc.data() };
+            const bookingData = {
+              id: chat.id,
+              chatId: chat.id,
+              serviceType: chat.serviceType,
+              date: chat.createdAt,
+              status: chat.status || 'active',
+              astrologerId: chat.astrologerId,
+              astrologer: {
+                displayName: chat.astrologerName,
+                photoURL: chat.participantAvatars?.[chat.astrologerId] || ''
+              },
+              serviceRequestId: chat.serviceRequestId,
+              razorpayPaymentId: chat.razorpay_payment_id,
+            };
+
+            // Fetch latest payment for this service request for the client
+            if (bookingData.serviceRequestId) {
+              try {
+                const paymentsQuery = query(
+                  collection(db, 'payments'),
+                  where('serviceRequestId', '==', bookingData.serviceRequestId),
+                  where('clientId', '==', currentUser.uid),
+                  orderBy('timestamp', 'desc'),
+                  limit(1)
+                );
+                const paymentSnapshot = await getDocs(paymentsQuery);
+                if (!paymentSnapshot.empty) {
+                  const payment = paymentSnapshot.docs[0].data();
+                  bookingData.razorpayPaymentId = payment.razorpay_payment_id || bookingData.razorpayPaymentId;
+                  bookingData.paymentAmount = payment.amount;
+                  bookingData.amount = payment.amount; // for invoice usage
+                  bookingData.paymentTimestamp = payment.timestamp;
+                  bookingData.refundStatus = payment.refundStatus;
+                  bookingData.refundAmount = payment.refundAmount;
+                  bookingData.refundReason = payment.refundReason;
+
+                  if (payment.razorpay_payment_id) {
+                    try {
+                      const refundHistory = await getRefundHistory(payment.razorpay_payment_id);
+                      bookingData.refundHistory = refundHistory;
+                    } catch (refundError) {
+                      console.error('Error fetching refund history:', refundError);
+                    }
+                  }
+                }
+              } catch (paymentError) {
+                console.error('Error fetching payment details for booking (client):', chat.id, paymentError);
+              }
+            }
+
+            bookingsData.push(bookingData);
+          }
         } else if (isAstrologer) {
-          bookingsQuery = query(
-            collection(db, 'bookings'),
+          // For astrologers: one booking per chat assigned to them
+          const chatsQuery = query(
+            collection(db, 'chats'),
             where('astrologerId', '==', currentUser.uid),
             orderBy('createdAt', 'desc')
           );
+          const chatsSnap = await getDocs(chatsQuery);
+          for (const chatDoc of chatsSnap.docs) {
+            const chat = { id: chatDoc.id, ...chatDoc.data() };
+            const bookingData = {
+              id: chat.id,
+              chatId: chat.id,
+              serviceType: chat.serviceType,
+              date: chat.createdAt,
+              status: chat.status || 'active',
+              clientId: chat.clientId,
+              client: {
+                displayName: chat.clientName,
+                photoURL: chat.participantAvatars?.[chat.clientId] || ''
+              },
+              serviceRequestId: chat.serviceRequestId,
+              razorpayPaymentId: chat.razorpay_payment_id,
+            };
+
+            // Fetch latest payment for this service request for the client
+            if (bookingData.serviceRequestId) {
+              try {
+                const paymentsQuery = query(
+                  collection(db, 'payments'),
+                  where('serviceRequestId', '==', bookingData.serviceRequestId),
+                  where('astrologerId', '==', currentUser.uid),
+                  orderBy('timestamp', 'desc'),
+                  limit(1)
+                );
+                const paymentSnapshot = await getDocs(paymentsQuery);
+                if (!paymentSnapshot.empty) {
+                  const payment = paymentSnapshot.docs[0].data();
+                  bookingData.razorpayPaymentId = payment.razorpay_payment_id || bookingData.razorpayPaymentId;
+                  bookingData.paymentAmount = payment.amount;
+                  bookingData.amount = payment.amount; // for invoice usage
+                  bookingData.paymentTimestamp = payment.timestamp;
+                  bookingData.refundStatus = payment.refundStatus;
+                  bookingData.refundAmount = payment.refundAmount;
+                  bookingData.refundReason = payment.refundReason;
+                  // Note: astrologers don't get refund history link via Razorpay
+                }
+              } catch (paymentError) {
+                console.error('Error fetching payment details for booking (astrologer):', chat.id, paymentError);
+              }
+            }
+
+            bookingsData.push(bookingData);
+          }
         } else {
           return;
         }
-        
-        const querySnapshot = await getDocs(bookingsQuery);
-        const bookingsData = [];
-        
-        for (const bookingDoc of querySnapshot.docs) {
-          const bookingData = bookingDoc.data();
-          bookingData.id = bookingDoc.id;
-          
-          // Fetch related user details (astrologer for client, client for astrologer)
-          if (isClient && bookingData.astrologerId) {
-            const astrologerDoc = await getDoc(doc(db, 'users', bookingData.astrologerId));
-            if (astrologerDoc.exists()) {
-              bookingData.astrologer = astrologerDoc.data();
-            }
-          } else if (isAstrologer && bookingData.clientId) {
-            const clientDoc = await getDoc(doc(db, 'users', bookingData.clientId));
-            if (clientDoc.exists()) {
-              bookingData.client = clientDoc.data();
-            }
-          }
 
-          // If client is viewing, try to fetch Razorpay payment ID and refund info
-          if (isClient && bookingData.serviceRequestId) {
-            try {
-              const paymentsQuery = query(
-                collection(db, 'payments'),
-                where('serviceRequestId', '==', bookingData.serviceRequestId),
-                where('clientId', '==', currentUser.uid),
-                orderBy('timestamp', 'desc'), // Get the latest payment if multiple (should ideally be one)
-                limit(1)
-              );
-              const paymentSnapshot = await getDocs(paymentsQuery);
-              if (!paymentSnapshot.empty) {
-                const paymentData = paymentSnapshot.docs[0].data();
-                bookingData.razorpayPaymentId = paymentData.razorpay_payment_id;
-                bookingData.paymentAmount = paymentData.amount;
-                bookingData.paymentTimestamp = paymentData.timestamp;
-                bookingData.refundStatus = paymentData.refundStatus;
-                bookingData.refundAmount = paymentData.refundAmount;
-                bookingData.refundReason = paymentData.refundReason;
-                
-                // Get refund history
-                if (paymentData.razorpay_payment_id) {
-                  try {
-                    const refundHistory = await getRefundHistory(paymentData.razorpay_payment_id);
-                    bookingData.refundHistory = refundHistory;
-                  } catch (refundError) {
-                    console.error('Error fetching refund history:', refundError);
-                  }
-                }
-              }
-            } catch (paymentError) {
-              console.error('Error fetching payment details for booking:', bookingData.id, paymentError);
-            }
-          }
-          
-          bookingsData.push(bookingData);
-        }
-        
         setBookings(bookingsData);
       } catch (error) {
         console.error('Error fetching bookings:', error);
@@ -160,7 +206,7 @@ export default function Bookings() {
         setLoading(false);
       }
     };
-    
+
     fetchBookings();
   }, [currentUser, isClient, isAstrologer]);
 
@@ -181,15 +227,16 @@ export default function Bookings() {
   const renderClientBookings = () => (
     <TableContainer>
       <Table>
-        <TableHead>
-          <TableRow>
-            <TableCell>{t('bookings.astrologer')}</TableCell>
-            <TableCell>{t('bookings.service')}</TableCell>
-            <TableCell>{t('bookings.date')}</TableCell>
-            <TableCell>{t('bookings.status')}</TableCell>
-            <TableCell align="right">{t('bookings.actions')}</TableCell>
-          </TableRow>
-        </TableHead>
+                    <TableHead>
+              <TableRow>
+                <TableCell>{t('bookings.astrologer')}</TableCell>
+                <TableCell>{t('bookings.service')}</TableCell>
+                <TableCell>{t('bookings.price')}</TableCell>
+                <TableCell>{t('bookings.date')}</TableCell>
+                <TableCell>{t('bookings.status')}</TableCell>
+                <TableCell align="right">{t('bookings.actions')}</TableCell>
+              </TableRow>
+            </TableHead>
         <TableBody>
           {bookings.map((booking) => (
             <TableRow key={booking.id}>
@@ -201,7 +248,34 @@ export default function Bookings() {
                   <Typography>{booking.astrologer?.displayName}</Typography>
                 </Box>
               </TableCell>
-              <TableCell>{booking.serviceType}</TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {booking.serviceType}
+                  {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
+                    <Chip
+                      label="Demo"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  ₹{booking.paymentAmount || 0}
+                  {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
+                    <Chip
+                      label="Demo"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
+                </Box>
+              </TableCell>
               <TableCell>
                 {new Date(booking.date.toDate()).toLocaleDateString()}
               </TableCell>
@@ -225,7 +299,7 @@ export default function Bookings() {
                   >
                     {t('bookings.invoice')}
                   </Button>
-                  {booking.razorpayPaymentId && (
+                  {booking.razorpayPaymentId && !booking.razorpayPaymentId.startsWith('demo_') && (
                     <Button
                       variant="outlined"
                       size="small"
@@ -262,6 +336,7 @@ export default function Bookings() {
           <TableRow>
             <TableCell>{t('bookings.client')}</TableCell>
             <TableCell>{t('bookings.service')}</TableCell>
+            <TableCell>{t('bookings.price')}</TableCell>
             <TableCell>{t('bookings.date')}</TableCell>
             <TableCell>{t('bookings.status')}</TableCell>
             <TableCell align="right">{t('bookings.actions')}</TableCell>
@@ -278,19 +353,57 @@ export default function Bookings() {
                   <Typography>{booking.client?.displayName}</Typography>
                 </Box>
               </TableCell>
-              <TableCell>{booking.serviceType}</TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  {booking.serviceType}
+                  {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
+                    <Chip
+                      label="Demo"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
+                </Box>
+              </TableCell>
+              <TableCell>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  ₹{booking.paymentAmount || 0}
+                  {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
+                    <Chip
+                      label="Demo"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
+                </Box>
+              </TableCell>
               <TableCell>
                 {new Date(booking.date.toDate()).toLocaleDateString()}
               </TableCell>
               <TableCell>
-                <Chip
-                  label={booking.status}
-                  color={
-                    booking.status === 'completed' ? 'success' :
-                    booking.status === 'cancelled' ? 'error' :
-                    'warning'
-                  }
-                />
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                  <Chip
+                    label={booking.status}
+                    color={
+                      booking.status === 'completed' ? 'success' :
+                      booking.status === 'cancelled' ? 'error' :
+                      'warning'
+                    }
+                  />
+                  {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
+                    <Chip
+                      label="Demo"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.7rem' }}
+                    />
+                  )}
+                </Box>
               </TableCell>
               <TableCell align="right">
                 <Box sx={{ display: 'flex', gap: 1, justifyContent: 'flex-end' }}>
@@ -302,7 +415,7 @@ export default function Bookings() {
                   >
                     {t('bookings.invoice')}
                   </Button>
-                  {booking.razorpayPaymentId && (
+                  {booking.razorpayPaymentId && !booking.razorpayPaymentId.startsWith('demo_') && (
                     <Button
                       variant="outlined"
                       size="small"
@@ -369,18 +482,28 @@ export default function Bookings() {
             </Paper>
           ) : (
             <Paper elevation={0} sx={{ p: 3 }}>
-              <Typography 
-                variant="h5" 
-                sx={{ 
-                  fontFamily: '"Playfair Display", serif', 
-                  mb: 3 
-                }}
-              >
-                {isClient 
-                  ? t('bookings.clientBookings')
-                  : t('bookings.astrologerBookings')
-                }
-              </Typography>
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
+                <Typography 
+                  variant="h5" 
+                  sx={{ 
+                    fontFamily: '"Playfair Display", serif'
+                  }}
+                >
+                  {isClient 
+                    ? t('bookings.clientBookings')
+                    : t('bookings.astrologerBookings')
+                  }
+                </Typography>
+                {currentUser?.isDemoUser && (
+                  <Chip
+                    label="Demo User"
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{ fontSize: '0.8rem' }}
+                  />
+                )}
+              </Box>
               
               {isClient && renderClientBookings()}
               {isAstrologer && renderAstrologerBookings()}

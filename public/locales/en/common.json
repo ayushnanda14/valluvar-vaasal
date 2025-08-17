@@ -194,6 +194,7 @@
     "astrologer": "Astrologer",
     "client": "Client",
     "service": "Service",
+    "price": "Price",
     "date": "Date",
     "status": "Status",
     "actions": "Actions",

@@ -11,7 +11,8 @@ import {
   Divider,
   useTheme,
   useMediaQuery,
-  Skeleton
+  Skeleton,
+  Chip
 } from '@mui/material';
 import { motion } from 'framer-motion';
 import { useRouter } from 'next/router';
@@ -207,24 +208,27 @@ const PersonalizedHero = () => {
                 alignItems: { xs: 'center', sm: 'flex-start' } // Center content on mobile
               }}
             >
-              <MotionTypography
-                variant="h2"
+              <Typography
+                variant="h3"
                 component="h1"
                 sx={{
-                  fontFamily: '"Playfair Display", serif',
-                  fontSize: { xs: '2.5rem', sm: '2.2rem', md: '3.5rem' },
-                  fontWeight: 700,
-                  mb: 2
+                  fontFamily: '"Cinzel", serif',
+                  fontWeight: 600,
+                  mb: 2,
+                  color: theme.palette.secondary.dark
                 }}
               >
-                {currentUser ? (
-                  <>
-                    {t('personalizedHero.greeting')}, <span style={{ color: theme.palette.primary.main }}>{getFirstName()}</span>
-                  </>
-                ) : (
-                  t('personalizedHero.titleGuest')
+                {t('hero.welcome', 'Welcome')}, {getFirstName()}!
+                {currentUser?.isDemoUser && (
+                  <Chip
+                    label="Demo User"
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{ ml: 2, fontSize: '0.8rem' }}
+                  />
                 )}
-              </MotionTypography>
+              </Typography>
 
               <MotionTypography
                 variant="h6"

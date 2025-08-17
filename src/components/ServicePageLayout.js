@@ -127,6 +127,11 @@ export default function ServicePageLayout({
             if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
             if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
 
+            // Restore jathak-related form data if present (for prediction/writing flows)
+            if (savedState.jathakFormData) setJathakFormData(savedState.jathakFormData);
+            if (savedState.predictionFormData) setPredictionFormData(savedState.predictionFormData);
+            if (typeof savedState.jathakWritingOption === 'string') setJathakWritingOption(savedState.jathakWritingOption);
+
             // Show message only if user had meaningful previous selections (both district and astrologers)
             if (savedState.selectedDistrict && savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
               setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
@@ -174,10 +179,14 @@ export default function ServicePageLayout({
         selectedAstrologers,
         filesUploaded: files.length > 0,
         secondFilesUploaded: secondFiles.length > 0,
+        // Persist form data for restoration in Jathak Prediction/Writing flows
+        jathakFormData,
+        predictionFormData,
+        jathakWritingOption
       };
       localStorage.setItem(localStorageKey, JSON.stringify(stateToSave));
     }
-  }, [step, selectedDistrict, selectedAstrologers, files, secondFiles, serviceType, currentUser, localStorageKey]);
+  }, [step, selectedDistrict, selectedAstrologers, files, secondFiles, jathakFormData, predictionFormData, jathakWritingOption, serviceType, currentUser, localStorageKey]);
 
   // Fetch available districts based on service type
   useEffect(() => {
@@ -197,7 +206,6 @@ export default function ServicePageLayout({
         const astrologersSnapshot = await getDocs(astrologersQuery);
         const filteredDocs = astrologersSnapshot.docs.filter(doc => {
           const data = doc.data();
-          console.log('data', data);
           return data.services && Object.keys(data.services).includes(serviceType);
         });
 
@@ -242,7 +250,7 @@ export default function ServicePageLayout({
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() })) // Map to include ID and data
-          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)); // Filter by service
+          .filter(astrologer => astrologer.services && Object.keys(astrologer.services).includes(serviceType)); // Filter by service
 
         setAstrologers(filteredAstrologers); // Set state with the filtered list
       } catch (err) {
@@ -412,13 +420,17 @@ export default function ServicePageLayout({
         astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
         status: 'payment_successful', // Initial status after successful payment
         totalAmount: calculateTotal(), // Original amount before any taxes/fees from your calc
-        paidAmount: paymentResponse.amount / 100, // Amount from Razorpay (in smallest currency unit)
+        // Amount may not be present on some gateways or older callbacks; compute safely
+        paidAmount: typeof paymentResponse.amount === 'number'
+          ? Math.round(paymentResponse.amount) / 100
+          : (calculateTotal() + Math.round(calculateTotal() * 0.18)),
         currency: 'INR', // Assuming INR, or take from paymentResponse.currency if available
         razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID
         filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
         selectedDistrict: selectedDistrict, // Storing selected district
+        isDemoUser: currentUser.isDemoUser || false, // Add demo user flag
         // Add jathak writing form data if applicable
         ...(serviceType === 'jathakWriting' && jathakWritingOption === 'baby' && {
           jathakWritingData: {
@@ -618,6 +630,229 @@ export default function ServicePageLayout({
       }
     } catch (err) {
       console.error('Payment error:', err);
+      setError(t('servicePage.errors.paymentFailed'));
+    }
+  };
+
+  // Add demo payment handler
+  const handleDemoPayment = async () => {
+    if (!currentUser) {
+      setError(t('servicePage.errors.userNotFound'));
+      return;
+    }
+
+    try {
+      // Generate demo payment ID
+      const demoPaymentId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
+
+      // Create a new service request in Firestore
+      const serviceRequestData = {
+        clientId: currentUser.uid,
+        clientName: currentUser.displayName || 'Anonymous',
+        clientEmail: currentUser.email,
+        serviceType: serviceType,
+        astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
+        status: 'payment_successful',
+        totalAmount: calculateTotal(),
+        paidAmount: 0, // Demo users don't pay
+        currency: 'INR',
+        razorpay_payment_id: demoPaymentId,
+        filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        selectedDistrict: selectedDistrict,
+        isDemoUser: true
+      };
+
+      const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
+
+      // Create demo payment records for each astrologer
+      await createPaymentRecords({
+        selectedAstrologers,
+        currentUser,
+        serviceType,
+        paymentResponse: { razorpay_payment_id: demoPaymentId },
+        serviceRequestRef
+      });
+
+      // Create conversation threads with each selected astrologer
+      const createdChatIds = [];
+      const messageText = `Demo service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`;
+
+      for (const astrologer of selectedAstrologers) {
+        const conversationRef = await addDoc(collection(db, 'chats'), {
+          participants: [currentUser.uid, astrologer.id],
+          clientId: currentUser.uid,
+          clientName: currentUser.displayName || 'Client',
+          astrologerId: astrologer.id,
+          astrologerName: astrologer.displayName || 'Astrologer',
+          participantNames: {
+            [currentUser.uid]: currentUser.displayName || 'Client',
+            [astrologer.id]: astrologer.displayName || 'Astrologer'
+          },
+          participantAvatars: {
+            [currentUser.uid]: currentUser.photoURL || null,
+            [astrologer.id]: astrologer.photoURL || null
+          },
+          serviceRequestId: serviceRequestRef.id,
+          serviceType: serviceType,
+          razorpay_payment_id: demoPaymentId,
+          isDemoUser: true,
+          lastMessage: {
+            text: messageText,
+            timestamp: serverTimestamp(),
+            senderId: 'system'
+          },
+          createdAt: serverTimestamp(),
+          updatedAt: serverTimestamp()
+        });
+
+        createdChatIds.push(conversationRef.id);
+
+        // Add initial system message to the conversation
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: messageText,
+          timestamp: serverTimestamp(),
+          read: false
+        });
+
+        // Upload file references to the chat
+        const fileReferences = [];
+
+        try {
+          // Process main files
+          for (let i = 0; i < files.length; i++) {
+            const file = files[i];
+
+            // Generate appropriate file name based on service type
+            let newFileName;
+            if (serviceType === 'marriageMatching') {
+              newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            } else {
+              newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+            }
+
+            const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+            const uploadTask = await uploadBytes(storageRef, file);
+            const downloadURL = await getDownloadURL(uploadTask.ref);
+
+            fileReferences.push({
+              name: newFileName,
+              originalName: file.name,
+              type: file.type,
+              size: file.size,
+              url: downloadURL,
+              uploadedBy: currentUser.uid,
+              uploadedAt: serverTimestamp()
+            });
+          }
+
+          // Process secondary files if dual upload is enabled
+          if (dualUpload && secondFiles.length > 0) {
+            for (let i = 0; i < secondFiles.length; i++) {
+              const file = secondFiles[i];
+              const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+              const uploadTask = await uploadBytes(storageRef, file);
+              const downloadURL = await getDownloadURL(uploadTask.ref);
+
+              fileReferences.push({
+                name: newFileName,
+                originalName: file.name,
+                type: file.type,
+                size: file.size,
+                url: downloadURL,
+                category: defaultDualUploadLabels[1],
+                uploadedBy: currentUser.uid,
+                uploadedAt: serverTimestamp()
+              });
+            }
+          }
+
+          // Store file references in a subcollection of the chat
+          for (const fileRef of fileReferences) {
+            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+          }
+
+          // Add a system message about the uploaded files or form data
+          let systemMessageText;
+          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+            systemMessageText = t('systemMessage.jathakFormSubmitted', {
+              name: currentUser.displayName || 'User',
+              personName: jathakFormData.name,
+              birthPlace: jathakFormData.birthPlace,
+              birthDate: jathakFormData.birthDate,
+              birthTime: jathakFormData.birthTime
+            });
+          } else if (serviceType === 'jathakPrediction') {
+            const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
+            const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
+            systemMessageText = t('systemMessage.predictionFormSubmitted', {
+              name: currentUser.displayName || 'User',
+              personName: predictionFormData.name,
+              birthDate: formatLocalDate(predictionFormData.birthDate),
+              timePart,
+              zodiacPart
+            });
+          } else {
+            systemMessageText = t('systemMessage.uploadedFiles', {
+              name: currentUser.displayName || 'User',
+              count: fileReferences.length
+            });
+          }
+
+          // Build a consistent payload for system message metadata (avoid undefined fields)
+          const metadata = { serviceType, isDemoUser: true };
+          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+            metadata.jathakWriting = {
+              name: jathakFormData.name,
+              birthPlace: jathakFormData.birthPlace,
+              birthDate: jathakFormData.birthDate,
+              birthTime: jathakFormData.birthTime,
+              additionalNotes: jathakFormData.additionalNotes,
+              option: jathakWritingOption
+            };
+          } else if (serviceType === 'jathakPrediction') {
+            metadata.jathakPrediction = {
+              name: predictionFormData.name,
+              birthDate: predictionFormData.birthDate,
+              ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
+              ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
+            };
+          }
+          if (fileReferences.length > 0) {
+            metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
+          }
+
+          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+            senderId: 'system',
+            text: systemMessageText,
+            timestamp: serverTimestamp(),
+            read: false,
+            metadata
+          });
+        } catch (err) {
+          console.error('Error uploading files:', err);
+          setError(t('servicePage.errors.fileUploadFailed'));
+          return;
+        }
+      }
+
+      // Clear saved state from localStorage on successful demo payment
+      if (typeof window !== 'undefined') {
+        localStorage.removeItem(localStorageKey);
+      }
+
+      // Redirect to the created chat after demo payment
+      if (createdChatIds.length > 0) {
+        router.push({ pathname: '/messages', query: { chatId: createdChatIds[0] } });
+      } else {
+        // Fallback to success page if for some reason no chat was created
+        router.push('/service-success');
+      }
+    } catch (err) {
+      console.error('Demo payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
     }
   };
@@ -916,7 +1151,7 @@ export default function ServicePageLayout({
                           {uploadSubstep === 1 && (
                             <Box>
                               <Typography variant="h6" sx={{ mb: 2, color: theme.palette.primary.main }}>
-                                  {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
+                                {t('servicePage.steps.uploadStep', { step: 1, total: 2 })}: {defaultDualUploadLabels[0]} {t('uploadLabels.jathak')}
                               </Typography>
                               <FileUploadSection
                                 files={files}
@@ -1074,7 +1309,7 @@ export default function ServicePageLayout({
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
-                       disabled={dualUpload && isMobile && secondFiles.length === 0}
+                      disabled={dualUpload && isMobile && secondFiles.length === 0}
                       sx={{
                         py: { xs: 1.5, md: 2 },
                         px: { xs: 2, md: 4 },
@@ -1366,7 +1601,7 @@ export default function ServicePageLayout({
                                         color="text.secondary"
                                         sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                       >
-                                        {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                        {Object.keys(astrologer.services).map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
                                       </Typography>
                                       <Typography
                                         variant="body2"
@@ -1614,13 +1849,40 @@ export default function ServicePageLayout({
                           {t('servicePage.paymentMethod', 'Payment Method')}
                         </Typography>
 
-                        <PaymentButton
-                          amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
-                          description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
-                          onSuccess={handlePayment}
-                          onError={(error) => setError(error)}
-                          onProcessingStateChange={handlePaymentProcessingChange}
-                        />
+                        {currentUser.isDemoUser ? (
+                          <Box sx={{ textAlign: 'center' }}>
+                            <Alert severity="info" sx={{ mb: 3 }}>
+                              <Typography variant="body1" sx={{ mb: 1 }}>
+                                <strong>Demo User Access</strong>
+                              </Typography>
+                              <Typography variant="body2">
+                                As a demo user, you can access this service without payment. Click the button below to proceed.
+                              </Typography>
+                            </Alert>
+                            <Button
+                              variant="contained"
+                              color="success"
+                              size="large"
+                              onClick={handleDemoPayment}
+                              sx={{
+                                py: 2,
+                                px: 4,
+                                fontSize: '1.2rem',
+                                fontFamily: '"Cormorant Garamond", serif'
+                              }}
+                            >
+                              Proceed with Demo Service
+                            </Button>
+                          </Box>
+                        ) : (
+                          <PaymentButton
+                            amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
+                            description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
+                            onSuccess={handlePayment}
+                            onError={(error) => setError(error)}
+                            onProcessingStateChange={handlePaymentProcessingChange}
+                          />
+                        )}
                       </Paper>
                     </Box>
 

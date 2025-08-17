@@ -37,7 +37,8 @@ import {
   Rating,
   Card,
   CardContent,
-  Badge
+  Badge,
+  Checkbox
 } from '@mui/material';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import PersonIcon from '@mui/icons-material/Person';
@@ -154,23 +155,53 @@ const ChatMonitor = ({ userId, userType }) => {
     localStorage.setItem('adminChatNotificationPrefs', JSON.stringify(newPrefs));
   };
 
+  // Add state for chat filtering
+  const [chatFilters, setChatFilters] = useState({
+    showRegularChats: true,
+    showAdminChats: true,
+    showDemoChats: true
+  });
+
   // Compute sorted chats with admin chats at the top
   const sortedChats = React.useMemo(() => {
-    return [...chats].sort((a, b) => {
-      // First priority: chats with active admin chats
-      const aHasAdminChat = adminChats[a.id] ? 1 : 0;
-      const bHasAdminChat = adminChats[b.id] ? 1 : 0;
+    const chatsWithAdminChats = chats.map(chat => {
+      const adminChat = adminChats[chat.id];
+      return {
+        ...chat,
+        hasAdminChat: !!adminChat,
+        adminChatId: adminChat?.id,
+        hasNewMessages: adminChat?.hasNewMessages || false
+      };
+    });
 
-      if (aHasAdminChat !== bHasAdminChat) {
-        return bHasAdminChat - aHasAdminChat; // Admin chats first
-      }
-
-      // Second priority: sort by updatedAt
-      const aTime = a.updatedAt?.toDate?.() || new Date(0);
-      const bTime = b.updatedAt?.toDate?.() || new Date(0);
+    // Sort: admin chats first, then by last message time
+    return chatsWithAdminChats.sort((a, b) => {
+      // Admin chats first
+      if (a.hasAdminChat && !b.hasAdminChat) return -1;
+      if (!a.hasAdminChat && b.hasAdminChat) return 1;
+      
+      // Then by last message time
+      const aTime = a.lastMessage?.timestamp?.toDate?.() || a.updatedAt?.toDate?.() || new Date(0);
+      const bTime = b.lastMessage?.timestamp?.toDate?.() || b.updatedAt?.toDate?.() || new Date(0);
       return bTime - aTime;
     });
   }, [chats, adminChats]);
+
+  // Filter chats based on selected filters
+  const filteredChats = React.useMemo(() => {
+    return sortedChats.filter(chat => {
+      if (!chatFilters.showRegularChats && !chat.isDemoUser && !adminChats[chat.id]) {
+        return false;
+      }
+      if (!chatFilters.showAdminChats && adminChats[chat.id]) {
+        return false;
+      }
+      if (!chatFilters.showDemoChats && chat.isDemoUser) {
+        return false;
+      }
+      return true;
+    });
+  }, [sortedChats, chatFilters, adminChats]);
 
   // Effect for fetching chats list with real-time updates
   useEffect(() => {
@@ -1716,9 +1747,9 @@ const ChatMonitor = ({ userId, userType }) => {
               </ListItem>
             ))}
             {notifications.length > 3 && (
-              <ListItem sx={{ py: 0.5 }}>
-                <Typography variant="body2" sx={{ fontStyle: 'italic' }}>
-                  +{notifications.length - 3} more notifications
+              <ListItem sx={{ py: 0.5, justifyContent: 'center' }}>
+                <Typography variant="caption" sx={{ opacity: 0.8 }}>
+                  +{notifications.length - 3} more requests
                 </Typography>
               </ListItem>
             )}
@@ -1726,20 +1757,68 @@ const ChatMonitor = ({ userId, userType }) => {
         </Paper>
       )}
 
-      <Typography
-        variant="h5"
-        sx={{
-          fontFamily: '"Playfair Display", serif',
-          mb: 2
-        }}
-      >
-        Conversations & Support Chats
-      </Typography>
+      {/* Chat Type Legend and Filters */}
+      <Paper sx={{ mb: 2, p: 2, bgcolor: 'background.paper' }}>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h6" sx={{ fontFamily: '"Playfair Display", serif' }}>
+            Chat Type Legend
+          </Typography>
+          <Box sx={{ display: 'flex', gap: 1 }}>
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={chatFilters.showRegularChats}
+                  onChange={(e) => setChatFilters(prev => ({ ...prev, showRegularChats: e.target.checked }))}
+                  size="small"
+                />
+              }
+              label="Regular"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={chatFilters.showAdminChats}
+                  onChange={(e) => setChatFilters(prev => ({ ...prev, showAdminChats: e.target.checked }))}
+                  size="small"
+                />
+              }
+              label="Client Enquiry"
+            />
+            <FormControlLabel
+              control={
+                <Checkbox
+                  checked={chatFilters.showDemoChats}
+                  onChange={(e) => setChatFilters(prev => ({ ...prev, showDemoChats: e.target.checked }))}
+                  size="small"
+                />
+              }
+              label="Demo"
+            />
+          </Box>
+        </Box>
+        <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 2 }}>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, bgcolor: 'inherit', border: '1px solid #ccc' }} />
+            <Typography variant="body2">Regular Client-Astrologer Chat</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, bgcolor: '#FFE28A' }} />
+            <Typography variant="body2">Client Enquiry (Admin Support)</Typography>
+          </Box>
+          <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+            <Box sx={{ width: 20, height: 20, bgcolor: '#E8F5E8' }} />
+            <Typography variant="body2">Demo User Chat</Typography>
+          </Box>
+        </Box>
+      </Paper>
 
-      {sortedChats.length === 0 ? (
-        <Typography variant="body1" sx={{ textAlign: 'center', py: 4 }}>
-          No conversations found
-        </Typography>
+      {/* Chat List */}
+      {filteredChats.length === 0 ? (
+        <Paper sx={{ p: 3, textAlign: 'center' }}>
+          <Typography variant="h6" color="text.secondary">
+            {chats.length === 0 ? 'No chats found' : 'No chats match the selected filters'}
+          </Typography>
+        </Paper>
       ) : (
         <TableContainer component={Paper} elevation={0}>
           <Table>
@@ -1748,15 +1827,24 @@ const ChatMonitor = ({ userId, userType }) => {
                 <TableCell sx={{ fontWeight: 'bold' }}>Client</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Astrologer</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Service</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Support</TableCell>
-                <TableCell sx={{ fontWeight: 'bold' }}>Last Updated</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Last Message</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Status</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
               </TableRow>
             </TableHead>
             <TableBody>
-              {sortedChats.map((chat) => {
+              {filteredChats.map((chat) => {
                 const hasAdminChat = adminChats[chat.id];
+                const isDemoChat = chat.isDemoUser;
+                
+                // Determine background color based on chat type
+                let bgColor = 'inherit';
+                if (hasAdminChat) {
+                  bgColor = '#FFE28A'; // Amber for admin support chats
+                } else if (isDemoChat) {
+                  bgColor = '#E8F5E8'; // Light green for demo chats
+                }
+                
                 return (
                   <TableRow
                     key={chat.id}
@@ -1764,14 +1852,27 @@ const ChatMonitor = ({ userId, userType }) => {
                     onClick={() => handleSelectChat(chat)}
                     sx={{
                       cursor: 'pointer',
-                      bgcolor: hasAdminChat ? '#FFE28A' : 'inherit',
+                      bgcolor: bgColor,
                       '&:hover': {
-                        bgcolor: hasAdminChat ? 'warning.main' : 'action.hover'
+                        bgcolor: hasAdminChat ? 'warning.main' : 
+                                  isDemoChat ? 'success.light' : 
+                                  'action.hover'
                       }
                     }}
                   >
                     <TableCell>
-                      {chat.clientName || chat.clientId || 'Unknown Client'}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {isDemoChat && (
+                          <Chip
+                            label="Demo"
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                            sx={{ fontSize: '0.7rem' }}
+                          />
+                        )}
+                        {chat.clientName || chat.clientId || 'Unknown Client'}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {chat.chatType === 'admin' ?
@@ -1783,76 +1884,37 @@ const ChatMonitor = ({ userId, userType }) => {
                       {chat.chatType === 'admin' ? 'Admin Support' : (SERVICE_TYPES[chat.serviceType] || 'General')}
                     </TableCell>
                     <TableCell>
-                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, flexDirection: 'column' }}>
-
-                        {hasAdminChat ? (
-                          chat.supportUserId ? (
-                            <Chip
-                              label={supportUsers.find(a => a.id === chat.supportUserId || a.id === chat.adminId)?.displayName || 'Unknown Support'}
-                              color="primary"
-                              size="small"
-                              icon={<AdminPanelSettingsIcon />}
-                            />
-                          ) : (
-                            <Typography variant="body2" color="text.secondary">-</Typography>
-                          )
-                        ) : chat.supportUserId ? (
-                          <Chip
-                            label={supportUsers.find(a => a.id === chat.supportUserId || a.id === chat.adminId)?.displayName || 'Unknown Support'}
-                            color="primary"
-                            size="small"
-                            icon={<AdminPanelSettingsIcon />}
-                          />
-                        ) : chat.adminId ? (
-                          <Chip
-                            label={supportUsers.find(a => a.id === chat.adminId)?.displayName || 'Unknown Support'}
-                            color="primary"
-                            size="small"
-                            icon={<AdminPanelSettingsIcon />}
-                          />
-                        ) : (
-                          <Chip
-                            label="Unassigned"
-                            color="default"
-                            size="small"
-                            variant="outlined"
-                          />
-                        )}
+                      <Box sx={{ display: 'flex', flexDirection: 'column', gap: 0.5 }}>
+                        <Typography variant="body2" noWrap sx={{ maxWidth: 200 }}>
+                          {chat.lastMessage?.text || 'No messages yet'}
+                        </Typography>
+                        <Typography variant="caption" color="text.secondary">
+                          {chat.lastMessage?.timestamp?.toDate ? 
+                            chat.lastMessage.timestamp.toDate().toLocaleString() :
+                            chat.updatedAt?.toDate ? 
+                              chat.updatedAt.toDate().toLocaleString() :
+                              'Unknown time'
+                          }
+                        </Typography>
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {chat.updatedAt?.toDate().toLocaleString() || 'Unknown'}
-                    </TableCell>
-                    <TableCell>
-                      <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
-                        <Chip
-                          label={chat.status || 'Active'}
-                          color={
-                            chat.status === 'completed' ? 'success' :
-                              chat.status === 'inactive' ? 'default' :
-                                'primary'
-                          }
-                          size="small"
-                        />
-                        {chat.feedback && (
-                          <Tooltip title="Has Feedback">
-                            <Chip
-                              label="Feedback"
-                              color="secondary"
-                              size="small"
-                              icon={<VisibilityIcon />}
-                            />
-                          </Tooltip>
-                        )}
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
                         {hasAdminChat && (
-                          <Tooltip title="Admin Support Chat">
-                            <Chip
-                              label="Admin Chat"
-                              color="warning"
-                              size="small"
-                              icon={<SupportIcon />}
-                            />
-                          </Tooltip>
+                          <Badge
+                            color="error"
+                            variant="dot"
+                            invisible={!hasAdminChat?.hasNewMessages}
+                            sx={{
+                              '& .MuiBadge-dot': {
+                                right: -3,
+                                top: -3,
+                                display: { xs: 'block', md: 'none' }
+                              }
+                            }}
+                          >
+                            <SupportIcon />
+                          </Badge>
                         )}
                       </Box>
                     </TableCell>
@@ -1882,20 +1944,6 @@ const ChatMonitor = ({ userId, userType }) => {
                           onClick={(e) => e.stopPropagation()}
                           label="Sound"
                         />
-                        {/* {hasAdminChat && (
-                          <Button
-                            variant="contained"
-                            size="small"
-                            color="warning"
-                            startIcon={<SupportIcon />}
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              handleOpenAdminChat(chat.id);
-                            }}
-                          >
-                            Admin Chat
-                          </Button>
-                        )} */}
                       </Box>
                     </TableCell>
                   </TableRow>

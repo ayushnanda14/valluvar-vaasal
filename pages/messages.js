@@ -17,7 +17,8 @@ import {
   IconButton,
   useMediaQuery,
   Button,
-  Skeleton
+  Skeleton,
+  Chip
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
@@ -180,17 +181,27 @@ export default function Messages() {
       <Box sx={{ minHeight: '100vh', bgcolor: 'background.default', pt: { xs: 2, md: 4 }, pb: 6 }}>
         <Container maxWidth="xl">
           {!isMobileChat && (
-            <Typography
-              variant="h4"
-              component="h1"
-              sx={{
-                mb: 1,
-                fontFamily: '"Cormorant Garamond", serif',
-                textAlign: { xs: 'center', md: 'left' }
-              }}
-            >
-              {t('messages.yourReadings')}
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 1, justifyContent: { xs: 'center', md: 'flex-start' } }}>
+              <Typography
+                variant="h4"
+                component="h1"
+                sx={{
+                  fontFamily: '"Cormorant Garamond", serif',
+                  textAlign: { xs: 'center', md: 'left' }
+                }}
+              >
+                {t('messages.yourReadings')}
+              </Typography>
+              {currentUser?.isDemoUser && (
+                <Chip
+                  label="Demo User"
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontSize: '0.8rem' }}
+                />
+              )}
+            </Box>
           )}
 
           {loading ? (
@@ -480,18 +491,27 @@ export default function Messages() {
                             }
                             secondary={
                               <Box sx={{ mt: 0.5 }}>
-                                <Typography
-                                  variant="caption"
-                                  component="span"
-                                  sx={{
-                                    display: 'block',
-                                    fontSize: '0.8rem',
-                                    color: 'primary.main',
-                                    mb: 0.5
-                                  }}
-                                >
-                                  {t(`services.${chat.serviceType}.title`) || 'Consultation'}
-                                </Typography>
+                                <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 0.5 }}>
+                                  <Typography
+                                    variant="caption"
+                                    component="span"
+                                    sx={{
+                                      fontSize: '0.8rem',
+                                      color: 'primary.main'
+                                    }}
+                                  >
+                                    {t(`services.${chat.serviceType}.title`) || 'Consultation'}
+                                  </Typography>
+                                  {chat.isDemoUser && (
+                                    <Chip
+                                      label="Demo"
+                                      size="small"
+                                      color="success"
+                                      variant="outlined"
+                                      sx={{ fontSize: '0.6rem', height: '20px' }}
+                                    />
+                                  )}
+                                </Box>
 
                                 <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', gap: 1 }}>
                                   <Typography
@@ -599,6 +619,15 @@ export default function Messages() {
                               sx={{ fontSize: isMobileChat ? '0.8rem' : '0.875rem' }}
                             >
                               {t('chat.serviceLabel')} {t(`services.${selectedChat.serviceType}.title`) || t('chat.consultation')}
+                              {currentUser?.isDemoUser && (
+                                <Chip
+                                  label="Demo User"
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ ml: 1, fontSize: '0.7rem' }}
+                                />
+                              )}
                             </Typography>
                           </Box>
                         </Box>

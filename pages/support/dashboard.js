@@ -105,18 +105,29 @@ export default function SupportDashboard() {
             <Box sx={{ display: 'flex', alignItems: 'center', mb: 2 }}>
               <SupportIcon sx={{ mr: 2, fontSize: 40, color: theme.palette.secondary.dark }} />
               <Box>
-                <Typography
-                  variant="h1"
-                  component="h1"
-                  sx={{
-                    fontFamily: '"Playfair Display", serif',
-                    fontWeight: 600,
-                    fontSize: { xs: '2rem', md: '2.8rem' },
-                    color: theme.palette.secondary.dark
-                  }}
-                >
-                  Support Dashboard
-                </Typography>
+                <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+                  <Typography
+                    variant="h1"
+                    component="h1"
+                    sx={{
+                      fontFamily: '"Playfair Display", serif',
+                      fontWeight: 600,
+                      fontSize: { xs: '2rem', md: '2.8rem' },
+                      color: theme.palette.secondary.dark
+                    }}
+                  >
+                    Support Dashboard
+                  </Typography>
+                  {currentUser?.isDemoUser && (
+                    <Chip
+                      label="Demo User"
+                      size="small"
+                      color="success"
+                      variant="outlined"
+                      sx={{ fontSize: '0.8rem' }}
+                    />
+                  )}
+                </Box>
                 <Typography variant="body1" color="text.secondary">
                   Welcome back, {currentUser?.displayName || 'Support User'}
                 </Typography>
@@ -278,9 +289,20 @@ export default function SupportDashboard() {
                         }
                         secondary={
                           <Box>
-                            <Typography variant="body2" color="text.secondary">
-                              Service: {SERVICE_TYPES[chat.serviceType] || 'General consultation'}
-                            </Typography>
+                            <Box sx={{ display: 'flex', alignItems: 'center', gap: 1, mb: 1 }}>
+                              <Typography variant="body2" color="text.secondary">
+                                Service: {SERVICE_TYPES[chat.serviceType] || 'General consultation'}
+                              </Typography>
+                              {chat.isDemoUser && (
+                                <Chip
+                                  label="Demo"
+                                  size="small"
+                                  color="success"
+                                  variant="outlined"
+                                  sx={{ fontSize: '0.7rem' }}
+                                />
+                              )}
+                            </Box>
                             <Typography variant="body2" color="text.secondary">
                               Last updated: {formatDate(chat.updatedAt)}
                             </Typography>

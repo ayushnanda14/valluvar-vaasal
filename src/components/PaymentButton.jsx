@@ -58,7 +58,13 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
               onError?.('Missing Razorpay payment details.');
             } else {
               // Payment successful - keep button disabled, user will be redirected
-              onSuccess?.(response);
+              // Include order amount and currency so downstream handlers can compute paidAmount reliably
+              onSuccess?.({
+                ...response,
+                amount: orderAmount, // paise
+                currency: orderCurrency,
+                order_id: orderId,
+              });
               // need to verify the payment on the server
             }
 

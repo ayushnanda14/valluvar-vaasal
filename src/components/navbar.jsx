@@ -16,6 +16,7 @@ import {
   ListItemText,
   ListItemIcon,
   Divider,
+  Chip,
 } from '@mui/material';
 import MenuIcon from '@mui/icons-material/Menu';
 import CloseIcon from '@mui/icons-material/Close';
@@ -403,6 +404,15 @@ const Navbar = () => {
                             }}
                           >
                             {currentUser.displayName || 'User'}
+                            {currentUser.isDemoUser && (
+                              <Chip
+                                label="Demo"
+                                size="small"
+                                color="success"
+                                variant="outlined"
+                                sx={{ ml: 1, fontSize: '0.7rem' }}
+                              />
+                            )}
                           </Typography>
                           <Typography
                             variant="body2"
@@ -623,6 +633,15 @@ const Navbar = () => {
                 }}
               >
                 {currentUser.displayName || 'User'}
+                {currentUser.isDemoUser && (
+                  <Chip
+                    label="Demo"
+                    size="small"
+                    color="success"
+                    variant="outlined"
+                    sx={{ ml: 1, fontSize: '0.7rem' }}
+                  />
+                )}
               </Typography>
               <Typography
                 variant="body2"

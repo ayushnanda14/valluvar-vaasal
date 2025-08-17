@@ -72,6 +72,7 @@ import TuneIcon from '@mui/icons-material/Tune';
 import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
+import DemoIcon from '@mui/icons-material/PlayArrow'; // Add demo icon
 
 // Protected route component
 import ProtectedRoute from '../../src/components/ProtectedRoute';
@@ -176,6 +177,11 @@ export default function AdminDashboard() {
 
   // Add state for users listener
   const [usersListener, setUsersListener] = useState(null);
+
+  // Add state for demo user management
+  const [demoUserDialog, setDemoUserDialog] = useState(false);
+  const [selectedDemoUser, setSelectedDemoUser] = useState(null);
+  const [demoUserLoading, setDemoUserLoading] = useState(false);
 
   // Get tab from query params
   useEffect(() => {
@@ -531,6 +537,11 @@ export default function AdminDashboard() {
 
         querySnapshot.forEach((doc) => {
           const payment = doc.data();
+          // Skip demo payments in revenue calculation
+          if (payment.isDemoPayment) {
+            return;
+          }
+          
           const amount = payment.amount || 0;
           totalRevenue += amount;
 
@@ -820,15 +831,26 @@ export default function AdminDashboard() {
                       </Box>
                     </TableCell>
                     <TableCell>
-                      {user.roles && user.roles.map((role) => (
-                        <Chip
-                          key={role}
-                          label={role}
-                          size="small"
-                          color={role === 'admin' ? 'primary' : role === 'astrologer' ? 'secondary' : 'default'}
-                          sx={{ mr: 0.5, mb: 0.5 }}
-                        />
-                      ))}
+                      <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 0.5 }}>
+                        {user.roles && user.roles.map((role) => (
+                          <Chip
+                            key={role}
+                            label={role}
+                            size="small"
+                            color={role === 'admin' ? 'primary' : role === 'astrologer' ? 'secondary' : 'default'}
+                            sx={{ mr: 0.5, mb: 0.5 }}
+                          />
+                        ))}
+                        {user.isDemoUser && (
+                          <Chip
+                            label="Demo"
+                            size="small"
+                            color="success"
+                            variant="outlined"
+                            sx={{ mr: 0.5, mb: 0.5 }}
+                          />
+                        )}
+                      </Box>
                     </TableCell>
                     <TableCell>
                       {user?.createdAt ? new Date(user?.createdAt).toLocaleDateString() : 'N/A'}
@@ -1607,6 +1629,49 @@ export default function AdminDashboard() {
     </Box>
   );
 
+  // Add demo user management functions
+  const handleToggleDemoUser = async (user) => {
+    setSelectedDemoUser(user);
+    setDemoUserDialog(true);
+  };
+
+  const handleCloseDemoUserDialog = () => {
+    setDemoUserDialog(false);
+    setSelectedDemoUser(null);
+  };
+
+  const handleSaveDemoUserStatus = async () => {
+    if (!selectedDemoUser) return;
+
+    try {
+      setDemoUserLoading(true);
+      const userRef = doc(db, 'users', selectedDemoUser.id);
+      
+      await updateDoc(userRef, {
+        isDemoUser: !selectedDemoUser.isDemoUser,
+        updatedAt: serverTimestamp()
+      });
+
+      // Update local state
+      setUsers(users.map(u =>
+        u.id === selectedDemoUser.id
+          ? { ...u, isDemoUser: !selectedDemoUser.isDemoUser }
+          : u
+      ));
+
+      // Show success message
+      const action = !selectedDemoUser.isDemoUser ? 'enabled' : 'disabled';
+      setSuccessMessage(`Demo user status ${action} for ${selectedDemoUser.displayName || selectedDemoUser.email}`);
+
+      handleCloseDemoUserDialog();
+    } catch (error) {
+      console.error('Error updating demo user status:', error);
+      setErrorMessage(`Failed to update demo user status: ${error.message}`);
+    } finally {
+      setDemoUserLoading(false);
+    }
+  };
+
   return (
     <ProtectedRoute requiredRoles={['admin']}>
       <Head>
@@ -1627,19 +1692,30 @@ export default function AdminDashboard() {
           }}
         >
           <Container maxWidth="lg">
-            <Typography
-              variant="h1"
-              component="h1"
-              sx={{
-                fontFamily: '"Playfair Display", serif',
-                fontWeight: 600,
-                fontSize: { xs: '2rem', md: '2.8rem' },
-                mb: 2,
-                color: theme.palette.secondary.dark
-              }}
-            >
-              Admin Dashboard
-            </Typography>
+            <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, flexWrap: 'wrap' }}>
+              <Typography
+                variant="h1"
+                component="h1"
+                sx={{
+                  fontFamily: '"Playfair Display", serif',
+                  fontWeight: 600,
+                  fontSize: { xs: '2rem', md: '2.8rem' },
+                  mb: 2,
+                  color: theme.palette.secondary.dark
+                }}
+              >
+                Admin Dashboard
+              </Typography>
+              {currentUser?.isDemoUser && (
+                <Chip
+                  label="Demo User"
+                  size="small"
+                  color="success"
+                  variant="outlined"
+                  sx={{ fontSize: '0.8rem' }}
+                />
+              )}
+            </Box>
           </Container>
         </Box>
 
@@ -2210,6 +2286,17 @@ export default function AdminDashboard() {
             {selectedActionUser?.disabled ? 'Enable User' : 'Disable User'}
           </ListItemText>
         </MenuItem>
+
+        <Divider />
+
+        <MenuItem onClick={() => handleToggleDemoUser(selectedActionUser)}>
+          <ListItemIcon>
+            <DemoIcon fontSize="small" color={selectedActionUser?.isDemoUser ? 'success' : 'default'} />
+          </ListItemIcon>
+          <ListItemText>
+            {selectedActionUser?.isDemoUser ? 'Remove Demo Status' : 'Make Demo User'}
+          </ListItemText>
+        </MenuItem>
       </Menu>
 
       <Snackbar
@@ -2222,6 +2309,51 @@ export default function AdminDashboard() {
           {errorMessage}
         </Alert>
       </Snackbar>
+
+      {/* Demo User Dialog */}
+      <Dialog open={demoUserDialog} onClose={handleCloseDemoUserDialog}>
+        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
+          {selectedDemoUser?.isDemoUser ? 'Remove Demo User Status' : 'Make Demo User'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body1" sx={{ mb: 2 }}>
+            {selectedDemoUser?.isDemoUser 
+              ? `Are you sure you want to remove demo user status from ${selectedDemoUser?.displayName || selectedDemoUser?.email || 'this user'}? They will need to pay for services going forward.`
+              : `Are you sure you want to make ${selectedDemoUser?.displayName || selectedDemoUser?.email || 'this user'} a demo user? They will be able to access all services without payment.`
+            }
+          </Typography>
+          {!selectedDemoUser?.isDemoUser && (
+            <Alert severity="info" sx={{ mb: 2 }}>
+              <Typography variant="body2">
+                Demo users can:
+              </Typography>
+              <Typography variant="body2" component="div">
+                • Access all services without payment
+              </Typography>
+              <Typography variant="body2" component="div">
+                • Start conversations with any astrologer
+              </Typography>
+              <Typography variant="body2" component="div">
+                • Upload files and fill forms normally
+              </Typography>
+              <Typography variant="body2" component="div">
+                • See their bookings with actual astrologer prices
+              </Typography>
+            </Alert>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={handleCloseDemoUserDialog}>Cancel</Button>
+          <Button 
+            onClick={handleSaveDemoUserStatus} 
+            variant="contained" 
+            color={selectedDemoUser?.isDemoUser ? 'error' : 'primary'}
+            disabled={demoUserLoading}
+          >
+            {demoUserLoading ? 'Updating...' : (selectedDemoUser?.isDemoUser ? 'Remove Demo Status' : 'Make Demo User')}
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ProtectedRoute>
   );
 } 
