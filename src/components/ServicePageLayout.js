@@ -206,7 +206,8 @@ export default function ServicePageLayout({
         const astrologersSnapshot = await getDocs(astrologersQuery);
         const filteredDocs = astrologersSnapshot.docs.filter(doc => {
           const data = doc.data();
-          return data.services && Object.keys(data.services).includes(serviceType);
+          console.log('data', data.services, serviceType);
+          return data.services && data.services.includes(serviceType);
         });
 
         // Extract districts from the filtered results
@@ -217,6 +218,7 @@ export default function ServicePageLayout({
             districts.add(data.district);
           }
         });
+        console.log('districts', districts);
         setAvailableDistricts(districts);
       } catch (err) {
         console.error('Error fetching available districts:', err);
@@ -250,7 +252,7 @@ export default function ServicePageLayout({
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() })) // Map to include ID and data
-          .filter(astrologer => astrologer.services && Object.keys(astrologer.services).includes(serviceType)); // Filter by service
+          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)); // Filter by service
 
         setAstrologers(filteredAstrologers); // Set state with the filtered list
       } catch (err) {
@@ -1477,14 +1479,14 @@ export default function ServicePageLayout({
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
                       <Box
                         sx={{
-                          flex: { xs: '1 1 100%', md: '1 1 75%' },
+                          flex: { xs: '1 1 100%', md: '1 1 60%' },
                           minHeight: { md: '500px' }
                         }}
                       >
                         <Paper
                           elevation={2}
                           sx={{
-                            p: 3,
+                            p: { xs: 1.5, md: 3 },
                             borderRadius: '8px',
                             backgroundColor: theme.palette.background.paper,
                             height: '100%',
@@ -1508,8 +1510,8 @@ export default function ServicePageLayout({
                               flexDirection: { xs: 'column', md: 'row' },
                               overflowX: { md: 'auto' },
                               overflowY: { xs: 'auto', md: 'visible' },
-                              gap: 2,
-                              pb: 2,
+                              gap: { xs: 1.5, md: 2 },
+                              pb: { xs: 1, md: 2 },
                               flex: '1 1 auto',
                               maxHeight: { xs: '400px', md: 'none' },
                               scrollbarWidth: 'thin',
@@ -1534,7 +1536,7 @@ export default function ServicePageLayout({
                               <Box
                                 key={astrologer.id}
                                 sx={{
-                                  minWidth: { xs: '100%', md: '280px' },
+                                  minWidth: { xs: '100%', md: '150px' },
                                   maxWidth: { xs: '100%', md: '320px' },
                                   flexShrink: 0,
                                 }}
@@ -1552,70 +1554,114 @@ export default function ServicePageLayout({
                                     }
                                   }}
                                 >
-                                  <CardActionArea
-                                    onClick={() => handleAstrologerSelect(astrologer)}
-                                    sx={{
-                                      display: 'flex',
-                                      flexDirection: 'column',
-                                      alignItems: 'stretch',
-                                      height: '100%',
-                                      padding: 0,
-                                      overflow: 'hidden'
-                                    }}
-                                  >
-                                    <CardMedia
-                                      component="img"
-                                      height="300px"
-                                      image={astrologer.photoURL || '/images/default-avatar.png'}
-                                      alt={astrologer.displayName}
-                                      sx={{
-                                        objectFit: 'cover',
-                                        margin: 0,
-                                        display: 'block'
-                                      }}
-                                    />
-                                    <CardContent
-                                      sx={{
-                                        padding: 2,
-                                        paddingBottom: '16px !important', // Override default padding
-                                        display: 'flex',
-                                        flexDirection: 'column'
-                                      }}
+                                  {isMobile ? (
+                                    <CardActionArea
+                                      onClick={() => handleAstrologerSelect(astrologer)}
+                                      sx={{ p: 1, display: 'flex', alignItems: 'center' }}
                                     >
-                                      <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                      <Avatar
+                                        src={astrologer.photoURL || '/images/default-avatar.png'}
+                                        alt={astrologer.displayName}
+                                        sx={{ width: 56, height: 56, mr: 1.5 }}
+                                      />
+                                      <Box sx={{ flex: 1, minWidth: 0 }}>
                                         <Typography
-                                          gutterBottom
-                                          variant="h6"
-                                          component="div"
+                                          variant="subtitle1"
+                                          noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
                                           {astrologer.displayName}
                                         </Typography>
-                                        <Checkbox
-                                          checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                          color="primary"
-                                        />
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          noWrap
+                                          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                        >
+                                          {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ fontWeight: 'bold', color: theme.palette.primary.main, mt: 0.5, fontFamily: '"Cormorant Garamond", serif' }}
+                                        >
+                                          ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                        </Typography>
                                       </Box>
-                                      <Typography
-                                        variant="body2"
-                                        color="text.secondary"
-                                        sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
-                                      >
-                                        {Object.keys(astrologer.services).map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
-                                      </Typography>
-                                      <Typography
-                                        variant="body2"
-                                        color="text.primary"
+                                      <Checkbox
+                                        checked={selectedAstrologers.some(a => a.id === astrologer.id)}
+                                        color="primary"
+                                        onClick={(e) => {
+                                          e.stopPropagation();
+                                          handleAstrologerSelect(astrologer);
+                                        }}
+                                      />
+                                    </CardActionArea>
+                                  ) : (
+                                    <CardActionArea
+                                      onClick={() => handleAstrologerSelect(astrologer)}
+                                      sx={{
+                                        display: 'flex',
+                                        flexDirection: 'column',
+                                        alignItems: 'stretch',
+                                        height: '100%',
+                                        padding: 0,
+                                        overflow: 'hidden'
+                                      }}
+                                    >
+                                      <CardMedia
+                                        component="img"
+                                        height="300px"
+                                        image={astrologer.photoURL || '/images/default-avatar.png'}
+                                        alt={astrologer.displayName}
                                         sx={{
-                                          fontWeight: 'bold',
-                                          color: theme.palette.primary.main,
-                                          fontFamily: '"Cormorant Garamond", serif'
+                                          objectFit: 'cover',
+                                          margin: 0,
+                                          display: 'block'
+                                        }}
+                                      />
+                                      <CardContent
+                                        sx={{
+                                          padding: 2,
+                                          paddingBottom: '16px !important',
+                                          display: 'flex',
+                                          flexDirection: 'column'
                                         }}
                                       >
-                                        ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                      </Typography>
-                                    </CardContent>
-                                  </CardActionArea>
+                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                                          <Typography
+                                            gutterBottom
+                                            variant="h6"
+                                            component="div"
+                                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                          >
+                                            {astrologer.displayName}
+                                          </Typography>
+                                          <Checkbox
+                                            checked={selectedAstrologers.some(a => a.id === astrologer.id)}
+                                            color="primary"
+                                          />
+                                        </Box>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.secondary"
+                                          sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
+                                        >
+                                          {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                        </Typography>
+                                        <Typography
+                                          variant="body2"
+                                          color="text.primary"
+                                          sx={{
+                                            fontWeight: 'bold',
+                                            color: theme.palette.primary.main,
+                                            fontFamily: '"Cormorant Garamond", serif'
+                                          }}
+                                        >
+                                          ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                        </Typography>
+                                      </CardContent>
+                                    </CardActionArea>
+                                  )}
                                 </Card>
                               </Box>
                             ))}
@@ -1625,7 +1671,7 @@ export default function ServicePageLayout({
 
                       <Box
                         sx={{
-                          flex: { xs: '1 1 100%', md: '1 1 25%' },
+                          flex: { xs: '1 1 100%', md: '1 1 40%' },
                           minHeight: { md: '500px' }
                         }}
                       >
