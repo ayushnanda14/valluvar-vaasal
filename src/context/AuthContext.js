@@ -215,10 +215,24 @@ export function AuthProvider({ children }) {
       
       if (user) {
         try {
+          // Refresh ID token to fetch latest custom claims (e.g., isDemoUser)
+          await user.getIdToken(true).catch(() => {});
+          const idTokenResult = await user.getIdTokenResult().catch(() => null);
+          const claims = idTokenResult?.claims || {};
+
           const snap = await getDoc(doc(db, 'users', user.uid));
           const roles = snap.exists() ? snap.data().roles || [] : [];
           console.log('User roles loaded:', roles);
           setUserRoles(roles);
+
+          // Merge isDemoUser claim into user object for easy access
+          if (typeof claims.isDemoUser === 'boolean') {
+            user.isDemoUser = claims.isDemoUser;
+          } else if (snap.exists() && typeof snap.data().isDemoUser === 'boolean') {
+            // Fallback to Firestore flag if claim unavailable
+            user.isDemoUser = snap.data().isDemoUser;
+          }
+          setCurrentUser({ ...user });
         } catch (error) {
           console.error('Error fetching user roles:', error);
           setUserRoles([]);

@@ -21,6 +21,14 @@ const PaymentButton = ({ amount, description, onSuccess, onError, onProcessingSt
       return;
     }
 
+    // Guard: ensure amount is a positive number
+    if (typeof amount !== 'number' || !isFinite(amount) || amount <= 0) {
+      const errMsg = t('payment.invalidAmount', 'Invalid or missing amount.');
+      setError(errMsg);
+      onError?.(errMsg);
+      return;
+    }
+
     setLoading(true);
     setError('');
     setPaymentInitiated(true);

@@ -275,6 +275,15 @@ export default function ServicePageLayout({
     }
   }, [authInitialized, currentUser, router]);
 
+  // Auto-bypass payment for demo users on reaching step 3
+  const [demoPaymentTriggered, setDemoPaymentTriggered] = useState(false);
+  useEffect(() => {
+    if (step === 3 && currentUser?.isDemoUser && !demoPaymentTriggered) {
+      setDemoPaymentTriggered(true);
+      handleDemoPayment();
+    }
+  }, [step, currentUser, demoPaymentTriggered]);
+
   const handleAstrologerSelect = (astrologer) => {
     setSelectedAstrologers(prev => {
       const isSelected = prev.some(a => a.id === astrologer.id);
@@ -1837,7 +1846,7 @@ export default function ServicePageLayout({
                   </Box>
                 </Box>
               )}
-
+              {console.log('currentUser', currentUser)}
               {/* Step 3: Payment */}
               {step === 3 && (
                 <Box>
@@ -1894,7 +1903,7 @@ export default function ServicePageLayout({
                         >
                           {t('servicePage.paymentMethod', 'Payment Method')}
                         </Typography>
-
+                        {console.log('currentUser', currentUser)}
                         {currentUser.isDemoUser ? (
                           <Box sx={{ textAlign: 'center' }}>
                             <Alert severity="info" sx={{ mb: 3 }}>

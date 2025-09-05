@@ -72,6 +72,76 @@ exports.verifyRazorpayPayment = onCall(
     }
 );
 
+// --- setUserDemoClaim: set/unset custom claim isDemoUser for a user ---
+exports.setUserDemoClaim = onCall(
+  { region: 'us-central1', enforceAppCheck: false },
+  async (request) => {
+    const context = request; // v2 onCall passes the same object
+    const auth = context.auth;
+    if (!auth || !auth.uid) {
+      throw new HttpsError('unauthenticated', 'Must be authenticated.');
+    }
+
+    // Only admins can toggle claims
+    try {
+      const caller = await admin.auth().getUser(auth.uid);
+      const callerClaims = caller.customClaims || {};
+      if (!callerClaims.admin) {
+        throw new HttpsError('permission-denied', 'Only admins can modify demo claims.');
+      }
+    } catch (err) {
+      if (err instanceof HttpsError) throw err;
+      console.error('Error verifying admin privileges:', err);
+      throw new HttpsError('internal', 'Failed to verify admin privileges');
+    }
+
+    const { targetUid, isDemoUser } = request.data || {};
+    if (!targetUid || typeof isDemoUser !== 'boolean') {
+      throw new HttpsError('invalid-argument', 'Missing targetUid or isDemoUser.');
+    }
+
+    try {
+      // Get existing claims to preserve others (like admin)
+      const userRecord = await admin.auth().getUser(targetUid);
+      const existing = userRecord.customClaims || {};
+      const updatedClaims = { ...existing, isDemoUser };
+      // If turning off demo and claim exists as true, set false; keep explicit boolean
+      await admin.auth().setCustomUserClaims(targetUid, updatedClaims);
+      return { success: true, targetUid, isDemoUser };
+    } catch (err) {
+      console.error('setUserDemoClaim error:', err);
+      throw new HttpsError('internal', err.message || 'Failed to set custom claim');
+    }
+  }
+);
+
+// --- Firestore trigger: mirror users/{uid}.isDemoUser into custom claims ---
+exports.syncIsDemoUserClaim = functions.firestore
+  .document('users/{uid}')
+  .onWrite(async (change, context) => {
+    const uid = context.params.uid;
+    const after = change.after.exists ? change.after.data() : null;
+    if (!after) {
+      return null;
+    }
+
+    try {
+      const isDemoUser = !!after.isDemoUser;
+      const userRecord = await admin.auth().getUser(uid);
+      const existing = userRecord.customClaims || {};
+
+      if (existing.isDemoUser === isDemoUser) {
+        return null; // No change needed
+      }
+
+      await admin.auth().setCustomUserClaims(uid, { ...existing, isDemoUser });
+      return null;
+    } catch (err) {
+      console.error('syncIsDemoUserClaim error:', err);
+      return null;
+    }
+  });
+
 // --- submitTestimonial (anonymous-friendly with App Check + rate limiting) ---
 exports.submitTestimonial = onCall(
   {
