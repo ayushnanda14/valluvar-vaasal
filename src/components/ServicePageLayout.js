@@ -270,10 +270,11 @@ export default function ServicePageLayout({
   useEffect(() => {
     if (!authInitialized) return; // wait for auth to finish restoring session
     if (!currentUser) {
-      const redirectTo = encodeURIComponent(router.asPath || router.pathname);
-      router.push(`/login?redirect=${redirectTo}`);
+      const targetPath = router.asPath || router.pathname;
+      const encoded = encodeURIComponent(targetPath);
+      router.push(`/services/prelogin?service=${serviceType}&redirect=${encoded}`);
     }
-  }, [authInitialized, currentUser, router]);
+  }, [authInitialized, currentUser, router, serviceType]);
 
   // Auto-bypass payment for demo users on reaching step 3
   const [demoPaymentTriggered, setDemoPaymentTriggered] = useState(false);
