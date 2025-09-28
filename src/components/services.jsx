@@ -20,7 +20,7 @@ const MotionCard = motion(Card);
 const MotionBox = motion(Box);
 const MotionTypography = motion(Typography);
 
-const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay, isLoggedIn }) => {
+const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay, isLoggedIn, serviceKey }) => {
   const theme = useTheme();
   const isMobile = useMediaQuery(theme.breakpoints.down('sm'));
   const isTablet = useMediaQuery(theme.breakpoints.between('sm', 'md'));
@@ -65,13 +65,23 @@ const ServiceCard = ({ title, destinationUrl, description, cue, imageSrc, delay,
 
   const contentJustify = isLoggedIn ? 'flex-start' : 'space-between';
 
+  const handleClick = () => {
+    const target = destinationUrl;
+    if (isLoggedIn) {
+      router.push(target);
+    } else {
+      const encoded = encodeURIComponent(target);
+      router.push(`/services/prelogin?service=${serviceKey}&redirect=${encoded}`);
+    }
+  };
+
   return (
 
-    <Box onClick={() => { if (isLoggedIn) router.push(destinationUrl); }} sx={{
+    <Box onClick={handleClick} sx={{
       display: 'flex',
       justifyContent: 'center',
       height: '100%',
-      cursor: isLoggedIn ? 'pointer' : 'default',
+      cursor: 'pointer',
       '&:hover': {
         transform: isLoggedIn ? 'translateY(-7px)' : 'translateY(-3px)',
         transition: 'all 0.3s ease'
@@ -228,6 +238,7 @@ const Services = () => {
 
   const servicesList = [
     {
+      serviceKey: 'marriageMatching',
       title: t('services.marriageMatching.title'),
       description: t('services.marriageMatching.description'),
       cue: t('services.marriageMatching.cue'),
@@ -236,6 +247,7 @@ const Services = () => {
       delay: 0
     },
     {
+      serviceKey: 'jathakPrediction',
       title: t('services.jathakPrediction.title'),
       description: t('services.jathakPrediction.description'),
       cue: t('services.jathakPrediction.cue'),
@@ -244,6 +256,7 @@ const Services = () => {
       delay: 0.2
     },
     {
+      serviceKey: 'jathakWriting',
       title: t('services.jathakWriting.title'),
       description: t('services.jathakWriting.description'),
       cue: t('services.jathakWriting.cue'),
@@ -324,6 +337,7 @@ const Services = () => {
                 imageSrc={service.imageSrc}
                 delay={service.delay}
                 isLoggedIn={isLoggedIn}
+                serviceKey={service.serviceKey}
               />
             </Box>
           ))}
