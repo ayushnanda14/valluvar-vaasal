@@ -449,4 +449,36 @@
     "viewAllReadings": "View All Readings",
     "exploreServices": "Explore Our Services"
   }
+,
+  "prelogin": {
+    "subtitle": "Please login to continue and get instant guidance from our experts",
+    "loginMethods": {
+      "title": "Choose Your Login Method",
+      "phoneOtp": "Phone + OTP",
+      "phoneOtpDesc": "Fast and secure. No password required. Perfect for quick access to your astrology services.",
+      "email": "Email Login",
+      "emailDesc": "Traditional and reliable. Use your email when phone access isn't available.",
+      "secure": "All methods are secure and private"
+    },
+    "benefits": {
+      "title": "What You Get",
+      "instant": {
+        "title": "Instant Predictions",
+        "desc": "Get quick compatibility analysis and detailed astrological insights within minutes."
+      },
+      "experts": {
+        "title": "Expert Consultation",
+        "desc": "Chat directly with verified astrologers who understand your needs."
+      },
+      "satisfaction": {
+        "title": "Satisfaction Guaranteed",
+        "desc": "Not satisfied with the service? We offer manual review and refund support."
+      },
+      "privacy": {
+        "title": "Privacy Protected",
+        "desc": "Your personal details and birth information remain completely private and secure."
+      }
+    },
+    "cta": "Continue to Login"
+  }
 }
