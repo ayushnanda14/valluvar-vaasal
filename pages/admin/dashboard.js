@@ -180,8 +180,15 @@ export default function AdminDashboard() {
 
   // Add state for demo user management
   const [demoUserDialog, setDemoUserDialog] = useState(false);
+  // (removed) phone registry state
   const [selectedDemoUser, setSelectedDemoUser] = useState(null);
   const [demoUserLoading, setDemoUserLoading] = useState(false);
+
+  // Add/Edit phone number dialog state
+  const [openPhoneDialog, setOpenPhoneDialog] = useState(false);
+  const [phoneDialogUser, setPhoneDialogUser] = useState(null);
+  const [phoneNumberInput, setPhoneNumberInput] = useState('');
+  const [phoneSaving, setPhoneSaving] = useState(false);
 
   // Get tab from query params
   useEffect(() => {
@@ -449,6 +456,8 @@ export default function AdminDashboard() {
     };
   }, [tabValue]);
 
+  // (removed) phone registry effect
+
   // Real-time listener for support users
   useEffect(() => {
     if (tabValue === 4) {
@@ -541,7 +550,7 @@ export default function AdminDashboard() {
           if (payment.isDemoPayment) {
             return;
           }
-          
+
           const amount = payment.amount || 0;
           totalRevenue += amount;
 
@@ -789,6 +798,7 @@ export default function AdminDashboard() {
             <TableHead>
               <TableRow>
                 <TableCell sx={{ fontWeight: 'bold' }}>Name</TableCell>
+                <TableCell sx={{ fontWeight: 'bold' }}>Phone Number</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Roles</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Joined</TableCell>
                 <TableCell sx={{ fontWeight: 'bold' }}>Actions</TableCell>
@@ -828,6 +838,52 @@ export default function AdminDashboard() {
                           </Typography>
                           <Typography variant="caption" color="text.secondary">{user.email}</Typography>
                         </Box>
+                      </Box>
+                    </TableCell>
+                    <TableCell>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {user.phoneNumber ? (
+                          <>
+                            <Box
+                              component="span"
+                              sx={{ display: 'inline-block', minWidth: 150, color: 'success.main', fontVariantNumeric: 'tabular-nums' }}
+                            >
+                              {user.phoneNumber.startsWith('+91') ? `+91 ${user.phoneNumber.slice(3)}` : (user.phoneNumber.startsWith('+') ? user.phoneNumber : `+91 ${user.phoneNumber}`)}
+                            </Box>
+                            <Chip
+                              label="Edit"
+                              size="small"
+                              variant="outlined"
+                              onClick={() => {
+                                setPhoneDialogUser(user);
+                                setPhoneNumberInput(user.phoneNumber || '');
+                                setOpenPhoneDialog(true);
+                              }}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </>
+                        ) : (
+                          <>
+                            <Box
+                              component="span"
+                              sx={{ display: 'inline-block', minWidth: 150, color: 'error.main', fontVariantNumeric: 'tabular-nums' }}
+                            >
+                              -
+                            </Box>
+                            <Chip
+                              label="Add"
+                              size="small"
+                              color="primary"
+                              variant="outlined"
+                              onClick={() => {
+                                setPhoneDialogUser(user);
+                                setPhoneNumberInput('');
+                                setOpenPhoneDialog(true);
+                              }}
+                              sx={{ cursor: 'pointer' }}
+                            />
+                          </>
+                        )}
                       </Box>
                     </TableCell>
                     <TableCell>
@@ -1646,7 +1702,7 @@ export default function AdminDashboard() {
     try {
       setDemoUserLoading(true);
       const userRef = doc(db, 'users', selectedDemoUser.id);
-      
+
       await updateDoc(userRef, {
         isDemoUser: !selectedDemoUser.isDemoUser,
         updatedAt: serverTimestamp()
@@ -2219,6 +2275,72 @@ export default function AdminDashboard() {
         </Alert>
       </Snackbar>
 
+      {/* Add/Edit Phone Number Dialog */}
+      <Dialog open={openPhoneDialog} onClose={() => setOpenPhoneDialog(false)} maxWidth="xs" fullWidth>
+        <DialogTitle sx={{ fontFamily: '"Playfair Display", serif' }}>
+          {phoneDialogUser?.phoneNumber ? 'Edit Phone Number' : 'Add Phone Number'}
+        </DialogTitle>
+        <DialogContent>
+          <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+            {phoneDialogUser?.displayName || phoneDialogUser?.email || 'User'}
+          </Typography>
+          <TextField
+            label="Phone Number"
+            placeholder="e.g. +91 9876543210"
+            fullWidth
+            value={phoneNumberInput}
+            onChange={(e) => setPhoneNumberInput(e.target.value)}
+            inputProps={{ inputMode: 'tel' }}
+          />
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setOpenPhoneDialog(false)}>Cancel</Button>
+          <Button
+            onClick={async () => {
+              if (!phoneDialogUser) return;
+              const raw = (phoneNumberInput || '').trim();
+              if (!raw) {
+                setErrorMessage('Please enter a phone number');
+                return;
+              }
+
+              // Normalize to +91XXXXXXXXXX if missing country code
+              let normalized = raw.replace(/\s+/g, '');
+              if (!/^\+/.test(normalized)) {
+                if (/^0\d{10}$/.test(normalized)) {
+                  normalized = `+91${normalized.slice(1)}`;
+                } else if (/^\d{10}$/.test(normalized)) {
+                  normalized = `+91${normalized}`;
+                }
+              }
+
+              try {
+                setPhoneSaving(true);
+                const userRef = doc(db, 'users', phoneDialogUser.id);
+                await updateDoc(userRef, {
+                  phoneNumber: normalized,
+                  updatedAt: serverTimestamp()
+                });
+
+                // Update local list
+                setUsers(prev => prev.map(u => u.id === phoneDialogUser.id ? { ...u, phoneNumber: normalized } : u));
+                setSuccessMessage('Phone number saved');
+                setOpenPhoneDialog(false);
+              } catch (e) {
+                console.error('Failed to save phone number', e);
+                setErrorMessage('Failed to save phone number');
+              } finally {
+                setPhoneSaving(false);
+              }
+            }}
+            variant="contained"
+            disabled={phoneSaving}
+          >
+            {phoneSaving ? 'Saving...' : 'Save'}
+          </Button>
+        </DialogActions>
+      </Dialog>
+
       {/* Actions Menu */}
       <Menu
         anchorEl={anchorEl}
@@ -2317,7 +2439,7 @@ export default function AdminDashboard() {
         </DialogTitle>
         <DialogContent>
           <Typography variant="body1" sx={{ mb: 2 }}>
-            {selectedDemoUser?.isDemoUser 
+            {selectedDemoUser?.isDemoUser
               ? `Are you sure you want to remove demo user status from ${selectedDemoUser?.displayName || selectedDemoUser?.email || 'this user'}? They will need to pay for services going forward.`
               : `Are you sure you want to make ${selectedDemoUser?.displayName || selectedDemoUser?.email || 'this user'} a demo user? They will be able to access all services without payment.`
             }
@@ -2344,9 +2466,9 @@ export default function AdminDashboard() {
         </DialogContent>
         <DialogActions>
           <Button onClick={handleCloseDemoUserDialog}>Cancel</Button>
-          <Button 
-            onClick={handleSaveDemoUserStatus} 
-            variant="contained" 
+          <Button
+            onClick={handleSaveDemoUserStatus}
+            variant="contained"
             color={selectedDemoUser?.isDemoUser ? 'error' : 'primary'}
             disabled={demoUserLoading}
           >

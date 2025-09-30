@@ -47,7 +47,7 @@ export default function Bookings() {
   const router = useRouter();
   const { currentUser, hasRole } = useAuth();
   const { t } = useTranslation('common');
-  
+
   const [bookings, setBookings] = useState([]);
   const [loading, setLoading] = useState(true);
   const [isClient, setIsClient] = useState(false);
@@ -55,18 +55,19 @@ export default function Bookings() {
   const [openInvoice, setOpenInvoice] = useState(false);
   const [selectedBooking, setSelectedBooking] = useState(null);
 
+  // (removed) phone registry migration snippet
   // Check user roles
   useEffect(() => {
     const checkRoles = async () => {
       if (currentUser) {
         const clientCheck = await hasRole('client');
         const astrologerCheck = await hasRole('astrologer');
-        
+
         setIsClient(clientCheck && !astrologerCheck);
         setIsAstrologer(astrologerCheck);
       }
     };
-    
+
     checkRoles();
   }, [currentUser, hasRole]);
 
@@ -227,16 +228,16 @@ export default function Bookings() {
   const renderClientBookings = () => (
     <TableContainer>
       <Table>
-                    <TableHead>
-              <TableRow>
-                <TableCell>{t('bookings.astrologer')}</TableCell>
-                <TableCell>{t('bookings.service')}</TableCell>
-                <TableCell>{t('bookings.price')}</TableCell>
-                <TableCell>{t('bookings.date')}</TableCell>
-                <TableCell>{t('bookings.status')}</TableCell>
-                <TableCell align="right">{t('bookings.actions')}</TableCell>
-              </TableRow>
-            </TableHead>
+        <TableHead>
+          <TableRow>
+            <TableCell>{t('bookings.astrologer')}</TableCell>
+            <TableCell>{t('bookings.service')}</TableCell>
+            <TableCell>{t('bookings.price')}</TableCell>
+            <TableCell>{t('bookings.date')}</TableCell>
+            <TableCell>{t('bookings.status')}</TableCell>
+            <TableCell align="right">{t('bookings.actions')}</TableCell>
+          </TableRow>
+        </TableHead>
         <TableBody>
           {bookings.map((booking) => (
             <TableRow key={booking.id}>
@@ -284,8 +285,8 @@ export default function Bookings() {
                   label={booking.status}
                   color={
                     booking.status === 'completed' ? 'success' :
-                    booking.status === 'cancelled' ? 'error' :
-                    'warning'
+                      booking.status === 'cancelled' ? 'error' :
+                        'warning'
                   }
                 />
               </TableCell>
@@ -390,8 +391,8 @@ export default function Bookings() {
                     label={booking.status}
                     color={
                       booking.status === 'completed' ? 'success' :
-                      booking.status === 'cancelled' ? 'error' :
-                      'warning'
+                        booking.status === 'cancelled' ? 'error' :
+                          'warning'
                     }
                   />
                   {booking.razorpayPaymentId && booking.razorpayPaymentId.startsWith('demo_') && (
@@ -464,13 +465,13 @@ export default function Bookings() {
                 {t('bookings.noBookings')}
               </Typography>
               <Typography variant="body1" color="textSecondary">
-                {isClient 
+                {isClient
                   ? t('bookings.clientNoBookings')
                   : t('bookings.astrologerNoBookings')
                 }
               </Typography>
               {isClient && (
-                <Button 
+                <Button
                   variant="contained"
                   color="primary"
                   sx={{ mt: 3 }}
@@ -483,13 +484,13 @@ export default function Bookings() {
           ) : (
             <Paper elevation={0} sx={{ p: 3 }}>
               <Box sx={{ display: 'flex', alignItems: 'center', gap: 2, mb: 3 }}>
-                <Typography 
-                  variant="h5" 
-                  sx={{ 
+                <Typography
+                  variant="h5"
+                  sx={{
                     fontFamily: '"Playfair Display", serif'
                   }}
                 >
-                  {isClient 
+                  {isClient
                     ? t('bookings.clientBookings')
                     : t('bookings.astrologerBookings')
                   }
@@ -504,7 +505,7 @@ export default function Bookings() {
                   />
                 )}
               </Box>
-              
+
               {isClient && renderClientBookings()}
               {isAstrologer && renderAstrologerBookings()}
             </Paper>
@@ -537,16 +538,16 @@ export default function Bookings() {
                       {isClient ? t('bookings.astrologer') : t('bookings.client')}
                     </Typography>
                     <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      <Avatar 
+                      <Avatar
                         src={isClient ? selectedBooking.astrologer?.photoURL : selectedBooking.client?.photoURL}
                       >
-                        {isClient 
+                        {isClient
                           ? selectedBooking.astrologer?.displayName?.[0]
                           : selectedBooking.client?.displayName?.[0]
                         }
                       </Avatar>
                       <Typography>
-                        {isClient 
+                        {isClient
                           ? selectedBooking.astrologer?.displayName
                           : selectedBooking.client?.displayName
                         }
@@ -587,8 +588,8 @@ export default function Bookings() {
                       label={selectedBooking.status}
                       color={
                         selectedBooking.status === 'completed' ? 'success' :
-                        selectedBooking.status === 'cancelled' ? 'error' :
-                        'warning'
+                          selectedBooking.status === 'cancelled' ? 'error' :
+                            'warning'
                       }
                     />
                   </Box>
@@ -609,7 +610,7 @@ export default function Bookings() {
                     </Box>
                   </Box>
                 </Grid>
-                
+
                 {/* Refund Information */}
                 {selectedBooking.refundStatus && (
                   <>
@@ -646,9 +647,9 @@ export default function Bookings() {
                                   <Typography variant="caption" fontWeight="medium">
                                     ₹{refund.refundAmount || refund.amount}
                                   </Typography>
-                                  <Chip 
-                                    label={refund.status} 
-                                    size="small" 
+                                  <Chip
+                                    label={refund.status}
+                                    size="small"
                                     color={refund.status === 'processed' ? 'success' : 'warning'}
                                   />
                                 </Box>

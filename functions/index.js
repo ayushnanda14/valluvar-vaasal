@@ -4,6 +4,7 @@ const crypto = require('crypto');
 const Razorpay = require('razorpay');
 // For v2 onCall, we use specific imports
 const { onCall, HttpsError } = require('firebase-functions/v2/https');
+const { onDocumentWritten } = require('firebase-functions/v2/firestore');
 
 admin.initializeApp();
 
@@ -115,24 +116,21 @@ exports.setUserDemoClaim = onCall(
   }
 );
 
-// --- Firestore trigger: mirror users/{uid}.isDemoUser into custom claims ---
-exports.syncIsDemoUserClaim = functions.firestore
-  .document('users/{uid}')
-  .onWrite(async (change, context) => {
-    const uid = context.params.uid;
-    const after = change.after.exists ? change.after.data() : null;
-    if (!after) {
-      return null;
-    }
+// --- Firestore trigger (v2): mirror users/{uid}.isDemoUser into custom claims ---
+exports.syncIsDemoUserClaim = onDocumentWritten(
+  { region: 'us-central1', document: 'users/{uid}' },
+  async (event) => {
+    const uid = event.params.uid;
+    const afterSnap = event.data?.after;
+    if (!afterSnap) return null;
+    const after = afterSnap.data();
+    if (!after) return null;
 
     try {
       const isDemoUser = !!after.isDemoUser;
       const userRecord = await admin.auth().getUser(uid);
       const existing = userRecord.customClaims || {};
-
-      if (existing.isDemoUser === isDemoUser) {
-        return null; // No change needed
-      }
+      if (existing.isDemoUser === isDemoUser) return null;
 
       await admin.auth().setCustomUserClaims(uid, { ...existing, isDemoUser });
       return null;
@@ -140,7 +138,8 @@ exports.syncIsDemoUserClaim = functions.firestore
       console.error('syncIsDemoUserClaim error:', err);
       return null;
     }
-  });
+  }
+);
 
 // --- submitTestimonial (anonymous-friendly with App Check + rate limiting) ---
 exports.submitTestimonial = onCall(

@@ -19,7 +19,8 @@ import {
   collection,
   query,
   where,
-  getDocs
+  getDocs,
+  arrayUnion
 } from 'firebase/firestore';
 import { auth, db } from '../firebase/firebaseConfig';
 
@@ -233,6 +234,8 @@ export function AuthProvider({ children }) {
             user.isDemoUser = snap.data().isDemoUser;
           }
           setCurrentUser({ ...user });
+
+          // (removed) phoneRegistry write
         } catch (error) {
           console.error('Error fetching user roles:', error);
           setUserRoles([]);

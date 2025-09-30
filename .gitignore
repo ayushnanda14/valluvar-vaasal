@@ -56,3 +56,4 @@ dist/
 .env.test.local
 .env.production.local
 .github/
+.cursor/
