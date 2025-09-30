@@ -21,9 +21,12 @@ export default function Home() {
           const isAdmin = await hasRole('admin');
           const isAstrologer = await hasRole('astrologer');
           const isSupport = await hasRole('support');
+          const isPartner = await hasRole('partner');
 
           if (isAdmin) {
             router.push('/admin/dashboard');
+          } else if (isPartner) {
+            router.push('/partner/dashboard');
           } else if (isAstrologer) {
             router.push('/astrologer/dashboard');
           } else if (isSupport) {

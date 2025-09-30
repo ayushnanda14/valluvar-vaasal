@@ -62,7 +62,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
-import { createSupportSignupLink } from '../../src/services/adminService';
+import { createSupportSignupLink, createPartnerSignupLink } from '../../src/services/adminService';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
@@ -154,6 +154,23 @@ export default function AdminDashboard() {
   const [signupLinks, setSignupLinks] = useState([]);
   const [newSignupLink, setNewSignupLink] = useState('');
   const [creatingLink, setCreatingLink] = useState(false);
+  // Partner invite
+  const [creatingPartnerLink, setCreatingPartnerLink] = useState(false);
+  const [newPartnerLink, setNewPartnerLink] = useState('');
+  const [partnerCommissionMode, setPartnerCommissionMode] = useState('percent');
+  const [partnerPercent, setPartnerPercent] = useState(10);
+  const [partnerFixedAmount, setPartnerFixedAmount] = useState(0);
+  // Partners data
+  const [partnersLoading, setPartnersLoading] = useState(false);
+  const [partners, setPartners] = useState([]);
+  const [partnerRefsLoading, setPartnerRefsLoading] = useState(false);
+  const [partnerRefs, setPartnerRefs] = useState([]);
+  const [partnerCommsLoading, setPartnerCommsLoading] = useState(false);
+  const [partnerComms, setPartnerComms] = useState([]);
+  // Payout dialog
+  const [payoutDialogOpen, setPayoutDialogOpen] = useState(false);
+  const [payoutCommission, setPayoutCommission] = useState(null);
+  const [payoutNotes, setPayoutNotes] = useState('');
 
   // Real-time listener state
   const [signupLinksListener, setSignupLinksListener] = useState(null);
@@ -1522,6 +1539,103 @@ export default function AdminDashboard() {
     setSuccessMessage('Link copied to clipboard');
   };
 
+  const handleCreatePartnerSignupLink = async () => {
+    try {
+      setCreatingPartnerLink(true);
+      const link = await createPartnerSignupLink({
+        uid: currentUser.uid,
+        displayName: currentUser.displayName,
+        email: currentUser.email
+      }, {
+        mode: partnerCommissionMode,
+        percent: Number(partnerPercent),
+        fixedAmount: Number(partnerFixedAmount)
+      });
+      setNewPartnerLink(`${typeof window !== 'undefined' ? window.location.origin : ''}${link.url}`);
+      setSuccessMessage('Partner signup link created successfully');
+    } catch (error) {
+      console.error('Error creating partner signup link:', error);
+      setErrorMessage('Failed to create partner signup link');
+    } finally {
+      setCreatingPartnerLink(false);
+    }
+  };
+
+  // Load partners/references/commissions when Partners tab is active (index 5)
+  useEffect(() => {
+    const loadData = async () => {
+      if (tabValue !== 5) return;
+      try {
+        setPartnersLoading(true);
+        const partnersSnap = await getDocs(collection(db, 'partnerProfiles'));
+        const partnerRows = [];
+        partnersSnap.forEach((d) => partnerRows.push({ id: d.id, ...d.data() }));
+        setPartners(partnerRows);
+      } catch (e) {
+        console.error('Failed to load partner profiles', e);
+      } finally {
+        setPartnersLoading(false);
+      }
+
+      try {
+        setPartnerRefsLoading(true);
+        const refsSnap = await getDocs(query(collection(db, 'partnerReferences'), orderBy('createdAt', 'desc')));
+        const refRows = [];
+        refsSnap.forEach((d) => refRows.push({ id: d.id, ...d.data() }));
+        setPartnerRefs(refRows);
+      } catch (e) {
+        console.error('Failed to load partner references', e);
+      } finally {
+        setPartnerRefsLoading(false);
+      }
+
+        try {
+          setPartnerCommsLoading(true);
+          const commsSnap = await getDocs(query(collection(db, 'partnerCommissions'), orderBy('createdAt', 'desc')));
+          const commRows = [];
+          commsSnap.forEach((d) => commRows.push({ id: d.id, ...d.data() }));
+          setPartnerComms(commRows);
+        } catch (e) {
+          console.error('Failed to load partner commissions', e);
+        } finally {
+          setPartnerCommsLoading(false);
+        }
+    };
+    loadData();
+  }, [tabValue]);
+
+  const approveReference = async (refRow) => {
+    try {
+      await updateDoc(doc(db, 'partnerReferences', refRow.id), {
+        status: 'approved',
+        approvedAt: serverTimestamp(),
+        approvedBy: currentUser.uid
+      });
+      setPartnerRefs((prev) => prev.map(r => r.id === refRow.id ? { ...r, status: 'approved', approvedAt: new Date() } : r));
+      setSuccessMessage('Reference approved');
+    } catch (e) {
+      console.error('Approve reference failed', e);
+      setErrorMessage('Failed to approve reference');
+    }
+  };
+
+  const markCommissionPaid = async (commRow, notes) => {
+    try {
+      await updateDoc(doc(db, 'partnerCommissions', commRow.id), {
+        status: 'paid',
+        notes: notes || '',
+        paidAt: serverTimestamp(),
+        paidBy: currentUser.uid,
+        updatedAt: serverTimestamp()
+      });
+      setPartnerComms((prev) => prev.map(c => c.id === commRow.id ? { ...c, status: 'paid', notes, paidAt: new Date(), paidBy: currentUser.uid } : c));
+      setSuccessMessage('Commission marked as paid');
+    } catch (e) {
+      console.error('Mark commission paid failed', e);
+      setErrorMessage('Failed to mark commission paid');
+    }
+  };
+
   const renderSupportUsersTab = () => (
     <Box>
       <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 3 }}>
@@ -1789,6 +1903,7 @@ export default function AdminDashboard() {
               <Tab label="Revenue" />
               <Tab label="Astrologers" />
               <Tab label="Support Users" />
+              <Tab label="Partners" />
               <Tab label="Chat Monitor" />
             </Tabs>
           </Paper>
@@ -1950,7 +2065,173 @@ export default function AdminDashboard() {
               {tabValue === 2 && renderRevenueTab()}
               {tabValue === 3 && renderAstrologersTab()}
               {tabValue === 4 && renderSupportUsersTab()}
-              {tabValue === 5 && <ChatMonitor userId={currentUser?.uid} userType={'admin'} />}
+              {tabValue === 5 && (
+                <Box>
+                  <Paper elevation={0} sx={{ p: 3, mb: 3 }}>
+                    <Typography variant="h6" sx={{ mb: 2 }}>Create Partner Invite</Typography>
+                    <Grid container spacing={2} sx={{ mb: 2 }}>
+                      <Grid item xs={12} md={3}>
+                        <FormControl fullWidth size="small">
+                          <InputLabel>Commission Mode</InputLabel>
+                          <Select value={partnerCommissionMode} label="Commission Mode" onChange={(e) => setPartnerCommissionMode(e.target.value)}>
+                            <MenuItem value="percent">Percent</MenuItem>
+                            <MenuItem value="fixed">Fixed Amount</MenuItem>
+                            <MenuItem value="both">Both (higher wins)</MenuItem>
+                          </Select>
+                        </FormControl>
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <TextField label="Percent %" size="small" fullWidth type="number" value={partnerPercent} onChange={(e) => setPartnerPercent(e.target.value)} />
+                      </Grid>
+                      <Grid item xs={6} md={3}>
+                        <TextField label="Fixed Amount (₹)" size="small" fullWidth type="number" value={partnerFixedAmount} onChange={(e) => setPartnerFixedAmount(e.target.value)} />
+                      </Grid>
+                      <Grid item xs={12} md={3}>
+                        <Button variant="contained" onClick={handleCreatePartnerSignupLink} disabled={creatingPartnerLink} fullWidth>
+                          {creatingPartnerLink ? 'Creating...' : 'Create Invite'}
+                        </Button>
+                      </Grid>
+                    </Grid>
+                    {newPartnerLink && (
+                      <Alert severity="success">
+                        <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                          <Typography variant="body2" sx={{ flex: 1, overflowWrap: 'anywhere' }}>{newPartnerLink}</Typography>
+                          <Button size="small" onClick={() => copyToClipboard(newPartnerLink)}>Copy</Button>
+                        </Box>
+                      </Alert>
+                    )}
+                  </Paper>
+
+                  <Grid container spacing={3}>
+                    <Grid item xs={12} md={6}>
+                      <Paper elevation={0} sx={{ p: 3 }}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>Partner Profiles</Typography>
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Name</TableCell>
+                                <TableCell>Referral</TableCell>
+                                <TableCell>Commission</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {partners.map((p) => (
+                                <TableRow key={p.id}>
+                                  <TableCell>{p.displayName || p.id}</TableCell>
+                                  <TableCell>{p.referralCode}</TableCell>
+                                  <TableCell>{p.commissionMode === 'percent' ? `${p.percent}%` : p.commissionMode === 'fixed' ? `₹${p.fixedAmount}` : `both: ${p.percent}% / ₹${p.fixedAmount}`}</TableCell>
+                                </TableRow>
+                              ))}
+                              {!partnersLoading && partners.length === 0 && (
+                                <TableRow><TableCell colSpan={3} align="center">No partners</TableCell></TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12} md={6}>
+                      <Paper elevation={0} sx={{ p: 3 }}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>Partner References</Typography>
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Partner</TableCell>
+                                <TableCell>Customer</TableCell>
+                                <TableCell>Phone</TableCell>
+                                <TableCell>Service</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Action</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {partnerRefs.map((r) => (
+                                <TableRow key={r.id}>
+                                  <TableCell>{r.partnerId}</TableCell>
+                                  <TableCell>{r.customerName}</TableCell>
+                                  <TableCell>{r.phone}</TableCell>
+                                  <TableCell>{r.serviceType}</TableCell>
+                                  <TableCell>{r.status}</TableCell>
+                                  <TableCell>
+                                    {r.status !== 'approved' && (
+                                      <Button size="small" variant="outlined" onClick={() => approveReference(r)}>Approve</Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {!partnerRefsLoading && partnerRefs.length === 0 && (
+                                <TableRow><TableCell colSpan={6} align="center">No references</TableCell></TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper>
+                    </Grid>
+
+                    <Grid item xs={12}>
+                      <Paper elevation={0} sx={{ p: 3 }}>
+                        <Typography variant="h6" sx={{ mb: 2 }}>Partner Commissions</Typography>
+                        <TableContainer>
+                          <Table size="small">
+                            <TableHead>
+                              <TableRow>
+                                <TableCell>Partner</TableCell>
+                                <TableCell>Service</TableCell>
+                                <TableCell align="right">Amount</TableCell>
+                                <TableCell>Status</TableCell>
+                                <TableCell>Notes</TableCell>
+                                <TableCell>Action</TableCell>
+                              </TableRow>
+                            </TableHead>
+                            <TableBody>
+                              {partnerComms.map((c) => (
+                                <TableRow key={c.id}>
+                                  <TableCell>{c.partnerId}</TableCell>
+                                  <TableCell>{c.serviceType}</TableCell>
+                                  <TableCell align="right">₹{c.calculatedAmount || 0}</TableCell>
+                                  <TableCell>{c.status}</TableCell>
+                                  <TableCell>{c.notes || ''}</TableCell>
+                                  <TableCell>
+                                    {c.status !== 'paid' && (
+                                      <Button size="small" variant="contained" onClick={() => { setPayoutDialogOpen(true); setPayoutCommission(c); }}>Mark Paid</Button>
+                                    )}
+                                  </TableCell>
+                                </TableRow>
+                              ))}
+                              {!partnerCommsLoading && partnerComms.length === 0 && (
+                                <TableRow><TableCell colSpan={6} align="center">No commissions</TableCell></TableRow>
+                              )}
+                            </TableBody>
+                          </Table>
+                        </TableContainer>
+                      </Paper>
+                    </Grid>
+                  </Grid>
+
+                  <Dialog open={payoutDialogOpen} onClose={() => setPayoutDialogOpen(false)} maxWidth="sm" fullWidth>
+                    <DialogTitle>Mark Commission as Paid</DialogTitle>
+                    <DialogContent>
+                      <Typography variant="body2" sx={{ mb: 2 }}>Partner: {payoutCommission?.partnerId}</Typography>
+                      <TextField
+                        label="Notes"
+                        value={payoutNotes}
+                        onChange={(e) => setPayoutNotes(e.target.value)}
+                        fullWidth
+                        multiline
+                        minRows={2}
+                      />
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={() => setPayoutDialogOpen(false)}>Cancel</Button>
+                      <Button variant="contained" onClick={() => { markCommissionPaid(payoutCommission, payoutNotes); setPayoutDialogOpen(false); setPayoutNotes(''); }}>Mark Paid</Button>
+                    </DialogActions>
+                  </Dialog>
+                </Box>
+              )}
+              {tabValue === 6 && <ChatMonitor userId={currentUser?.uid} userType={'admin'} />}
             </>
           )}
         </Container>

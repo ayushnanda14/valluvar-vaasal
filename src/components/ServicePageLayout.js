@@ -73,6 +73,17 @@ export default function ServicePageLayout({
   const { currentUser, loading: authLoading, authInitialized } = useAuth();
   const { t, i18n } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+  // Capture referral from URL if present, store once per user session
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    try {
+      const url = new URL(window.location.href);
+      const ref = url.searchParams.get('ref');
+      if (ref && !localStorage.getItem('vv_partner_ref')) {
+        localStorage.setItem('vv_partner_ref', ref);
+      }
+    } catch (_) {}
+  }, []);
 
   // Categorisation based on example price ranges
   const deriveCategory = (amount) => {

@@ -275,6 +275,57 @@ export const createSupportSignupLink = async (creator) => {
   }
 };
 
+// Create partner signup link
+export const createPartnerSignupLink = async (creator, commissionConfig = {}) => {
+  try {
+    if (!creator || !creator.uid) {
+      throw new Error('Invalid creator object');
+    }
+
+    const linkData = {
+      type: 'partner_signup',
+      createdBy: creator.uid,
+      createdByName: creator.displayName || creator.email || 'Unknown',
+      createdByEmail: creator.email || 'Unknown',
+      createdAt: serverTimestamp(),
+      expiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000), // 24 hours
+      used: false,
+      commissionMode: commissionConfig.mode || 'percent', // 'percent' | 'fixed' | 'both'
+      percent: typeof commissionConfig.percent === 'number' ? commissionConfig.percent : 10,
+      fixedAmount: typeof commissionConfig.fixedAmount === 'number' ? commissionConfig.fixedAmount : 0,
+    };
+
+    const linkRef = await addDoc(collection(db, 'signupLinks'), linkData);
+
+    return {
+      id: linkRef.id,
+      url: `/signup/partner?token=${linkRef.id}`,
+      ...linkData
+    };
+  } catch (error) {
+    console.error('Error creating partner signup link:', error);
+    throw error;
+  }
+};
+
+// Validate partner signup link
+export const validatePartnerSignupLink = async (token) => {
+  try {
+    const linkDoc = await getDoc(doc(db, 'signupLinks', token));
+    if (!linkDoc.exists()) throw new Error('Invalid signup link');
+    const linkData = linkDoc.data();
+    if (linkData.used) throw new Error('This signup link has already been used');
+    if (linkData.type !== 'partner_signup') throw new Error('Invalid link type');
+    const now = new Date();
+    const expiresAt = linkData.expiresAt?.toDate ? linkData.expiresAt.toDate() : linkData.expiresAt;
+    if (now > expiresAt) throw new Error('This signup link has expired');
+    return linkData;
+  } catch (error) {
+    console.error('Error validating partner signup link:', error);
+    throw error;
+  }
+};
+
 // Validate support signup link
 export const validateSupportSignupLink = async (token) => {
   try {
