@@ -474,4 +474,14 @@
     },
     "cta": "உள்நுழைவுக்கு தொடரவும்"
   }
+,
+  "astrologerCategories": {
+    "pothigaiLabel": "பொதிகை (வெள்ளி)",
+    "pothigaiRange": "₹100–₹500",
+    "gangaLabel": "கங்கை (தங்கம்)",
+    "gangaRange": "₹500–₹1000",
+    "himalayaLabel": "இமயமலை (வைரம்)",
+    "himalayaRange": "₹1000–₹5000",
+    "sectionTitle": "வகைப்படி கிடைக்கும் ஜோதிடர்கள்"
+  }
 }

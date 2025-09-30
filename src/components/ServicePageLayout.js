@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import {
   Box,
   Container,
@@ -73,6 +73,21 @@ export default function ServicePageLayout({
   const { currentUser, loading: authLoading, authInitialized } = useAuth();
   const { t, i18n } = useTranslation('common');
   const isMobile = useMediaQuery(theme.breakpoints.down('md'));
+
+  // Categorisation based on example price ranges
+  const deriveCategory = (amount) => {
+    if (typeof amount !== 'number' || Number.isNaN(amount)) amount = 0;
+    if (amount <= 500) return { key: 'pothigai', label: t('astrologerCategories.pothigaiLabel'), range: t('astrologerCategories.pothigaiRange') };
+    if (amount <= 1000) return { key: 'ganga', label: t('astrologerCategories.gangaLabel'), range: t('astrologerCategories.gangaRange') };
+    return { key: 'himalaya', label: t('astrologerCategories.himalayaLabel'), range: t('astrologerCategories.himalayaRange') };
+  };
+
+  const getPublicAstrologerLabel = (astrologer) => {
+    const amount = astrologer?.serviceCharges?.[serviceType] || 0;
+    const cat = astrologer?._category || deriveCategory(amount);
+    const years = astrologer?.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology');
+    return `${cat.label} • ${years}`;
+  };
 
   // Set default dualUploadLabels if not provided
   const defaultDualUploadLabels = dualUploadLabels || [t('uploadLabels.firstPerson'), t('uploadLabels.secondPerson')];
@@ -251,8 +266,12 @@ export default function ServicePageLayout({
 
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() })) // Map to include ID and data
-          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)); // Filter by service
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType))
+          .map(astrologer => {
+            const amount = astrologer.serviceCharges?.[serviceType] || 0;
+            return { ...astrologer, _category: deriveCategory(amount) };
+          });
 
         setAstrologers(filteredAstrologers); // Set state with the filtered list
       } catch (err) {
@@ -1460,7 +1479,7 @@ export default function ServicePageLayout({
                 </Box>
               )}
 
-              {/* Step 2: Select Astrologers */}
+              {/* Step 2: Select Astrologers (grouped by category, hide personal details) */}
               {step === 2 && (
                 <Box>
                   <Typography
@@ -1512,37 +1531,28 @@ export default function ServicePageLayout({
                               fontFamily: '"Cormorant Garamond", serif'
                             }}
                           >
-                            Available Astrologers
+                            {t('astrologerCategories.sectionTitle')}
                           </Typography>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              flexDirection: { xs: 'column', md: 'row' },
-                              overflowX: { md: 'auto' },
-                              overflowY: { xs: 'auto', md: 'visible' },
-                              gap: { xs: 1.5, md: 2 },
-                              pb: { xs: 1, md: 2 },
-                              flex: '1 1 auto',
-                              maxHeight: { xs: '400px', md: 'none' },
-                              scrollbarWidth: 'thin',
-                              '&::-webkit-scrollbar': {
-                                width: { xs: '8px', md: '8px' },
-                                height: { md: '8px' },
-                              },
-                              '&::-webkit-scrollbar-track': {
-                                background: 'rgba(0,0,0,0.1)',
-                                borderRadius: '4px',
-                              },
-                              '&::-webkit-scrollbar-thumb': {
-                                background: 'rgba(0,0,0,0.2)',
-                                borderRadius: '4px',
-                                '&:hover': {
-                                  background: 'rgba(0,0,0,0.3)',
-                                },
-                              },
-                            }}
-                          >
-                            {astrologers.map(astrologer => (
+                          {['pothigai', 'ganga', 'himalaya'].map(catKey => (
+                            <Box key={catKey} sx={{ mb: 2 }}>
+                              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
+                                {catKey === 'pothigai' && t('astrologerCategories.pothigaiLabel')}
+                                {catKey === 'ganga' && t('astrologerCategories.gangaLabel')}
+                                {catKey === 'himalaya' && t('astrologerCategories.himalayaLabel')}
+                              </Typography>
+                              <Box
+                                sx={{
+                                  display: 'flex',
+                                  flexDirection: { xs: 'column', md: 'row' },
+                                  overflowX: { md: 'auto' },
+                                  overflowY: { xs: 'auto', md: 'visible' },
+                                  gap: { xs: 1.5, md: 2 },
+                                  pb: { xs: 1, md: 2 },
+                                  flex: '1 1 auto',
+                                  maxHeight: { xs: 'none', md: 'none' }
+                                }}
+                              >
+                                {astrologers.filter(a => (a._category?.key || deriveCategory(a.serviceCharges?.[serviceType] || 0).key) === catKey).map(astrologer => (
                               <Box
                                 key={astrologer.id}
                                 sx={{
@@ -1564,14 +1574,14 @@ export default function ServicePageLayout({
                                     }
                                   }}
                                 >
-                                  {isMobile ? (
+                                      {isMobile ? (
                                     <CardActionArea
                                       onClick={() => handleAstrologerSelect(astrologer)}
                                       sx={{ p: 1, display: 'flex', alignItems: 'center' }}
                                     >
                                       <Avatar
                                         src={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt={astrologer.displayName}
+                                            alt="Astrologer"
                                         sx={{ width: 56, height: 56, mr: 1.5 }}
                                       />
                                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1580,7 +1590,7 @@ export default function ServicePageLayout({
                                           noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                          {astrologer.displayName}
+                                              {astrologer._category?.label || deriveCategory(astrologer.serviceCharges?.[serviceType] || 0).label}
                                         </Typography>
                                         <Typography
                                           variant="body2"
@@ -1588,13 +1598,15 @@ export default function ServicePageLayout({
                                           noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                          {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                              {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
                                         <Typography
                                           variant="body2"
                                           sx={{ fontWeight: 'bold', color: theme.palette.primary.main, mt: 0.5, fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                          ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                              <Box component="span" sx={{ fontWeight: 800, fontSize: '1.05rem' }}>
+                                                ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                              </Box>
                                         </Typography>
                                       </Box>
                                       <Checkbox
@@ -1622,7 +1634,7 @@ export default function ServicePageLayout({
                                         component="img"
                                         height="300px"
                                         image={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt={astrologer.displayName}
+                                            alt="Astrologer"
                                         sx={{
                                           objectFit: 'cover',
                                           margin: 0,
@@ -1644,7 +1656,7 @@ export default function ServicePageLayout({
                                             component="div"
                                             sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                           >
-                                            {astrologer.displayName}
+                                                {astrologer._category?.label || deriveCategory(astrologer.serviceCharges?.[serviceType] || 0).label}
                                           </Typography>
                                           <Checkbox
                                             checked={selectedAstrologers.some(a => a.id === astrologer.id)}
@@ -1656,7 +1668,7 @@ export default function ServicePageLayout({
                                           color="text.secondary"
                                           sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                          {astrologer.services.map(s => t(`services.${s}.title`, s)).join(', ') || t('services.generalAstrology', 'General Astrology')}
+                                              {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
                                         <Typography
                                           variant="body2"
@@ -1667,15 +1679,19 @@ export default function ServicePageLayout({
                                             fontFamily: '"Cormorant Garamond", serif'
                                           }}
                                         >
-                                          ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                              <Box component="span" sx={{ fontWeight: 800, fontSize: '1.05rem' }}>
+                                                ₹{astrologer.serviceCharges?.[serviceType] || 500}
+                                              </Box>
                                         </Typography>
                                       </CardContent>
                                     </CardActionArea>
                                   )}
                                 </Card>
                               </Box>
-                            ))}
-                          </Box>
+                                ))}
+                              </Box>
+                            </Box>
+                          ))}
                         </Paper>
                       </Box>
 
@@ -1727,7 +1743,7 @@ export default function ServicePageLayout({
                             <>
                               <Box sx={{ flex: '1', overflowY: 'auto' }}>
                                 <List>
-                                  {selectedAstrologers.map(astrologer => (
+                          {selectedAstrologers.map(astrologer => (
                                     <ListItem
                                       key={astrologer.id}
                                       disablePadding
@@ -1741,13 +1757,13 @@ export default function ServicePageLayout({
                                       <ListItemAvatar>
                                         <Avatar
                                           src={astrologer.photoURL || '/images/default-avatar.png'}
-                                          alt={astrologer.displayName}
+                                  alt="Astrologer"
                                         />
                                       </ListItemAvatar>
                                       <ListItemText
                                         primary={
-                                          <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                            {astrologer.displayName}
+                                  <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                    {getPublicAstrologerLabel(astrologer)}
                                           </Typography>
                                         }
                                         secondary={
@@ -1757,7 +1773,9 @@ export default function ServicePageLayout({
                                               fontFamily: '"Cormorant Garamond", serif'
                                             }}
                                           >
-                                            ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                                     <Box component="span" sx={{ fontWeight: 800 }}>
+                                       ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                                     </Box>
                                           </Typography>
                                         }
                                       />
@@ -1974,7 +1992,7 @@ export default function ServicePageLayout({
                           </Typography>
                           <Box sx={{ flex: '1', overflowY: 'auto' }}>
                             <List>
-                              {selectedAstrologers.map(astrologer => (
+                      {selectedAstrologers.map(astrologer => (
                                 <ListItem
                                   key={astrologer.id}
                                   disablePadding
@@ -1988,13 +2006,13 @@ export default function ServicePageLayout({
                                   <ListItemAvatar>
                                     <Avatar
                                       src={astrologer.photoURL || '/images/default-avatar.png'}
-                                      alt={astrologer.displayName}
+                              alt="Astrologer"
                                     />
                                   </ListItemAvatar>
                                   <ListItemText
                                     primary={
-                                      <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                        {astrologer.displayName}
+                              <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                {getPublicAstrologerLabel(astrologer)}
                                       </Typography>
                                     }
                                     secondary={
@@ -2004,7 +2022,9 @@ export default function ServicePageLayout({
                                           fontFamily: '"Cormorant Garamond", serif'
                                         }}
                                       >
-                                        ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                              <Box component="span" sx={{ fontWeight: 800 }}>
+                                ₹{astrologer.serviceCharges?.[serviceType] || 0}
+                              </Box>
                                       </Typography>
                                     }
                                   />

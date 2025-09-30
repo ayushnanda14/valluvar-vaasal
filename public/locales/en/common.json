@@ -481,4 +481,14 @@
     },
     "cta": "Continue to Login"
   }
+,
+  "astrologerCategories": {
+    "pothigaiLabel": "Pothigai (Silver)",
+    "pothigaiRange": "₹100–₹500",
+    "gangaLabel": "Ganga (Gold)",
+    "gangaRange": "₹500–₹1000",
+    "himalayaLabel": "Himalaya (Diamond)",
+    "himalayaRange": "₹1000–₹5000",
+    "sectionTitle": "Available Astrologers (by Category)"
+  }
 }
