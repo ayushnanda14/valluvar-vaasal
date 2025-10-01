@@ -2174,6 +2174,22 @@ export default function AdminDashboard() {
                     <Grid item xs={12}>
                       <Paper elevation={0} sx={{ p: 3 }}>
                         <Typography variant="h6" sx={{ mb: 2 }}>Partner Commissions</Typography>
+                        <Box sx={{ display: 'flex', justifyContent: 'flex-end', mb: 2, gap: 1 }}>
+                          <Button variant="outlined" size="small" onClick={() => {
+                            const header = ['Partner','Service','Amount','Status','CreatedAt','Notes'];
+                            const lines = [header.join(',')];
+                            partnerComms.forEach(c => {
+                              lines.push([c.partnerId, c.serviceType, c.calculatedAmount || 0, c.status || '', c.createdAt?.toDate ? c.createdAt.toDate().toISOString() : '', (c.notes || '').replace(/\n/g,' ')].join(','));
+                            });
+                            const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                            const url = URL.createObjectURL(blob);
+                            const a = document.createElement('a');
+                            a.href = url;
+                            a.download = 'partner_commissions.csv';
+                            a.click();
+                            URL.revokeObjectURL(url);
+                          }}>Export CSV</Button>
+                        </Box>
                         <TableContainer>
                           <Table size="small">
                             <TableHead>
