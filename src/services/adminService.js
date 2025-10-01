@@ -326,6 +326,37 @@ export const validatePartnerSignupLink = async (token) => {
   }
 };
 
+// Update a partner profile's commission settings
+export const updatePartnerCommissionSettings = async (partnerId, { mode, percent, fixedAmount }) => {
+  try {
+    await updateDoc(doc(db, 'partnerProfiles', partnerId), {
+      commissionMode: mode,
+      percent: Number(percent) || 0,
+      fixedAmount: Number(fixedAmount) || 0,
+      updatedAt: serverTimestamp()
+    });
+  } catch (error) {
+    console.error('Error updating partner commission settings:', error);
+    throw error;
+  }
+};
+
+// Regenerate a partner referral code
+export const regeneratePartnerReferralCode = async (partnerId) => {
+  try {
+    const newCode = Math.random().toString(36).slice(2, 10).toUpperCase();
+    await updateDoc(doc(db, 'partnerProfiles', partnerId), {
+      referralCode: newCode,
+      referralLink: `/?ref=${newCode}`,
+      updatedAt: serverTimestamp()
+    });
+    return newCode;
+  } catch (error) {
+    console.error('Error regenerating partner referral code:', error);
+    throw error;
+  }
+};
+
 // Validate support signup link
 export const validateSupportSignupLink = async (token) => {
   try {

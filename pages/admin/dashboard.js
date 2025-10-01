@@ -62,7 +62,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../../src/firebase/firebaseConfig';
 import ChatMonitor from '../../src/components/admin/ChatMonitor';
-import { createSupportSignupLink, createPartnerSignupLink } from '../../src/services/adminService';
+import { createSupportSignupLink, createPartnerSignupLink, updatePartnerCommissionSettings, regeneratePartnerReferralCode } from '../../src/services/adminService';
 import FilterListIcon from '@mui/icons-material/FilterList';
 import MoreVertIcon from '@mui/icons-material/MoreVert';
 import BlockIcon from '@mui/icons-material/Block';
@@ -2113,6 +2113,7 @@ export default function AdminDashboard() {
                                 <TableCell>Name</TableCell>
                                 <TableCell>Referral</TableCell>
                                 <TableCell>Commission</TableCell>
+                                <TableCell>Actions</TableCell>
                               </TableRow>
                             </TableHead>
                             <TableBody>
@@ -2121,6 +2122,22 @@ export default function AdminDashboard() {
                                   <TableCell>{p.displayName || p.id}</TableCell>
                                   <TableCell>{p.referralCode}</TableCell>
                                   <TableCell>{p.commissionMode === 'percent' ? `${p.percent}%` : p.commissionMode === 'fixed' ? `₹${p.fixedAmount}` : `both: ${p.percent}% / ₹${p.fixedAmount}`}</TableCell>
+                                  <TableCell>
+                                    <Button size="small" variant="outlined" sx={{ mr: 1 }} onClick={async () => {
+                                      const code = await regeneratePartnerReferralCode(p.id);
+                                      setPartners(prev => prev.map(x => x.id === p.id ? { ...x, referralCode: code, referralLink: `/?ref=${code}` } : x));
+                                      setSuccessMessage('Referral code regenerated');
+                                    }}>Regenerate Code</Button>
+                                    <Button size="small" variant="outlined" onClick={async () => {
+                                      try {
+                                        await updatePartnerCommissionSettings(p.id, { mode: partnerCommissionMode, percent: partnerPercent, fixedAmount: partnerFixedAmount });
+                                        setPartners(prev => prev.map(x => x.id === p.id ? { ...x, commissionMode: partnerCommissionMode, percent: Number(partnerPercent), fixedAmount: Number(partnerFixedAmount) } : x));
+                                        setSuccessMessage('Commission settings updated');
+                                      } catch (e) {
+                                        setErrorMessage('Failed to update commission settings');
+                                      }
+                                    }}>Update Commission</Button>
+                                  </TableCell>
                                 </TableRow>
                               ))}
                               {!partnersLoading && partners.length === 0 && (
