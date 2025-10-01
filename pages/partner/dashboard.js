@@ -1,6 +1,6 @@
 import React, { useEffect, useState } from 'react';
 import ProtectedRoute from '../../src/components/ProtectedRoute';
-import { Box, Container, Typography, Paper, Grid, Button, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, FormControl, InputLabel, Select } from '@mui/material';
+import { Box, Container, Typography, Paper, Grid, Button, TextField, MenuItem, Table, TableBody, TableCell, TableContainer, TableHead, TableRow, Chip, FormControl, InputLabel, Select, FormHelperText, Alert } from '@mui/material';
 import { db } from '../../src/firebase/firebaseConfig';
 import { addDoc, collection, doc, getDocs, orderBy, query, serverTimestamp, where } from 'firebase/firestore';
 import { useAuth } from '../../src/context/AuthContext';
@@ -19,6 +19,7 @@ export default function PartnerDashboard() {
   const [profile, setProfile] = useState(null);
   const [commissions, setCommissions] = useState([]);
   const [commStatusFilter, setCommStatusFilter] = useState('all');
+  const [errors, setErrors] = useState({});
 
   useEffect(() => {
     const load = async () => {
@@ -57,8 +58,17 @@ export default function PartnerDashboard() {
   const handleAddReference = async () => {
     if (!currentUser) return;
     const name = form.customerName.trim();
-    const phone = form.phone.trim();
-    if (!name || !phone) return;
+    let phone = form.phone.trim();
+    const newErrors = {};
+    if (!name) newErrors.customerName = 'Name is required';
+    if (!phone) newErrors.phone = 'Phone is required';
+    // Normalize phone to 10-digit or +91XXXXXXXXXX
+    phone = phone.replace(/\s+/g, '');
+    if (/^0\d{10}$/.test(phone)) phone = `+91${phone.slice(1)}`;
+    else if (/^\d{10}$/.test(phone)) phone = `+91${phone}`;
+    else if (!/^\+?\d{10,15}$/.test(phone)) newErrors.phone = 'Enter valid phone number';
+    setErrors(newErrors);
+    if (Object.keys(newErrors).length > 0) return;
     try {
       await addDoc(collection(db, 'partnerReferences'), {
         partnerId: currentUser.uid,
@@ -129,6 +139,11 @@ export default function PartnerDashboard() {
             </Box>
           </Paper>
         )}
+        {!profile && (
+          <Alert severity="info" sx={{ mb: 3 }}>
+            Your partner profile is being prepared. Please contact admin if you cannot see your referral code.
+          </Alert>
+        )}
 
         <Grid container spacing={3}>
           <Grid item xs={12} md={4}>
@@ -141,6 +156,8 @@ export default function PartnerDashboard() {
                 fullWidth
                 size="small"
                 sx={{ mb: 1.5 }}
+                error={!!errors.customerName}
+                helperText={errors.customerName}
               />
               <TextField
                 label="Phone"
@@ -149,6 +166,8 @@ export default function PartnerDashboard() {
                 fullWidth
                 size="small"
                 sx={{ mb: 1.5 }}
+                error={!!errors.phone}
+                helperText={errors.phone}
               />
               <TextField
                 label="Service"
