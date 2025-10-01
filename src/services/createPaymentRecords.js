@@ -58,7 +58,15 @@ export async function createPaymentRecords({
           if (pdata.commissionMode === 'fixed' || pdata.commissionMode === 'both') {
             calculatedAmount = Math.max(calculatedAmount, pdata.fixedAmount || 0);
           }
-          await addDoc(collection(db, 'partnerCommissions'), {
+          // Idempotency: skip if a commission already exists for this partner and serviceRequest
+          const existingQ = query(
+            collection(db, 'partnerCommissions'),
+            where('partnerId', '==', pp.id),
+            where('serviceRequestId', '==', serviceRequestRef.id)
+          );
+          const existingSnap = await getDocs(existingQ);
+          if (existingSnap.empty) {
+            await addDoc(collection(db, 'partnerCommissions'), {
             partnerId: pp.id,
             referralCode: pdata.referralCode,
             serviceType,
@@ -73,7 +81,8 @@ export async function createPaymentRecords({
             notes: '',
             createdAt: serverTimestamp(),
             updatedAt: serverTimestamp()
-          });
+            });
+          }
         }
       } catch (e) {
         console.warn('Failed to create partner commission record', e);

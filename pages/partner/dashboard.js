@@ -20,6 +20,9 @@ export default function PartnerDashboard() {
   const [commissions, setCommissions] = useState([]);
   const [commStatusFilter, setCommStatusFilter] = useState('all');
   const [errors, setErrors] = useState({});
+  const [refsPage, setRefsPage] = useState(0);
+  const [commPage, setCommPage] = useState(0);
+  const pageSize = 10;
 
   useEffect(() => {
     const load = async () => {
@@ -211,7 +214,7 @@ export default function PartnerDashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {refsList.map((r) => (
+                    {refsList.slice(refsPage * pageSize, refsPage * pageSize + pageSize).map((r) => (
                       <TableRow key={r.id}>
                         <TableCell>{r.customerName}</TableCell>
                         <TableCell>{r.phone}</TableCell>
@@ -228,6 +231,27 @@ export default function PartnerDashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Button size="small" disabled={refsPage === 0} onClick={() => setRefsPage((p) => Math.max(0, p - 1))}>Previous</Button>
+                <Typography variant="caption">Page {refsPage + 1} / {Math.max(1, Math.ceil(refsList.length / pageSize))}</Typography>
+                <Button size="small" disabled={(refsPage + 1) * pageSize >= refsList.length} onClick={() => setRefsPage((p) => p + 1)}>Next</Button>
+              </Box>
+              <Box sx={{ display: 'flex', justifyContent: 'flex-end', mt: 1 }}>
+                <Button size="small" variant="outlined" onClick={() => {
+                  const header = ['Customer','Phone','Service','Status','CreatedAt'];
+                  const lines = [header.join(',')];
+                  refsList.forEach(r => {
+                    lines.push([r.customerName, r.phone, r.serviceType, r.status, r.createdAt?.toDate ? r.createdAt.toDate().toISOString() : ''].join(','));
+                  });
+                  const blob = new Blob([lines.join('\n')], { type: 'text/csv;charset=utf-8;' });
+                  const url = URL.createObjectURL(blob);
+                  const a = document.createElement('a');
+                  a.href = url;
+                  a.download = 'references.csv';
+                  a.click();
+                  URL.revokeObjectURL(url);
+                }}>Export CSV</Button>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
@@ -276,7 +300,7 @@ export default function PartnerDashboard() {
                     </TableRow>
                   </TableHead>
                   <TableBody>
-                    {commissions.filter(c => commStatusFilter === 'all' ? true : c.status === commStatusFilter).map((c) => (
+                    {commissions.filter(c => commStatusFilter === 'all' ? true : c.status === commStatusFilter).slice(commPage * pageSize, commPage * pageSize + pageSize).map((c) => (
                       <TableRow key={c.id}>
                         <TableCell>{c.serviceType}</TableCell>
                         <TableCell align="right">₹{c.calculatedAmount || 0}</TableCell>
@@ -293,6 +317,11 @@ export default function PartnerDashboard() {
                   </TableBody>
                 </Table>
               </TableContainer>
+              <Box sx={{ display: 'flex', justifyContent: 'space-between', mt: 1 }}>
+                <Button size="small" disabled={commPage === 0} onClick={() => setCommPage((p) => Math.max(0, p - 1))}>Previous</Button>
+                <Typography variant="caption">Page {commPage + 1} / {Math.max(1, Math.ceil(commissions.filter(c => commStatusFilter === 'all' ? true : c.status === commStatusFilter).length / pageSize))}</Typography>
+                <Button size="small" disabled={(commPage + 1) * pageSize >= commissions.filter(c => commStatusFilter === 'all' ? true : c.status === commStatusFilter).length} onClick={() => setCommPage((p) => p + 1)}>Next</Button>
+              </Box>
             </Paper>
           </Grid>
         </Grid>
