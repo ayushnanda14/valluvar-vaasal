@@ -169,10 +169,7 @@ export default function AstrologerProfileManager() {
     e.preventDefault();
     if (!currentUser) { /* ... error handling ... */ return; }
     if (!services.marriageMatching && !services.jathakPrediction && !services.jathakWriting) { /* ... error handling ... */ return; }
-    if (!district) { // Add district validation
-      setError('Please select your district.');
-      return;
-    }
+    // District validation removed - keeping field for backend compatibility
 
     setLoading(true);
     setError('');
@@ -182,13 +179,19 @@ export default function AstrologerProfileManager() {
       // Combine updates: Could be two separate calls or one if service adjusted
       // Using two calls for clarity with existing structure
 
-      // 1. Update Services & Pricing
-      await updateAstrologerServices(currentUser.uid, services, pricing);
+      // 1. Update Services (pricing removed - now plan-based)
+      // Keep pricing field for backward compatibility but set to 0
+      const defaultPricing = {
+        marriageMatching: 0,
+        jathakPrediction: 0,
+        jathakWriting: 0
+      };
+      await updateAstrologerServices(currentUser.uid, services, defaultPricing);
 
       // 2. Update Profile Details (State is fixed, only district changes)
       await updateAstrologerProfileDetails(currentUser.uid, { district, state });
 
-      setSuccess('Your profile details, services, and pricing have been updated successfully.'); // Updated success message
+      setSuccess('Your profile details and services have been updated successfully.'); // Updated success message
     } catch (err) {
       console.error('Error updating profile:', err);
       setError(err.message || 'Failed to update profile. Please try again.');
@@ -340,7 +343,8 @@ export default function AstrologerProfileManager() {
             />
           </Grid>
           <Grid item xs={12} sm={6}>
-            <FormControl sx={{ width: '100%' }} required>
+            {/* District selection removed from UI - keeping field for backend compatibility */}
+            <FormControl sx={{ width: '100%', display: 'none' }}>
               <InputLabel id="district-select-label">District</InputLabel>
               <Select
                 labelId="district-select-label"
@@ -439,7 +443,7 @@ export default function AstrologerProfileManager() {
           </Typography>
 
           <Grid container spacing={3}>
-            <Grid item xs={12} md={6}>
+            <Grid item xs={12}>
               <FormControlLabel
                 control={
                   <Checkbox
@@ -477,52 +481,12 @@ export default function AstrologerProfileManager() {
               />
             </Grid>
 
-            <Grid item xs={12} md={6}>
-              <Typography variant="subtitle2" sx={{ mb: 1 }}>
-                Set Your Pricing
-              </Typography>
-
-              <TextField
-                label="Marriage Matching Price"
-                variant="outlined"
-                margin="normal"
-                fullWidth
-                type="number"
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                }}
-                value={pricing.marriageMatching}
-                onChange={(e) => handlePricingChange('marriageMatching', e.target.value)}
-                disabled={!services.marriageMatching}
-              />
-
-              <TextField
-                label="Jathak Prediction Price"
-                variant="outlined"
-                margin="normal"
-                fullWidth
-                type="number"
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                }}
-                value={pricing.jathakPrediction}
-                onChange={(e) => handlePricingChange('jathakPrediction', e.target.value)}
-                disabled={!services.jathakPrediction}
-              />
-
-              <TextField
-                label="Jathak Writing Price"
-                variant="outlined"
-                margin="normal"
-                fullWidth
-                type="number"
-                InputProps={{
-                  startAdornment: <InputAdornment position="start">₹</InputAdornment>,
-                }}
-                value={pricing.jathakWriting}
-                onChange={(e) => handlePricingChange('jathakWriting', e.target.value)}
-                disabled={!services.jathakWriting}
-              />
+            <Grid item xs={12}>
+              <Alert severity="info" sx={{ mt: 2 }}>
+                <Typography variant="body2">
+                  <strong>Note:</strong> Pricing is now fixed by plan. Clients will select from Pothigai (₹100), Ganga (₹500), or Himalaya (₹2000) plans. All astrologers are available under all three categories.
+                </Typography>
+              </Alert>
             </Grid>
           </Grid>
         </FormGroup>

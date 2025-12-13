@@ -18,6 +18,9 @@ import '../src/i18n';
 import { I18nextProvider } from 'react-i18next';
 import i18nInstance from '../src/i18n'; // Import the configured i18n instance
 import { useRouter } from 'next/router';
+import dynamic from 'next/dynamic';
+const PWAInstallPrompt = dynamic(() => import('../src/components/PWAInstallPrompt'), { ssr: false });
+const IOSAddToHomePrompt = dynamic(() => import('../src/components/IOSAddToHomePrompt'), { ssr: false });
 
 // Safe polyfill for crypto.randomUUID()
 if (typeof window !== 'undefined') {
@@ -65,6 +68,21 @@ function MyApp(props) {
       console.error('App Check initialization error:', error);
     }
   }, [error]);
+
+  // Register a basic service worker for PWA installability
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    if ('serviceWorker' in navigator) {
+      const register = async () => {
+        try {
+          await navigator.serviceWorker.register('/sw.js');
+        } catch (err) {
+          console.error('Service Worker registration failed:', err);
+        }
+      };
+      register();
+    }
+  }, []);
 
   // Initialize language from localStorage on client side
   useEffect(() => {
@@ -121,6 +139,8 @@ function MyApp(props) {
                   <Component {...pageProps} />
                 )}
               </Box>
+              <PWAInstallPrompt />
+              <IOSAddToHomePrompt />
               <Footer />
             </Box>
           </I18nextProvider>

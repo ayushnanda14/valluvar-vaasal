@@ -73,6 +73,7 @@ import ToggleButton from '@mui/material/ToggleButton';
 import ToggleButtonGroup from '@mui/material/ToggleButtonGroup';
 import PictureAsPdfIcon from '@mui/icons-material/PictureAsPdf';
 import DemoIcon from '@mui/icons-material/PlayArrow'; // Add demo icon
+import DownloadIcon from '@mui/icons-material/Download';
 
 // Protected route component
 import ProtectedRoute from '../../src/components/ProtectedRoute';
@@ -1021,9 +1022,19 @@ export default function AdminDashboard() {
           background: 'linear-gradient(135deg, rgba(255,248,225,1) 0%, rgba(255,236,179,0.8) 100%)',
         }}
       >
-        <Typography variant="h4" sx={{ fontFamily: '"Playfair Display", serif', mb: 1 }}>
-          Total Revenue
-        </Typography>
+        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', mb: 2 }}>
+          <Typography variant="h4" sx={{ fontFamily: '"Playfair Display", serif' }}>
+            Total Revenue
+          </Typography>
+          <Button
+            variant="contained"
+            color="primary"
+            onClick={() => router.push('/admin/revenue-share')}
+            startIcon={<DownloadIcon />}
+          >
+            Revenue Share Dashboard
+          </Button>
+        </Box>
         <Typography variant="h2" sx={{ fontFamily: '"Cinzel", serif', color: theme.palette.primary.main }}>
           ₹{revenue.total.toLocaleString()}
         </Typography>

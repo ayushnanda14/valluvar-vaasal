@@ -47,18 +47,9 @@ import PaymentButton from './PaymentButton';
 import { useTranslation } from 'react-i18next';
 import { createPaymentRecords } from '../services/createPaymentRecords';
 import { formatLocalDate, formatLocalTime } from '@/utils/utils';
+import { getPricingConfig, getAllPricingPlans, getPlanTotal } from '../services/pricingService';
 
-// Define the list of districts (should match the signup list)
-const TAMIL_NADU_DISTRICTS = [
-  'Ariyalur', 'Chengalpattu', 'Chennai', 'Coimbatore', 'Cuddalore', 'Dharmapuri',
-  'Dindigul', 'Erode', 'Kallakurichi', 'Kancheepuram', 'Kanyakumari', 'Karur',
-  'Krishnagiri', 'Madurai', 'Mayiladuthurai', 'Nagapattinam', 'Namakkal',
-  'Nilgiris', 'Perambalur', 'Pudukkottai', 'Ramanathapuram', 'Ranipet',
-  'Salem', 'Sivaganga', 'Tenkasi', 'Thanjavur', 'Theni', 'Thoothukudi (Tuticorin)',
-  'Tiruchirappalli (Trichy)', 'Tirunelveli', 'Tirupathur', 'Tiruppur',
-  'Tiruvallur', 'Tiruvannamalai', 'Tiruvarur', 'Vellore', 'Viluppuram',
-  'Virudhunagar'
-];
+// District list removed - no longer needed for UI
 
 export default function ServicePageLayout({
   title,
@@ -94,10 +85,8 @@ export default function ServicePageLayout({
   };
 
   const getPublicAstrologerLabel = (astrologer) => {
-    const amount = astrologer?.serviceCharges?.[serviceType] || 0;
-    const cat = astrologer?._category || deriveCategory(amount);
     const years = astrologer?.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology');
-    return `${cat.label} • ${years}`;
+    return years;
   };
 
   // Set default dualUploadLabels if not provided
@@ -105,12 +94,13 @@ export default function ServicePageLayout({
 
   const localStorageKey = `servicePageProgress_${serviceType}`;
 
-  const [availableDistricts, setAvailableDistricts] = useState(new Set());
+  // District selection removed - keeping state for backward compatibility but not used in UI
   const [selectedDistrict, setSelectedDistrict] = useState('');
-  const [districtLoading, setDistrictLoading] = useState(true);
 
   const [astrologers, setAstrologers] = useState([]);
   const [selectedAstrologers, setSelectedAstrologers] = useState([]);
+  const [selectedPlan, setSelectedPlan] = useState(''); // 'pothigai', 'ganga', or 'himalaya'
+  const [pricingPlans, setPricingPlans] = useState([]);
   const [files, setFiles] = useState([]);
   const [secondFiles, setSecondFiles] = useState([]);
   const [loading, setLoading] = useState(true);
@@ -149,8 +139,7 @@ export default function ServicePageLayout({
             // Always start from step 1 (file upload) after refresh
             setStep(1);
 
-            // Restore district and astrologer selections silently
-            if (savedState.selectedDistrict) setSelectedDistrict(savedState.selectedDistrict);
+            // Restore astrologer selections silently
             if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
 
             // Restore jathak-related form data if present (for prediction/writing flows)
@@ -158,8 +147,8 @@ export default function ServicePageLayout({
             if (savedState.predictionFormData) setPredictionFormData(savedState.predictionFormData);
             if (typeof savedState.jathakWritingOption === 'string') setJathakWritingOption(savedState.jathakWritingOption);
 
-            // Show message only if user had meaningful previous selections (both district and astrologers)
-            if (savedState.selectedDistrict && savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
+            // Show message only if user had meaningful previous selections (astrologers)
+            if (savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
               setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
             }
 
@@ -201,7 +190,6 @@ export default function ServicePageLayout({
       const stateToSave = {
         userId: currentUser.uid, // Add userId here
         step,
-        selectedDistrict,
         selectedAstrologers,
         filesUploaded: files.length > 0,
         secondFilesUploaded: secondFiles.length > 0,
@@ -212,65 +200,36 @@ export default function ServicePageLayout({
       };
       localStorage.setItem(localStorageKey, JSON.stringify(stateToSave));
     }
-  }, [step, selectedDistrict, selectedAstrologers, files, secondFiles, jathakFormData, predictionFormData, jathakWritingOption, serviceType, currentUser, localStorageKey]);
+  }, [step, selectedAstrologers, files, secondFiles, jathakFormData, predictionFormData, jathakWritingOption, serviceType, currentUser, localStorageKey]);
 
-  // Fetch available districts based on service type
+  // District fetching removed - all astrologers are available statewide
+
+  // Load pricing plans on mount
   useEffect(() => {
-    const fetchDistricts = async () => {
-      if (!serviceType) return;
-      setDistrictLoading(true);
+    const loadPricingPlans = async () => {
       try {
-        // We can only have one array-contains query per query, so we'll need to do this in two steps
-        // First, get all astrologers in Tamil Nadu
-        const astrologersQuery = query(
-          collection(db, 'users'),
-          where('roles', 'array-contains', 'astrologer'),
-          where('state', '==', 'Tamil Nadu')
-        );
-
-        // Then filter the results for those who offer the specific service
-        const astrologersSnapshot = await getDocs(astrologersQuery);
-        const filteredDocs = astrologersSnapshot.docs.filter(doc => {
-          const data = doc.data();
-          console.log('data', data.services, serviceType);
-          return data.services && data.services.includes(serviceType);
-        });
-
-        // Extract districts from the filtered results
-        const districts = new Set();
-        filteredDocs.forEach((doc) => {
-          const data = doc.data();
-          if (data.district) {
-            districts.add(data.district);
-          }
-        });
-        console.log('districts', districts);
-        setAvailableDistricts(districts);
+        const plans = await getAllPricingPlans();
+        setPricingPlans(plans);
       } catch (err) {
-        console.error('Error fetching available districts:', err);
-        setError(t('servicePage.errors.loadDistricts'));
-      } finally {
-        setDistrictLoading(false);
+        console.error('Error loading pricing plans:', err);
       }
     };
-    fetchDistricts();
-  }, [serviceType, t]);
+    loadPricingPlans();
+  }, []);
 
-  // Fetch astrologers based on selected district
+  // Fetch all astrologers (statewide, no district filter)
   useEffect(() => {
-    const fetchAstrologersByDistrict = async () => {
-      if (!selectedDistrict || step !== 2) return;
+    const fetchAstrologers = async () => {
+      if (step !== 2) return;
 
       setLoading(true);
       setSelectedAstrologers([]);
       try {
-        // Broaden the query: Filter by role, state, and district only
+        // Fetch all astrologers in Tamil Nadu
         const astrologersQuery = query(
           collection(db, 'users'),
           where('roles', 'array-contains', 'astrologer'),
-          where('state', '==', 'Tamil Nadu'),
-          where('district', '==', selectedDistrict)
-          // Remove: where('services', 'array-contains', serviceType)
+          where('state', '==', 'Tamil Nadu')
         );
 
         const querySnapshot = await getDocs(astrologersQuery);
@@ -278,23 +237,23 @@ export default function ServicePageLayout({
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType))
+           .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType))
           .map(astrologer => {
             const amount = astrologer.serviceCharges?.[serviceType] || 0;
             return { ...astrologer, _category: deriveCategory(amount) };
           });
 
-        setAstrologers(filteredAstrologers); // Set state with the filtered list
+        setAstrologers(filteredAstrologers);
       } catch (err) {
-        console.error('Error fetching astrologers by district:', err);
+        console.error('Error fetching astrologers:', err);
         setError(t('servicePage.errors.loadAstrologers'));
       } finally {
         setLoading(false);
       }
     };
 
-    fetchAstrologersByDistrict();
-  }, [selectedDistrict, serviceType, step, t]);
+    fetchAstrologers();
+  }, [serviceType, step, t]);
 
   // Check if user is logged in (wait until auth is initialized)
   useEffect(() => {
@@ -399,23 +358,21 @@ export default function ServicePageLayout({
         }
       }
 
-      // Check if we have saved district and astrologer selections
-      if (selectedDistrict && selectedAstrologers.length > 0) {
+      // Check if we have saved astrologer selections
+      if (selectedAstrologers.length > 0) {
         // Skip directly to payment step
         setStep(3);
       } else {
-        // Normal flow - go to district selection
-        setStep(1.5);
+        // Normal flow - go to astrologer selection
+        setStep(2);
       }
-    } else if (step === 1.5) {
-      if (!selectedDistrict) {
-        setToast({ open: true, message: t('servicePage.errors.selectDistrict'), severity: 'error' });
-        return;
-      }
-      setStep(2);
     } else if (step === 2) {
       if (selectedAstrologers.length === 0) {
         setToast({ open: true, message: t('servicePage.errors.selectAstrologer'), severity: 'error' });
+        return;
+      }
+      if (!selectedPlan) {
+        setToast({ open: true, message: t('servicePage.errors.selectPlan', 'Please select a pricing plan'), severity: 'error' });
         return;
       }
       setStep(3);
@@ -430,8 +387,7 @@ export default function ServicePageLayout({
   const handlePreviousStep = () => {
     setError('');
     if (step === 3) setStep(2);
-    else if (step === 2) setStep(1.5);
-    else if (step === 1.5) setStep(1);
+    else if (step === 2) setStep(1);
 
     // Scroll to top when moving to previous step
     setTimeout(() => {
@@ -439,10 +395,28 @@ export default function ServicePageLayout({
     }, 100);
   };
 
-  const calculateTotal = () => {
-    return selectedAstrologers.reduce((total, astrologer) => {
-      return total + (astrologer.serviceCharges?.[serviceType] || 0);
-    }, 0);
+  const calculateTotal = async () => {
+    if (!selectedPlan) return 0;
+    return await getPlanTotal(selectedPlan);
+  };
+
+  // Synchronous version for display (uses cached plan or calculates)
+  const calculateTotalSync = () => {
+    if (!selectedPlan) return 0;
+    const plan = pricingPlans.find(p => p.key === selectedPlan);
+    return plan ? plan.totalPrice : 0;
+  };
+
+  const calculateBaseSync = () => {
+    if (!selectedPlan) return 0;
+    const plan = pricingPlans.find(p => p.key === selectedPlan);
+    return plan ? plan.basePrice : 0;
+  };
+
+  const calculateGSTSync = () => {
+    if (!selectedPlan) return 0;
+    const plan = pricingPlans.find(p => p.key === selectedPlan);
+    return plan ? plan.gst : 0;
   };
 
   const handlePayment = async (paymentResponse) => {
@@ -461,17 +435,18 @@ export default function ServicePageLayout({
         serviceType: serviceType,
         astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
         status: 'payment_successful', // Initial status after successful payment
-        totalAmount: calculateTotal(), // Original amount before any taxes/fees from your calc
+        pricingCategory: selectedPlan, // Store selected plan
+        planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
+        totalAmount: calculateBaseSync(), // Base amount (excluding GST)
         // Amount may not be present on some gateways or older callbacks; compute safely
         paidAmount: typeof paymentResponse.amount === 'number'
           ? Math.round(paymentResponse.amount) / 100
-          : (calculateTotal() + Math.round(calculateTotal() * 0.18)),
+          : calculateTotalSync(),
         currency: 'INR', // Assuming INR, or take from paymentResponse.currency if available
         razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID
         filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        selectedDistrict: selectedDistrict, // Storing selected district
         isDemoUser: currentUser.isDemoUser || false, // Add demo user flag
         // Add jathak writing form data if applicable
         ...(serviceType === 'jathakWriting' && jathakWritingOption === 'baby' && {
@@ -493,7 +468,8 @@ export default function ServicePageLayout({
         currentUser,
         serviceType,
         paymentResponse,
-        serviceRequestRef
+        serviceRequestRef,
+        pricingCategory: selectedPlan
       });
 
       // Create conversation threads with each selected astrologer
@@ -516,6 +492,8 @@ export default function ServicePageLayout({
           },
           serviceRequestId: serviceRequestRef.id,
           serviceType: serviceType,
+          pricingCategory: selectedPlan, // Store plan category
+          planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
           razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID in chat doc
           lastMessage: {
             text: messageText,
@@ -695,14 +673,15 @@ export default function ServicePageLayout({
         serviceType: serviceType,
         astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
         status: 'payment_successful',
-        totalAmount: calculateTotal(),
+        pricingCategory: selectedPlan, // Store selected plan
+        planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
+        totalAmount: calculateBaseSync(), // Base amount (excluding GST)
         paidAmount: 0, // Demo users don't pay
         currency: 'INR',
         razorpay_payment_id: demoPaymentId,
         filesUploaded: files.length > 0 || (dualUpload && secondFiles.length > 0),
         createdAt: serverTimestamp(),
         updatedAt: serverTimestamp(),
-        selectedDistrict: selectedDistrict,
         isDemoUser: true
       };
 
@@ -714,7 +693,8 @@ export default function ServicePageLayout({
         currentUser,
         serviceType,
         paymentResponse: { razorpay_payment_id: demoPaymentId },
-        serviceRequestRef
+        serviceRequestRef,
+        pricingCategory: selectedPlan
       });
 
       // Create conversation threads with each selected astrologer
@@ -738,6 +718,8 @@ export default function ServicePageLayout({
           },
           serviceRequestId: serviceRequestRef.id,
           serviceType: serviceType,
+          pricingCategory: selectedPlan, // Store plan category
+          planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
           razorpay_payment_id: demoPaymentId,
           isDemoUser: true,
           lastMessage: {
@@ -979,7 +961,6 @@ export default function ServicePageLayout({
                     <Box sx={{ mt: 1, textAlign: 'center' }}>
                       <Typography variant="body2" color="primary" fontWeight="bold">
                         {step === 1 && t('servicePage.steps.uploadFiles')}
-                        {step === 1.5 && t('servicePage.steps.selectDistrict')}
                         {step === 2 && t('servicePage.steps.selectAstrologers')}
                         {step === 3 && t('servicePage.steps.payment')}
                       </Typography>
@@ -988,7 +969,7 @@ export default function ServicePageLayout({
                 ) : (
                   // Desktop: Original grid layout
                   <Grid container spacing={1} justifyContent="center">
-                    <Grid item xs={3}>
+                    <Grid item xs={4}>
                       <Box
                         sx={{
                           textAlign: 'center',
@@ -1010,29 +991,7 @@ export default function ServicePageLayout({
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={3}>
-                      <Box
-                        sx={{
-                          textAlign: 'center',
-                          color: step >= 1.5 ? theme.palette.primary.main : 'text.secondary',
-                          fontWeight: step === 1.5 ? 'bold' : 'normal'
-                        }}
-                      >
-                        <Typography variant="body1">{t('servicePage.steps.step2')}</Typography>
-                        <Typography
-                          variant="body2"
-                          sx={{
-                            wordWrap: 'break-word',
-                            overflowWrap: 'break-word',
-                            hyphens: 'auto',
-                            maxWidth: '8rem'
-                          }}
-                        >
-                          {t('servicePage.steps.selectDistrict')}
-                        </Typography>
-                      </Box>
-                    </Grid>
-                    <Grid item xs={3}>
+                    <Grid item xs={4}>
                       <Box
                         sx={{
                           textAlign: 'center',
@@ -1040,7 +999,7 @@ export default function ServicePageLayout({
                           fontWeight: step === 2 ? 'bold' : 'normal'
                         }}
                       >
-                        <Typography variant="body1">{t('servicePage.steps.step3')}</Typography>
+                        <Typography variant="body1">{t('servicePage.steps.step2')}</Typography>
                         <Typography
                           variant="body2"
                           sx={{
@@ -1054,7 +1013,7 @@ export default function ServicePageLayout({
                         </Typography>
                       </Box>
                     </Grid>
-                    <Grid item xs={3}>
+                    <Grid item xs={4}>
                       <Box
                         sx={{
                           textAlign: 'center',
@@ -1062,7 +1021,7 @@ export default function ServicePageLayout({
                           fontWeight: step === 3 ? 'bold' : 'normal'
                         }}
                       >
-                        <Typography variant="body1">{t('servicePage.steps.step4')}</Typography>
+                        <Typography variant="body1">{t('servicePage.steps.step3')}</Typography>
                         <Typography
                           variant="body2"
                           sx={{
@@ -1149,13 +1108,10 @@ export default function ServicePageLayout({
                   )}
 
                   {/* Show preserved selections */}
-                  {selectedDistrict && selectedAstrologers.length > 0 && (
+                  {selectedAstrologers.length > 0 && (
                     <Alert severity="info" sx={{ mb: 3 }}>
                       <Typography variant="body2">
                         <strong>{t('servicePage.preservedSelections', 'Your previous selections have been preserved:')}</strong>
-                      </Typography>
-                      <Typography variant="body2">
-                        {t('servicePage.district', 'District')}: {selectedDistrict}
                       </Typography>
                       <Typography variant="body2">
                         {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
@@ -1167,7 +1123,6 @@ export default function ServicePageLayout({
                         variant="outlined"
                         size="small"
                         onClick={() => {
-                          setSelectedDistrict('');
                           setSelectedAstrologers([]);
                           setError('');
                         }}
@@ -1364,127 +1319,10 @@ export default function ServicePageLayout({
                         textOverflow: 'ellipsis'
                       }}
                     >
-                      {selectedDistrict && selectedAstrologers.length > 0
+                      {selectedAstrologers.length > 0
                         ? t('servicePage.nextPayment', 'Next: Payment')
-                        : t('servicePage.nextDistrict', 'Next: Select District')
+                        : t('servicePage.nextAstrologers', 'Next: Select Astrologers')
                       }
-                    </Button>
-                  </Box>
-                </Box>
-              )}
-
-              {/* Step 1.5: Select District */}
-              {step === 1.5 && (
-                <Box>
-                  <Typography
-                    variant="h5"
-                    component="h2"
-                    sx={{
-                      mb: 3,
-                      fontFamily: '"Cormorant Garamond", serif',
-                      color: theme.palette.secondary.dark
-                    }}
-                  >
-                    {t('servicePage.selectDistrictTitle', 'Select District')}
-                  </Typography>
-                  {districtLoading ? (
-                    <CircularProgress />
-                  ) : (
-                    <FormControl fullWidth margin="normal" required>
-                      <InputLabel id="district-select-label">District</InputLabel>
-                      <Select
-                        labelId="district-select-label"
-                        value={selectedDistrict}
-                        label="District"
-                        onChange={(e) => setSelectedDistrict(e.target.value)}
-                      >
-                        <MenuItem value="" disabled><em>Select a District</em></MenuItem>
-                        {(() => {
-                          // Separate available and unavailable districts
-                          const availableDistrictsList = [];
-                          const unavailableDistrictsList = [];
-
-                          TAMIL_NADU_DISTRICTS.forEach((dist) => {
-                            const isAvailable = availableDistricts.has(dist);
-                            if (isAvailable) {
-                              availableDistrictsList.push(dist);
-                            } else {
-                              unavailableDistrictsList.push(dist);
-                            }
-                          });
-
-                          // Sort both lists alphabetically
-                          availableDistrictsList.sort();
-                          unavailableDistrictsList.sort();
-
-                          // Combine and render
-                          return [...availableDistrictsList, ...unavailableDistrictsList].map((dist) => {
-                            const isAvailable = availableDistricts.has(dist);
-                            return (
-                              <MenuItem key={dist} value={dist} disabled={!isAvailable}>
-                                {dist}
-                                {!isAvailable && (
-                                  <MuiChip
-                                    label={t('districts.comingSoon', 'Service Coming Soon')}
-                                    size="small"
-                                    variant="outlined"
-                                    sx={{ ml: 1, opacity: 0.7 }}
-                                  />
-                                )}
-                              </MenuItem>
-                            );
-                          });
-                        })()}
-                      </Select>
-                    </FormControl>
-                  )}
-                  <Box sx={{
-                    mt: 4,
-                    display: 'flex',
-                    justifyContent: 'space-between',
-                    gap: { xs: 1, md: 2 },
-                    flexWrap: { xs: 'wrap', md: 'nowrap' }
-                  }}>
-                    <Button
-                      variant="outlined"
-                      color="primary"
-                      size="large"
-                      onClick={handlePreviousStep}
-                      sx={{
-                        py: { xs: 1.5, md: 2 },
-                        px: { xs: 2, md: 4 },
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: { xs: '1rem', md: '1.1rem' },
-                        minWidth: { xs: 'auto', md: '120px' },
-                        maxWidth: '100%',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        flex: { xs: '1 1 auto', md: '0 0 auto' }
-                      }}
-                    >
-                      {t('servicePage.back', 'Back')}
-                    </Button>
-                    <Button
-                      variant="contained"
-                      color="primary"
-                      size="large"
-                      onClick={handleNextStep}
-                      disabled={districtLoading || !selectedDistrict}
-                      sx={{
-                        py: { xs: 1.5, md: 2 },
-                        px: { xs: 2, md: 4 },
-                        fontFamily: '"Cormorant Garamond", serif',
-                        fontSize: { xs: '1rem', md: '1.1rem' },
-                        minWidth: { xs: 'auto', md: '200px' },
-                        maxWidth: '100%',
-                        whiteSpace: 'nowrap',
-                        overflow: 'hidden',
-                        textOverflow: 'ellipsis',
-                        flex: { xs: '1 1 auto', md: '0 0 auto' }
-                      }}
-                    >
-                      {t('servicePage.nextAstrologers', 'Next: Select Astrologers')}
                     </Button>
                   </Box>
                 </Box>
@@ -1505,7 +1343,7 @@ export default function ServicePageLayout({
                     {t('servicePage.selectAstrologersTitle', 'Select Astrologers')}
                   </Typography>
                   <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-                    {t('servicePage.showingAstrologers', { district: selectedDistrict })}
+                    {t('servicePage.showingAstrologersAll', 'Showing all available astrologers')}
                   </Typography>
                   {loading ? (
                     <Box sx={{ textAlign: 'center', py: 4 }}>
@@ -1513,7 +1351,7 @@ export default function ServicePageLayout({
                     </Box>
                   ) : astrologers.length === 0 ? (
                     <Typography sx={{ textAlign: 'center', py: 4 }}>
-                      {t('servicePage.noAstrologersFound', { service: t(`services.${serviceType}.title`), district: selectedDistrict })}
+                      {t('servicePage.noAstrologersFoundAll', { service: t(`services.${serviceType}.title`) })}
                     </Typography>
                   ) : (
                     <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
@@ -1542,28 +1380,21 @@ export default function ServicePageLayout({
                               fontFamily: '"Cormorant Garamond", serif'
                             }}
                           >
-                            {t('astrologerCategories.sectionTitle')}
+                            {t('servicePage.availableAstrologers', 'Available Astrologers')}
                           </Typography>
-                          {['pothigai', 'ganga', 'himalaya'].map(catKey => (
-                            <Box key={catKey} sx={{ mb: 2 }}>
-                              <Typography variant="subtitle1" sx={{ mb: 1, fontWeight: 'bold' }}>
-                                {catKey === 'pothigai' && t('astrologerCategories.pothigaiLabel')}
-                                {catKey === 'ganga' && t('astrologerCategories.gangaLabel')}
-                                {catKey === 'himalaya' && t('astrologerCategories.himalayaLabel')}
-                              </Typography>
-                              <Box
-                                sx={{
-                                  display: 'flex',
-                                  flexDirection: { xs: 'column', md: 'row' },
-                                  overflowX: { md: 'auto' },
-                                  overflowY: { xs: 'auto', md: 'visible' },
-                                  gap: { xs: 1.5, md: 2 },
-                                  pb: { xs: 1, md: 2 },
-                                  flex: '1 1 auto',
-                                  maxHeight: { xs: 'none', md: 'none' }
-                                }}
-                              >
-                                {astrologers.filter(a => (a._category?.key || deriveCategory(a.serviceCharges?.[serviceType] || 0).key) === catKey).map(astrologer => (
+                          <Box
+                            sx={{
+                              display: 'flex',
+                              flexDirection: { xs: 'column', md: 'row' },
+                              overflowX: { md: 'auto' },
+                              overflowY: { xs: 'auto', md: 'visible' },
+                              gap: { xs: 1.5, md: 2 },
+                              pb: { xs: 1, md: 2 },
+                              flex: '1 1 auto',
+                              maxHeight: { xs: 'none', md: 'none' }
+                            }}
+                          >
+                            {astrologers.map(astrologer => (
                               <Box
                                 key={astrologer.id}
                                 sx={{
@@ -1601,7 +1432,7 @@ export default function ServicePageLayout({
                                           noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                              {astrologer._category?.label || deriveCategory(astrologer.serviceCharges?.[serviceType] || 0).label}
+                                              {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
                                         </Typography>
                                         <Typography
                                           variant="body2"
@@ -1611,14 +1442,7 @@ export default function ServicePageLayout({
                                         >
                                               {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
-                                        <Typography
-                                          variant="body2"
-                                          sx={{ fontWeight: 'bold', color: theme.palette.primary.main, mt: 0.5, fontFamily: '"Cormorant Garamond", serif' }}
-                                        >
-                                              <Box component="span" sx={{ fontWeight: 800, fontSize: '1.05rem' }}>
-                                                ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                              </Box>
-                                        </Typography>
+                                        {/* Pricing removed - now plan-based */}
                                       </Box>
                                       <Checkbox
                                         checked={selectedAstrologers.some(a => a.id === astrologer.id)}
@@ -1667,7 +1491,7 @@ export default function ServicePageLayout({
                                             component="div"
                                             sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                           >
-                                                {astrologer._category?.label || deriveCategory(astrologer.serviceCharges?.[serviceType] || 0).label}
+                                                {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
                                           </Typography>
                                           <Checkbox
                                             checked={selectedAstrologers.some(a => a.id === astrologer.id)}
@@ -1681,28 +1505,14 @@ export default function ServicePageLayout({
                                         >
                                               {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
-                                        <Typography
-                                          variant="body2"
-                                          color="text.primary"
-                                          sx={{
-                                            fontWeight: 'bold',
-                                            color: theme.palette.primary.main,
-                                            fontFamily: '"Cormorant Garamond", serif'
-                                          }}
-                                        >
-                                              <Box component="span" sx={{ fontWeight: 800, fontSize: '1.05rem' }}>
-                                                ₹{astrologer.serviceCharges?.[serviceType] || 500}
-                                              </Box>
-                                        </Typography>
+                                        {/* Pricing removed - now plan-based */}
                                       </CardContent>
                                     </CardActionArea>
                                   )}
                                 </Card>
                               </Box>
-                                ))}
-                              </Box>
-                            </Box>
-                          ))}
+                            ))}
+                          </Box>
                         </Paper>
                       </Box>
 
@@ -1780,13 +1590,11 @@ export default function ServicePageLayout({
                                         secondary={
                                           <Typography
                                             sx={{
-                                              color: theme.palette.primary.main,
+                                              color: theme.palette.text.secondary,
                                               fontFamily: '"Cormorant Garamond", serif'
                                             }}
                                           >
-                                     <Box component="span" sx={{ fontWeight: 800 }}>
-                                       ₹{astrologer.serviceCharges?.[serviceType] || 0}
-                                     </Box>
+                                            {astrologer.experience ? `${astrologer.experience} years experience` : 'Available'}
                                           </Typography>
                                         }
                                       />
@@ -1797,26 +1605,59 @@ export default function ServicePageLayout({
 
                               <Divider sx={{ my: 2 }} />
 
-                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                <Typography
-                                  variant="body1"
-                                  sx={{
-                                    fontWeight: 'bold',
-                                    fontFamily: '"Cormorant Garamond", serif'
-                                  }}
+                              {/* Plan Selection */}
+                              <Typography
+                                variant="h6"
+                                sx={{
+                                  mb: 2,
+                                  color: theme.palette.primary.main,
+                                  fontFamily: '"Cormorant Garamond", serif'
+                                }}
+                              >
+                                Select Pricing Plan
+                              </Typography>
+                              <FormControl fullWidth sx={{ mb: 2 }}>
+                                <InputLabel id="plan-select-label">Plan</InputLabel>
+                                <Select
+                                  labelId="plan-select-label"
+                                  value={selectedPlan}
+                                  label="Plan"
+                                  onChange={(e) => setSelectedPlan(e.target.value)}
                                 >
-                                  Total:
-                                </Typography>
-                                <Typography
-                                  variant="h6"
-                                  sx={{
-                                    color: theme.palette.primary.main,
-                                    fontFamily: '"Cormorant Garamond", serif'
-                                  }}
-                                >
-                                  ₹{calculateTotal()}
-                                </Typography>
-                              </Box>
+                                  <MenuItem value="" disabled><em>Select a Plan</em></MenuItem>
+                                  {pricingPlans.map((plan) => (
+                                    <MenuItem key={plan.key} value={plan.key}>
+                                      {plan.name} - ₹{plan.totalPrice} ({plan.chatDurationHours} hours)
+                                    </MenuItem>
+                                  ))}
+                                </Select>
+                              </FormControl>
+
+                              {selectedPlan && (
+                                <>
+                                  <Divider sx={{ my: 2 }} />
+                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                                    <Typography
+                                      variant="body1"
+                                      sx={{
+                                        fontWeight: 'bold',
+                                        fontFamily: '"Cormorant Garamond", serif'
+                                      }}
+                                    >
+                                      Plan Total:
+                                    </Typography>
+                                    <Typography
+                                      variant="h6"
+                                      sx={{
+                                        color: theme.palette.primary.main,
+                                        fontFamily: '"Cormorant Garamond", serif'
+                                      }}
+                                    >
+                                      ₹{calculateTotalSync()}
+                                    </Typography>
+                                  </Box>
+                                </>
+                              )}
                             </>
                           )}
                         </Paper>
@@ -1857,7 +1698,7 @@ export default function ServicePageLayout({
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
-                      disabled={selectedAstrologers.length === 0}
+                      disabled={selectedAstrologers.length === 0 || !selectedPlan}
                       sx={{
                         py: { xs: 1.5, md: 2 },
                         px: { xs: 2, md: 4 },
@@ -1896,9 +1737,6 @@ export default function ServicePageLayout({
                   <Alert severity="success" sx={{ mb: 3 }}>
                     <Typography variant="body2">
                       <strong>{t('servicePage.selectedServices', 'Selected Service:')}</strong> {title}
-                    </Typography>
-                    <Typography variant="body2">
-                      {t('servicePage.district', 'District')}: {selectedDistrict}
                     </Typography>
                     <Typography variant="body2">
                       {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
@@ -1961,7 +1799,7 @@ export default function ServicePageLayout({
                           </Box>
                         ) : (
                           <PaymentButton
-                            amount={calculateTotal() + Math.round(calculateTotal() * 0.18)} // Total with GST
+                            amount={calculateTotalSync()} // Plan total (already includes GST)
                             description={t('servicePage.paymentDescription', { service: t(`services.${serviceType}.title`) })}
                             onSuccess={handlePayment}
                             onError={(error) => setError(error)}
@@ -2029,13 +1867,11 @@ export default function ServicePageLayout({
                                     secondary={
                                       <Typography
                                         sx={{
-                                          color: theme.palette.primary.main,
+                                          color: theme.palette.text.secondary,
                                           fontFamily: '"Cormorant Garamond", serif'
                                         }}
                                       >
-                              <Box component="span" sx={{ fontWeight: 800 }}>
-                                ₹{astrologer.serviceCharges?.[serviceType] || 0}
-                              </Box>
+                                        {astrologer.experience ? `${astrologer.experience} years` : 'Available'}
                                       </Typography>
                                     }
                                   />
@@ -2043,62 +1879,88 @@ export default function ServicePageLayout({
                               ))}
                             </List>
                           </Box>
-                          <Divider sx={{ my: 2 }} />
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                fontWeight: 'bold',
-                                fontFamily: '"Cormorant Garamond", serif'
-                              }}
-                            >
-                              Subtotal:
-                            </Typography>
-                            <Typography
-                              variant="body1"
-                              sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                            >
-                              ₹{calculateTotal()}
-                            </Typography>
-                          </Box>
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
-                            <Typography
-                              variant="body1"
-                              sx={{
-                                fontWeight: 'bold',
-                                fontFamily: '"Cormorant Garamond", serif'
-                              }}
-                            >
-                              GST (18%):
-                            </Typography>
-                            <Typography
-                              variant="body1"
-                              sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                            >
-                              ₹{Math.round(calculateTotal() * 0.18)}
-                            </Typography>
-                          </Box>
-                          <Divider sx={{ my: 2 }} />
-                          <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
-                            <Typography
-                              variant="h6"
-                              sx={{
-                                fontWeight: 'bold',
-                                fontFamily: '"Cormorant Garamond", serif'
-                              }}
-                            >
-                              Total:
-                            </Typography>
-                            <Typography
-                              variant="h5"
-                              sx={{
-                                color: theme.palette.primary.main,
-                                fontFamily: '"Cormorant Garamond", serif'
-                              }}
-                            >
-                              ₹{calculateTotal() + Math.round(calculateTotal() * 0.18)}
-                            </Typography>
-                          </Box>
+                          {selectedPlan && (
+                            <>
+                              <Divider sx={{ my: 2 }} />
+                              <Box sx={{ mb: 2 }}>
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    fontFamily: '"Cormorant Garamond", serif',
+                                    mb: 1
+                                  }}
+                                >
+                                  Selected Plan: {pricingPlans.find(p => p.key === selectedPlan)?.name}
+                                </Typography>
+                                <Typography
+                                  variant="body2"
+                                  sx={{
+                                    fontFamily: '"Cormorant Garamond", serif',
+                                    color: theme.palette.text.secondary
+                                  }}
+                                >
+                                  Chat Duration: {pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours} hours
+                                </Typography>
+                              </Box>
+                              <Divider sx={{ my: 2 }} />
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
+                                  Base Price:
+                                </Typography>
+                                <Typography
+                                  variant="body1"
+                                  sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                >
+                                  ₹{calculateBaseSync()}
+                                </Typography>
+                              </Box>
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                                <Typography
+                                  variant="body1"
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
+                                  GST:
+                                </Typography>
+                                <Typography
+                                  variant="body1"
+                                  sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                >
+                                  ₹{calculateGSTSync()}
+                                </Typography>
+                              </Box>
+                              <Divider sx={{ my: 2 }} />
+                              <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                                <Typography
+                                  variant="h6"
+                                  sx={{
+                                    fontWeight: 'bold',
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
+                                  Total:
+                                </Typography>
+                                <Typography
+                                  variant="h5"
+                                  sx={{
+                                    color: theme.palette.primary.main,
+                                    fontFamily: '"Cormorant Garamond", serif'
+                                  }}
+                                >
+                                  ₹{calculateTotalSync()}
+                                </Typography>
+                              </Box>
+                            </>
+                          )}
                         </Paper>
                       </Box>
                     )}

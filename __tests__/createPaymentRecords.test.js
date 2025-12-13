@@ -1,6 +1,12 @@
 import { createPaymentRecords } from '../src/services/createPaymentRecords';
 import { addDoc, collection, serverTimestamp } from 'firebase/firestore';
 
+jest.mock('../src/services/pricingService', () => ({
+  getPlanBase: jest.fn(async () => 85),
+  getPlanGST: jest.fn(async () => 15),
+  getPlanTotal: jest.fn(async () => 100),
+}));
+
 jest.mock('firebase/firestore', () => ({
   addDoc: jest.fn(),
   collection: jest.fn(),
@@ -31,6 +37,7 @@ describe('createPaymentRecords', () => {
       serviceType,
       paymentResponse,
       serviceRequestRef,
+      pricingCategory: 'pothigai',
     });
 
     expect(addDoc).toHaveBeenCalledTimes(2);
@@ -39,7 +46,10 @@ describe('createPaymentRecords', () => {
       expect.objectContaining({
         astrologerId: 'astro1',
         clientId: 'client1',
-        amount: 1000 + Math.round(1000 * 0.18),
+        pricingCategory: 'pothigai',
+        baseAmount: 43,
+        gstAmount: 8,
+        amount: 51,
         razorpay_payment_id: 'pay_123',
         serviceRequestId: 'req_123',
         timestamp: 'mock-timestamp',
@@ -49,7 +59,10 @@ describe('createPaymentRecords', () => {
       expect.anything(),
       expect.objectContaining({
         astrologerId: 'astro2',
-        amount: 2000 + Math.round(2000 * 0.18),
+        pricingCategory: 'pothigai',
+        baseAmount: 42,
+        gstAmount: 7,
+        amount: 49,
       })
     );
   });

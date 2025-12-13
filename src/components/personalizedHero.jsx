@@ -256,7 +256,7 @@ const PersonalizedHero = () => {
                   fontWeight: 500
                 }}
               >
-                {t('personalizedHero.chooseFavourite', 'Choose your favourite among the best astrologers from your favourite district.')}
+                {t('personalizedHero.chooseFavourite', 'Choose your favourite among the best astrologers available.')}
               </Typography>
 
               {/* {!currentUser && (

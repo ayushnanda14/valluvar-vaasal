@@ -187,7 +187,7 @@ const Navbar = () => {
                     letterSpacing: '1px',
                     textDecoration: 'none',
                     color: 'inherit',
-                    fontSize: '1.3rem',
+                    fontSize: '1.1rem',
                     position: 'absolute',
                     left: '50%',
                     transform: 'translateX(-50%)',
