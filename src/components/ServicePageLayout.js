@@ -237,7 +237,10 @@ export default function ServicePageLayout({
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
-           .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType))
+           .filter(astrologer => {
+            console.log('astrologer', astrologer, astrologer.services, serviceType);
+            return astrologer.services && astrologer.services.includes(serviceType)
+          })
           .map(astrologer => {
             const amount = astrologer.serviceCharges?.[serviceType] || 0;
             return { ...astrologer, _category: deriveCategory(amount) };
@@ -1354,11 +1357,22 @@ export default function ServicePageLayout({
                       {t('servicePage.noAstrologersFoundAll', { service: t(`services.${serviceType}.title`) })}
                     </Typography>
                   ) : (
-                    <Box sx={{ display: 'flex', flexDirection: { xs: 'column', md: 'row' }, gap: 3 }}>
+                    <Box
+                      sx={{
+                        display: 'flex',
+                        flexDirection: { xs: 'column', md: 'row' },
+                        gap: 3,
+                        width: '100%',
+                        maxWidth: '100%',
+                        alignItems: 'stretch'
+                      }}
+                    >
                       <Box
                         sx={{
                           flex: { xs: '1 1 100%', md: '1 1 60%' },
-                          minHeight: { md: '500px' }
+                          minHeight: { md: '500px' },
+                          minWidth: 0,
+                          maxWidth: '100%'
                         }}
                       >
                         <Paper
@@ -1369,7 +1383,9 @@ export default function ServicePageLayout({
                             backgroundColor: theme.palette.background.paper,
                             height: '100%',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            minWidth: 0,
+                            maxWidth: '100%'
                           }}
                         >
                           <Typography
@@ -1519,7 +1535,9 @@ export default function ServicePageLayout({
                       <Box
                         sx={{
                           flex: { xs: '1 1 100%', md: '1 1 40%' },
-                          minHeight: { md: '500px' }
+                          minHeight: { md: '500px' },
+                          minWidth: 0,
+                          maxWidth: '100%'
                         }}
                       >
                         <Paper
@@ -1532,7 +1550,11 @@ export default function ServicePageLayout({
                             backgroundColor: theme.palette.background.paper,
                             height: '100%',
                             display: 'flex',
-                            flexDirection: 'column'
+                            flexDirection: 'column',
+                            width: '100%',
+                            maxWidth: '100%',
+                            minWidth: 0,
+                            boxSizing: 'border-box'
                           }}
                         >
                           <Typography
