@@ -161,6 +161,13 @@ export default function AdminDashboard() {
   const [partnerCommissionMode, setPartnerCommissionMode] = useState('percent');
   const [partnerPercent, setPartnerPercent] = useState(10);
   const [partnerFixedAmount, setPartnerFixedAmount] = useState(0);
+  // Partner commission edit dialog (per-partner; must not reuse invite form state)
+  const [commissionEditOpen, setCommissionEditOpen] = useState(false);
+  const [commissionEditPartner, setCommissionEditPartner] = useState(null);
+  const [commissionEditMode, setCommissionEditMode] = useState('percent');
+  const [commissionEditPercent, setCommissionEditPercent] = useState(0);
+  const [commissionEditFixedAmount, setCommissionEditFixedAmount] = useState(0);
+  const [commissionEditSaving, setCommissionEditSaving] = useState(false);
   // Partners data
   const [partnersLoading, setPartnersLoading] = useState(false);
   const [partners, setPartners] = useState([]);
@@ -609,6 +616,46 @@ export default function AdminDashboard() {
       pathname: router.pathname,
       query: { tab: newValue }
     }, undefined, { shallow: true });
+  };
+
+  const openCommissionEditDialog = (partner) => {
+    setCommissionEditPartner(partner);
+    setCommissionEditMode(partner?.commissionMode || 'percent');
+    setCommissionEditPercent(Number(partner?.percent ?? 0));
+    setCommissionEditFixedAmount(Number(partner?.fixedAmount ?? 0));
+    setCommissionEditOpen(true);
+  };
+
+  const closeCommissionEditDialog = () => {
+    if (commissionEditSaving) return;
+    setCommissionEditOpen(false);
+    setCommissionEditPartner(null);
+  };
+
+  const saveCommissionEdit = async () => {
+    if (!commissionEditPartner) return;
+    try {
+      setCommissionEditSaving(true);
+      const payload = {
+        mode: commissionEditMode,
+        percent: Number(commissionEditPercent || 0),
+        fixedAmount: Number(commissionEditFixedAmount || 0),
+      };
+      await updatePartnerCommissionSettings(commissionEditPartner.id, payload);
+      setPartners(prev =>
+        prev.map(x => x.id === commissionEditPartner.id
+          ? { ...x, commissionMode: payload.mode, percent: payload.percent, fixedAmount: payload.fixedAmount }
+          : x
+        )
+      );
+      setSuccessMessage('Commission settings updated');
+      closeCommissionEditDialog();
+    } catch (e) {
+      console.error('Failed to update commission settings', e);
+      setErrorMessage('Failed to update commission settings');
+    } finally {
+      setCommissionEditSaving(false);
+    }
   };
 
   const handleOpenRoleDialog = (user) => {
@@ -2113,6 +2160,40 @@ export default function AdminDashboard() {
                     )}
                   </Paper>
 
+                  {/* Edit Partner Commission Dialog (per-partner) */}
+                  <Dialog open={commissionEditOpen} onClose={closeCommissionEditDialog} maxWidth="sm" fullWidth>
+                    <DialogTitle>Edit Partner Commission</DialogTitle>
+                    <DialogContent>
+                      <Typography variant="body2" sx={{ mb: 2, color: 'text.secondary' }}>
+                        Partner: {commissionEditPartner?.displayName || commissionEditPartner?.id || '-'}
+                      </Typography>
+                      <Grid container spacing={2}>
+                        <Grid item xs={12}>
+                          <FormControl fullWidth size="small">
+                            <InputLabel>Commission Mode</InputLabel>
+                            <Select value={commissionEditMode} label="Commission Mode" onChange={(e) => setCommissionEditMode(e.target.value)}>
+                              <MenuItem value="percent">Percent</MenuItem>
+                              <MenuItem value="fixed">Fixed Amount</MenuItem>
+                              <MenuItem value="both">Both (higher wins)</MenuItem>
+                            </Select>
+                          </FormControl>
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField label="Percent %" size="small" fullWidth type="number" value={commissionEditPercent} onChange={(e) => setCommissionEditPercent(e.target.value)} />
+                        </Grid>
+                        <Grid item xs={6}>
+                          <TextField label="Fixed Amount (₹)" size="small" fullWidth type="number" value={commissionEditFixedAmount} onChange={(e) => setCommissionEditFixedAmount(e.target.value)} />
+                        </Grid>
+                      </Grid>
+                    </DialogContent>
+                    <DialogActions>
+                      <Button onClick={closeCommissionEditDialog} disabled={commissionEditSaving}>Cancel</Button>
+                      <Button variant="contained" onClick={saveCommissionEdit} disabled={commissionEditSaving}>
+                        {commissionEditSaving ? 'Saving...' : 'Save'}
+                      </Button>
+                    </DialogActions>
+                  </Dialog>
+
                   <Grid container spacing={3}>
                     <Grid item xs={12} md={6}>
                       <Paper elevation={0} sx={{ p: 3 }}>
@@ -2139,15 +2220,9 @@ export default function AdminDashboard() {
                                       setPartners(prev => prev.map(x => x.id === p.id ? { ...x, referralCode: code, referralLink: `/?ref=${code}` } : x));
                                       setSuccessMessage('Referral code regenerated');
                                     }}>Regenerate Code</Button>
-                                    <Button size="small" variant="outlined" onClick={async () => {
-                                      try {
-                                        await updatePartnerCommissionSettings(p.id, { mode: partnerCommissionMode, percent: partnerPercent, fixedAmount: partnerFixedAmount });
-                                        setPartners(prev => prev.map(x => x.id === p.id ? { ...x, commissionMode: partnerCommissionMode, percent: Number(partnerPercent), fixedAmount: Number(partnerFixedAmount) } : x));
-                                        setSuccessMessage('Commission settings updated');
-                                      } catch (e) {
-                                        setErrorMessage('Failed to update commission settings');
-                                      }
-                                    }}>Update Commission</Button>
+                                    <Button size="small" variant="outlined" onClick={() => openCommissionEditDialog(p)}>
+                                      Edit Commission
+                                    </Button>
                                   </TableCell>
                                 </TableRow>
                               ))}
