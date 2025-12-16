@@ -73,7 +73,7 @@ export default function ServicePageLayout({
       if (ref && !localStorage.getItem('vv_partner_ref')) {
         localStorage.setItem('vv_partner_ref', ref);
       }
-    } catch (_) {}
+    } catch (_) { }
   }, []);
 
   // Categorisation based on example price ranges
@@ -237,10 +237,8 @@ export default function ServicePageLayout({
         // Client-side filtering for the specific service
         const filteredAstrologers = querySnapshot.docs
           .map(doc => ({ id: doc.id, ...doc.data() }))
-           .filter(astrologer => {
-            console.log('astrologer', astrologer, astrologer.services, serviceType);
-            return astrologer.services && astrologer.services.includes(serviceType)
-          })
+          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)
+            && astrologer.verificationStatus === 'verified' && !astrologer.disabled)
           .map(astrologer => {
             const amount = astrologer.serviceCharges?.[serviceType] || 0;
             return { ...astrologer, _category: deriveCategory(amount) };
@@ -1432,14 +1430,14 @@ export default function ServicePageLayout({
                                     }
                                   }}
                                 >
-                                      {isMobile ? (
+                                  {isMobile ? (
                                     <CardActionArea
                                       onClick={() => handleAstrologerSelect(astrologer)}
                                       sx={{ p: 1, display: 'flex', alignItems: 'center' }}
                                     >
                                       <Avatar
                                         src={astrologer.photoURL || '/images/default-avatar.png'}
-                                            alt="Astrologer"
+                                        alt="Astrologer"
                                         sx={{ width: 56, height: 56, mr: 1.5 }}
                                       />
                                       <Box sx={{ flex: 1, minWidth: 0 }}>
@@ -1448,7 +1446,7 @@ export default function ServicePageLayout({
                                           noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                              {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
+                                          {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
                                         </Typography>
                                         <Typography
                                           variant="body2"
@@ -1456,7 +1454,7 @@ export default function ServicePageLayout({
                                           noWrap
                                           sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                              {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
+                                          {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
                                         {/* Pricing removed - now plan-based */}
                                       </Box>
@@ -1485,7 +1483,7 @@ export default function ServicePageLayout({
                                         component="img"
                                         height="300px"
                                         image={astrologer.photoURL || '/images/default-avatar.png'}
-                                            alt="Astrologer"
+                                        alt="Astrologer"
                                         sx={{
                                           objectFit: 'cover',
                                           margin: 0,
@@ -1507,7 +1505,7 @@ export default function ServicePageLayout({
                                             component="div"
                                             sx={{ fontFamily: '"Cormorant Garamond", serif' }}
                                           >
-                                                {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
+                                            {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
                                           </Typography>
                                           <Checkbox
                                             checked={selectedAstrologers.some(a => a.id === astrologer.id)}
@@ -1519,7 +1517,7 @@ export default function ServicePageLayout({
                                           color="text.secondary"
                                           sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
                                         >
-                                              {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
+                                          {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
                                         </Typography>
                                         {/* Pricing removed - now plan-based */}
                                       </CardContent>
@@ -1586,7 +1584,7 @@ export default function ServicePageLayout({
                             <>
                               <Box sx={{ flex: '1', overflowY: 'auto' }}>
                                 <List>
-                          {selectedAstrologers.map(astrologer => (
+                                  {selectedAstrologers.map(astrologer => (
                                     <ListItem
                                       key={astrologer.id}
                                       disablePadding
@@ -1600,13 +1598,13 @@ export default function ServicePageLayout({
                                       <ListItemAvatar>
                                         <Avatar
                                           src={astrologer.photoURL || '/images/default-avatar.png'}
-                                  alt="Astrologer"
+                                          alt="Astrologer"
                                         />
                                       </ListItemAvatar>
                                       <ListItemText
                                         primary={
-                                  <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                    {getPublicAstrologerLabel(astrologer)}
+                                          <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                            {getPublicAstrologerLabel(astrologer)}
                                           </Typography>
                                         }
                                         secondary={
@@ -1863,7 +1861,7 @@ export default function ServicePageLayout({
                           </Typography>
                           <Box sx={{ flex: '1', overflowY: 'auto' }}>
                             <List>
-                      {selectedAstrologers.map(astrologer => (
+                              {selectedAstrologers.map(astrologer => (
                                 <ListItem
                                   key={astrologer.id}
                                   disablePadding
@@ -1877,13 +1875,13 @@ export default function ServicePageLayout({
                                   <ListItemAvatar>
                                     <Avatar
                                       src={astrologer.photoURL || '/images/default-avatar.png'}
-                              alt="Astrologer"
+                                      alt="Astrologer"
                                     />
                                   </ListItemAvatar>
                                   <ListItemText
                                     primary={
-                              <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                {getPublicAstrologerLabel(astrologer)}
+                                      <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                                        {getPublicAstrologerLabel(astrologer)}
                                       </Typography>
                                     }
                                     secondary={
