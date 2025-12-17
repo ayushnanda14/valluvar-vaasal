@@ -276,7 +276,7 @@ export const createSupportSignupLink = async (creator) => {
 };
 
 // Create partner signup link
-export const createPartnerSignupLink = async (creator, commissionConfig = {}) => {
+export const createPartnerSignupLink = async (creator, commissionConfig = {}, program = 'affiliate') => {
   try {
     if (!creator || !creator.uid) {
       throw new Error('Invalid creator object');
@@ -293,6 +293,7 @@ export const createPartnerSignupLink = async (creator, commissionConfig = {}) =>
       commissionMode: commissionConfig.mode || 'percent', // 'percent' | 'fixed' | 'both'
       percent: typeof commissionConfig.percent === 'number' ? commissionConfig.percent : 10,
       fixedAmount: typeof commissionConfig.fixedAmount === 'number' ? commissionConfig.fixedAmount : 0,
+      program: program, // 'matrimony' | 'affiliate' | ...
     };
 
     const linkRef = await addDoc(collection(db, 'signupLinks'), linkData);

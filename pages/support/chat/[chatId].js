@@ -9,17 +9,27 @@ import {
   CircularProgress,
   Alert,
   Chip,
-  useTheme
+  useTheme,
+  Dialog,
+  DialogTitle,
+  DialogContent,
+  DialogActions,
+  List,
+  ListItem,
+  ListItemAvatar,
+  ListItemText,
+  Avatar
 } from '@mui/material';
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../../src/context/AuthContext';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs } from 'firebase/firestore';
 import { SERVICE_TYPES } from '../../../src/utils/constants';
 import ArrowBackIcon from '@mui/icons-material/ArrowBack';
 import ProtectedRoute from '../../../src/components/ProtectedRoute';
 import { db } from '../../../src/firebase/firebaseConfig';
 import SupportChatBox from '../../../src/components/SupportChatBox';
+import { assignAstrologerToChat } from '../../../src/services/chatService';
 
 export default function SupportChat() {
   const theme = useTheme();
@@ -30,6 +40,9 @@ export default function SupportChat() {
   const [chat, setChat] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [assignDialogOpen, setAssignDialogOpen] = useState(false);
+  const [astrologers, setAstrologers] = useState([]);
+  const [assigning, setAssigning] = useState(false);
 
   useEffect(() => {
     if (!chatId || !currentUser?.uid) return;
@@ -63,6 +76,58 @@ export default function SupportChat() {
 
     loadChat();
   }, [chatId, currentUser?.uid]);
+
+  // Fetch available astrologers when dialog opens
+  useEffect(() => {
+    if (!assignDialogOpen || !chat?.serviceType) return;
+
+    const fetchAstrologers = async () => {
+      try {
+        const astrologersQuery = query(
+          collection(db, 'users'),
+          where('roles', 'array-contains', 'astrologer'),
+          where('state', '==', 'Tamil Nadu')
+        );
+
+        const querySnapshot = await getDocs(astrologersQuery);
+        const filteredAstrologers = querySnapshot.docs
+          .map(doc => ({ id: doc.id, ...doc.data() }))
+          .filter(astrologer => 
+            astrologer.services && 
+            astrologer.services.includes(chat.serviceType) &&
+            astrologer.verificationStatus === 'verified' && 
+            !astrologer.disabled
+          );
+
+        setAstrologers(filteredAstrologers);
+      } catch (err) {
+        console.error('Error fetching astrologers:', err);
+        setError('Failed to load astrologers');
+      }
+    };
+
+    fetchAstrologers();
+  }, [assignDialogOpen, chat?.serviceType]);
+
+  const handleAssignAstrologer = async (astrologerId) => {
+    try {
+      setAssigning(true);
+      await assignAstrologerToChat(chatId, astrologerId, currentUser.uid);
+      
+      // Reload chat to reflect changes
+      const chatDoc = await getDoc(doc(db, 'chats', chatId));
+      if (chatDoc.exists()) {
+        setChat({ id: chatDoc.id, ...chatDoc.data() });
+      }
+      
+      setAssignDialogOpen(false);
+    } catch (err) {
+      console.error('Error assigning astrologer:', err);
+      setError('Failed to assign astrologer');
+    } finally {
+      setAssigning(false);
+    }
+  };
 
 
 
@@ -116,18 +181,30 @@ export default function SupportChat() {
                 </IconButton>
                 <Box>
                   <Typography variant="h6" sx={{ fontWeight: 600 }}>
-                    {chat?.clientName || 'Client'} & {chat?.astrologerName || 'Astrologer'}
+                    {chat?.clientName || 'Client'} {chat?.astrologerName ? `& ${chat.astrologerName}` : ''}
                   </Typography>
                   <Typography variant="body2" color="text.secondary">
                     Service: {SERVICE_TYPES[chat?.serviceType] || 'General consultation'}
                   </Typography>
                 </Box>
               </Box>
-              <Chip
-                label={chat?.status || 'Active'}
-                color={chat?.status === 'active' ? 'success' : 'default'}
-                size="small"
-              />
+              <Box sx={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                {!chat?.astrologerId && (
+                  <Button
+                    variant="contained"
+                    color="primary"
+                    onClick={() => setAssignDialogOpen(true)}
+                    size="small"
+                  >
+                    Assign Astrologer
+                  </Button>
+                )}
+                <Chip
+                  label={chat?.status || 'Active'}
+                  color={chat?.status === 'active' ? 'success' : 'default'}
+                  size="small"
+                />
+              </Box>
             </Box>
           </Container>
         </Box>
@@ -147,6 +224,42 @@ export default function SupportChat() {
           </Container>
         </Box>
       </Box>
+
+      {/* Assign Astrologer Dialog */}
+      <Dialog open={assignDialogOpen} onClose={() => setAssignDialogOpen(false)} maxWidth="sm" fullWidth>
+        <DialogTitle>Assign Astrologer</DialogTitle>
+        <DialogContent>
+          {astrologers.length === 0 ? (
+            <Box sx={{ textAlign: 'center', py: 4 }}>
+              <CircularProgress />
+            </Box>
+          ) : (
+            <List>
+              {astrologers.map((astrologer) => (
+                <ListItem
+                  key={astrologer.id}
+                  button
+                  onClick={() => handleAssignAstrologer(astrologer.id)}
+                  disabled={assigning}
+                >
+                  <ListItemAvatar>
+                    <Avatar src={astrologer.photoURL || '/images/default-avatar.png'} />
+                  </ListItemAvatar>
+                  <ListItemText
+                    primary={astrologer.displayName || 'Astrologer'}
+                    secondary={`${astrologer.experience || 0} years experience`}
+                  />
+                </ListItem>
+              ))}
+            </List>
+          )}
+        </DialogContent>
+        <DialogActions>
+          <Button onClick={() => setAssignDialogOpen(false)} disabled={assigning}>
+            Cancel
+          </Button>
+        </DialogActions>
+      </Dialog>
     </ProtectedRoute>
   );
 } 

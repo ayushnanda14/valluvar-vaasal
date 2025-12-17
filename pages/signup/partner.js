@@ -51,6 +51,7 @@ export default function PartnerSignup() {
         commissionMode: linkData.commissionMode,
         percent: linkData.percent,
         fixedAmount: linkData.fixedAmount,
+        program: linkData.program || 'affiliate', // 'matrimony' | 'affiliate' | ...
         referralCode: user.uid.slice(0, 8).toUpperCase(),
         referralLink: `/?ref=${user.uid.slice(0, 8).toUpperCase()}`,
         active: true,

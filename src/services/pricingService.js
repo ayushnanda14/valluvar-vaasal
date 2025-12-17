@@ -20,7 +20,7 @@ const DEFAULT_PRICING_CONFIG = {
     totalPrice: 500,
     chatDurationHours: 48,
     availabilityWindowHours: 48,
-    phoneCallAvailable: false,
+    phoneCallAvailable: true,
     videoCallAvailable: false
   },
   himalaya: {
@@ -30,8 +30,8 @@ const DEFAULT_PRICING_CONFIG = {
     totalPrice: 2000,
     chatDurationHours: 72,
     availabilityWindowHours: 72,
-    phoneCallAvailable: false,
-    videoCallAvailable: false
+    phoneCallAvailable: true,
+    videoCallAvailable: true
   }
 };
 

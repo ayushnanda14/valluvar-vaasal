@@ -431,18 +431,36 @@ export const extendChatExpiry = async (chatId, extensionHours, extendedBy) => {
         }
 
         const chatData = chatDoc.data();
-        const currentExpiry = chatData.expiryTimestamp ||
-            (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
+        
+        // Handle expiryTimestamp - it could be a Firestore Timestamp or a number (milliseconds)
+        let currentExpiryMillis;
+        if (chatData.expiryTimestamp) {
+            // If it's a Firestore Timestamp, convert to milliseconds
+            if (chatData.expiryTimestamp.toMillis) {
+                currentExpiryMillis = chatData.expiryTimestamp.toMillis();
+            } else if (typeof chatData.expiryTimestamp === 'number') {
+                currentExpiryMillis = chatData.expiryTimestamp;
+            } else {
+                // Fallback: try to convert
+                currentExpiryMillis = new Date(chatData.expiryTimestamp).getTime();
+            }
+        } else {
+            // Fallback to planDurationHours or default 24 hours
+            const planDurationHours = chatData.planDurationHours || 24;
+            const createdAtMillis = chatData.createdAt?.toMillis ? chatData.createdAt.toMillis() : 
+                                    (chatData.createdAt?.toDate ? chatData.createdAt.toDate().getTime() : Date.now());
+            currentExpiryMillis = createdAtMillis + (planDurationHours * 60 * 60 * 1000);
+        }
 
-        const newExpiry = currentExpiry + (extensionHours * 60 * 60 * 1000);
+        const newExpiryMillis = currentExpiryMillis + (extensionHours * 60 * 60 * 1000);
 
         await updateDoc(doc(db, 'chats', chatId), {
-            expiryTimestamp: Timestamp.fromMillis(newExpiry),
+            expiryTimestamp: Timestamp.fromMillis(newExpiryMillis),
             extensionHistory: arrayUnion({
                 extendedBy,
                 extensionHours,
                 extendedAt: new Date().toISOString(),
-                previousExpiry: Timestamp.fromMillis(currentExpiry)
+                previousExpiry: Timestamp.fromMillis(currentExpiryMillis)
             }),
             updatedAt: serverTimestamp()
         });
@@ -746,17 +764,35 @@ export const getChatExpiryStatus = async (chatId) => {
         }
 
         const chatData = chatDoc.data();
-        const expiryTimestamp = chatData.expiryTimestamp ||
-            (chatData.createdAt?.toDate().getTime() + (24 * 60 * 60 * 1000));
+        
+        // Handle expiryTimestamp - it could be a Firestore Timestamp or a number (milliseconds)
+        let expiryMillis;
+        if (chatData.expiryTimestamp) {
+            // If it's a Firestore Timestamp, convert to milliseconds
+            if (chatData.expiryTimestamp.toMillis) {
+                expiryMillis = chatData.expiryTimestamp.toMillis();
+            } else if (typeof chatData.expiryTimestamp === 'number') {
+                expiryMillis = chatData.expiryTimestamp;
+            } else {
+                // Fallback: try to convert
+                expiryMillis = new Date(chatData.expiryTimestamp).getTime();
+            }
+        } else {
+            // Fallback to planDurationHours or default 24 hours
+            const planDurationHours = chatData.planDurationHours || 24;
+            const createdAtMillis = chatData.createdAt?.toMillis ? chatData.createdAt.toMillis() : 
+                                    (chatData.createdAt?.toDate ? chatData.createdAt.toDate().getTime() : Date.now());
+            expiryMillis = createdAtMillis + (planDurationHours * 60 * 60 * 1000);
+        }
 
         const now = Date.now();
-        const isExpired = now > expiryTimestamp;
-        const timeUntilExpiry = Math.max(0, expiryTimestamp - now);
+        const isExpired = now > expiryMillis;
+        const timeUntilExpiry = Math.max(0, expiryMillis - now);
 
         return {
             isExpired,
             timeUntilExpiry,
-            expiryTimestamp: Timestamp.fromMillis(expiryTimestamp),
+            expiryTimestamp: Timestamp.fromMillis(expiryMillis),
             hasBeenExtended: !!chatData.expiryTimestamp
         };
     } catch (error) {
@@ -800,6 +836,96 @@ export const assignSupportUserToChat = async (chatId, supportUserId, assignedBy)
         return true;
     } catch (error) {
         console.error('Error assigning support user to chat:', error);
+        throw error;
+    }
+};
+
+// Assign astrologer to chat (updates chat, payment, and serviceRequest)
+export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) => {
+    try {
+        const chatDoc = await getDoc(doc(db, 'chats', chatId));
+        if (!chatDoc.exists()) {
+            throw new Error('Chat not found');
+        }
+
+        const chatData = chatDoc.data();
+        const astrologerDoc = await getDoc(doc(db, 'users', astrologerId));
+        if (!astrologerDoc.exists()) {
+            throw new Error('Astrologer not found');
+        }
+
+        const astrologerData = astrologerDoc.data();
+        const batch = writeBatch(db);
+
+        // Update chat document
+        const chatRef = doc(db, 'chats', chatId);
+        batch.update(chatRef, {
+            astrologerId: astrologerId,
+            astrologerName: astrologerData.displayName || 'Astrologer',
+            participants: arrayUnion(astrologerId),
+            participantNames: {
+                ...chatData.participantNames,
+                [astrologerId]: astrologerData.displayName || 'Astrologer'
+            },
+            participantAvatars: {
+                ...chatData.participantAvatars,
+                [astrologerId]: astrologerData.photoURL || null
+            },
+            updatedAt: serverTimestamp()
+        });
+
+        // Update payment document if serviceRequestId exists
+        if (chatData.serviceRequestId) {
+            const serviceRequestDoc = await getDoc(doc(db, 'serviceRequests', chatData.serviceRequestId));
+            if (serviceRequestDoc.exists()) {
+                // Update serviceRequest
+                const serviceRequestRef = doc(db, 'serviceRequests', chatData.serviceRequestId);
+                batch.update(serviceRequestRef, {
+                    astrologerId: astrologerId,
+                    updatedAt: serverTimestamp()
+                });
+
+                // Find and update payment document
+                const paymentsQuery = query(
+                    collection(db, 'payments'),
+                    where('serviceRequestId', '==', chatData.serviceRequestId)
+                );
+                const paymentsSnapshot = await getDocs(paymentsQuery);
+                if (!paymentsSnapshot.empty) {
+                    const paymentDoc = paymentsSnapshot.docs[0];
+                    const paymentRef = doc(db, 'payments', paymentDoc.id);
+                    batch.update(paymentRef, {
+                        astrologerId: astrologerId,
+                        astrologerName: astrologerData.displayName || 'Astrologer',
+                        updatedAt: serverTimestamp()
+                    });
+                }
+            }
+        }
+
+        // Add system message about astrologer assignment
+        const messagesRef = collection(db, 'chats', chatId, 'messages');
+        batch.set(doc(messagesRef), {
+            senderId: 'system',
+            text: `Astrologer ${astrologerData.displayName || 'Astrologer'} has been assigned to this chat.`,
+            timestamp: serverTimestamp(),
+            read: false,
+            type: 'text'
+        });
+
+        // Update last message
+        batch.update(chatRef, {
+            lastMessage: {
+                text: `Astrologer ${astrologerData.displayName || 'Astrologer'} has been assigned.`,
+                timestamp: serverTimestamp(),
+                senderId: 'system'
+            }
+        });
+
+        await batch.commit();
+        return true;
+    } catch (error) {
+        console.error('Error assigning astrologer to chat:', error);
         throw error;
     }
 };

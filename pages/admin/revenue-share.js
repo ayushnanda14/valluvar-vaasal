@@ -162,8 +162,9 @@ export default function RevenueShare() {
           // Filter by plan if selected
           if (selectedPlan !== 'all' && payment.pricingCategory !== selectedPlan) continue;
 
-          // Filter by referral status
-          const isMatrimonyReferral = payment.partnerReferralCode && payment.partnerReferralCode.trim() !== '';
+          // Filter by referral status - use isMatrimonyReferral field if available, fallback to checking partnerReferralCode
+          const isMatrimonyReferral = payment.isMatrimonyReferral === true || 
+            (payment.isMatrimonyReferral === undefined && payment.partnerReferralCode && payment.partnerReferralCode.trim() !== '');
           if (referralFilter === 'matrimony' && !isMatrimonyReferral) continue;
           if (referralFilter === 'non-referral' && isMatrimonyReferral) continue;
 
@@ -207,7 +208,7 @@ export default function RevenueShare() {
           let astrologerShare = 0;
           let vvipShare = 0;
 
-          if (isReferral && MATRIMONY_SPLITS[plan]) {
+          if (payment.isMatrimonyReferral === true && MATRIMONY_SPLITS[plan]) {
             // Matrimony referral - use fixed splits
             const split = MATRIMONY_SPLITS[plan];
             matrimonyShare = split.matrimony;
@@ -311,7 +312,8 @@ export default function RevenueShare() {
         if (payment.isDemoPayment) continue;
         if (selectedPlan !== 'all' && payment.pricingCategory !== selectedPlan) continue;
         
-        const isMatrimonyReferral = payment.partnerReferralCode && payment.partnerReferralCode.trim() !== '';
+        const isMatrimonyReferral = payment.isMatrimonyReferral === true || 
+          (payment.isMatrimonyReferral === undefined && payment.partnerReferralCode && payment.partnerReferralCode.trim() !== '');
         if (referralFilter === 'matrimony' && !isMatrimonyReferral) continue;
         if (referralFilter === 'non-referral' && isMatrimonyReferral) continue;
 
@@ -351,7 +353,7 @@ export default function RevenueShare() {
         let astrologerShare = 0;
         let vvipShare = 0;
 
-        if (isReferral && MATRIMONY_SPLITS[plan]) {
+        if (payment.isMatrimonyReferral === true && MATRIMONY_SPLITS[plan]) {
           const split = MATRIMONY_SPLITS[plan];
           matrimonyShare = split.matrimony;
           astrologerShare = split.astrologer;

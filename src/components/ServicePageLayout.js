@@ -35,7 +35,7 @@ import {
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../context/AuthContext';
-import { addDoc, collection, getDocs, query, serverTimestamp, where } from 'firebase/firestore';
+import { addDoc, collection, getDocs, query, serverTimestamp, where, Timestamp, arrayUnion, doc, getDoc } from 'firebase/firestore';
 import { db, storage } from '../firebase/firebaseConfig';
 import FileUploadSection from './FileUploadSection';
 import JathakWritingForm from './JathakWritingForm';
@@ -47,7 +47,9 @@ import PaymentButton from './PaymentButton';
 import { useTranslation } from 'react-i18next';
 import { createPaymentRecords } from '../services/createPaymentRecords';
 import { formatLocalDate, formatLocalTime } from '@/utils/utils';
-import { getPricingConfig, getAllPricingPlans, getPlanTotal } from '../services/pricingService';
+import { getPricingConfig, getAllPricingPlans, getPlanTotal, getPricingPlan } from '../services/pricingService';
+import { getAllSupportUsers } from '../services/adminService';
+import { assignSupportUserToChat } from '../services/chatService';
 
 // District list removed - no longer needed for UI
 
@@ -97,8 +99,6 @@ export default function ServicePageLayout({
   // District selection removed - keeping state for backward compatibility but not used in UI
   const [selectedDistrict, setSelectedDistrict] = useState('');
 
-  const [astrologers, setAstrologers] = useState([]);
-  const [selectedAstrologers, setSelectedAstrologers] = useState([]);
   const [selectedPlan, setSelectedPlan] = useState(''); // 'pothigai', 'ganga', or 'himalaya'
   const [pricingPlans, setPricingPlans] = useState([]);
   const [files, setFiles] = useState([]);
@@ -139,16 +139,16 @@ export default function ServicePageLayout({
             // Always start from step 1 (file upload) after refresh
             setStep(1);
 
-            // Restore astrologer selections silently
-            if (savedState.selectedAstrologers) setSelectedAstrologers(savedState.selectedAstrologers);
+            // Restore plan selection if present
+            if (savedState.selectedPlan) setSelectedPlan(savedState.selectedPlan);
 
             // Restore jathak-related form data if present (for prediction/writing flows)
             if (savedState.jathakFormData) setJathakFormData(savedState.jathakFormData);
             if (savedState.predictionFormData) setPredictionFormData(savedState.predictionFormData);
             if (typeof savedState.jathakWritingOption === 'string') setJathakWritingOption(savedState.jathakWritingOption);
 
-            // Show message only if user had meaningful previous selections (astrologers)
-            if (savedState.selectedAstrologers && savedState.selectedAstrologers.length > 0) {
+            // Show message only if user had meaningful previous selections (plan)
+            if (savedState.selectedPlan) {
               setError(t('servicePage.errors.sessionRestored', 'Your previous selections have been saved. Please re-upload your files to continue.'));
             }
 
@@ -161,7 +161,7 @@ export default function ServicePageLayout({
             // Reset to default step and selections for a truly fresh start
             setStep(1);
             setSelectedDistrict('');
-            setSelectedAstrologers([]);
+            setSelectedPlan('');
             setFiles([]);
             setSecondFiles([]);
           }
@@ -171,7 +171,7 @@ export default function ServicePageLayout({
           // Reset to default state after corruption
           setStep(1);
           setSelectedDistrict('');
-          setSelectedAstrologers([]);
+          setSelectedPlan('');
           setFiles([]);
           setSecondFiles([]);
         }
@@ -179,7 +179,7 @@ export default function ServicePageLayout({
         // No saved state, ensure defaults (though useState already does this)
         setStep(1);
         setSelectedDistrict('');
-        setSelectedAstrologers([]);
+        setSelectedPlan('');
       }
     }
   }, [serviceType, currentUser, localStorageKey, t]);
@@ -190,7 +190,7 @@ export default function ServicePageLayout({
       const stateToSave = {
         userId: currentUser.uid, // Add userId here
         step,
-        selectedAstrologers,
+        selectedPlan,
         filesUploaded: files.length > 0,
         secondFilesUploaded: secondFiles.length > 0,
         // Persist form data for restoration in Jathak Prediction/Writing flows
@@ -200,7 +200,7 @@ export default function ServicePageLayout({
       };
       localStorage.setItem(localStorageKey, JSON.stringify(stateToSave));
     }
-  }, [step, selectedAstrologers, files, secondFiles, jathakFormData, predictionFormData, jathakWritingOption, serviceType, currentUser, localStorageKey]);
+  }, [step, selectedPlan, files, secondFiles, jathakFormData, predictionFormData, jathakWritingOption, serviceType, currentUser, localStorageKey]);
 
   // District fetching removed - all astrologers are available statewide
 
@@ -217,44 +217,7 @@ export default function ServicePageLayout({
     loadPricingPlans();
   }, []);
 
-  // Fetch all astrologers (statewide, no district filter)
-  useEffect(() => {
-    const fetchAstrologers = async () => {
-      if (step !== 2) return;
-
-      setLoading(true);
-      setSelectedAstrologers([]);
-      try {
-        // Fetch all astrologers in Tamil Nadu
-        const astrologersQuery = query(
-          collection(db, 'users'),
-          where('roles', 'array-contains', 'astrologer'),
-          where('state', '==', 'Tamil Nadu')
-        );
-
-        const querySnapshot = await getDocs(astrologersQuery);
-
-        // Client-side filtering for the specific service
-        const filteredAstrologers = querySnapshot.docs
-          .map(doc => ({ id: doc.id, ...doc.data() }))
-          .filter(astrologer => astrologer.services && astrologer.services.includes(serviceType)
-            && astrologer.verificationStatus === 'verified' && !astrologer.disabled)
-          .map(astrologer => {
-            const amount = astrologer.serviceCharges?.[serviceType] || 0;
-            return { ...astrologer, _category: deriveCategory(amount) };
-          });
-
-        setAstrologers(filteredAstrologers);
-      } catch (err) {
-        console.error('Error fetching astrologers:', err);
-        setError(t('servicePage.errors.loadAstrologers'));
-      } finally {
-        setLoading(false);
-      }
-    };
-
-    fetchAstrologers();
-  }, [serviceType, step, t]);
+  // Astrologer fetching removed - no longer needed in new flow
 
   // Check if user is logged in (wait until auth is initialized)
   useEffect(() => {
@@ -275,17 +238,7 @@ export default function ServicePageLayout({
     }
   }, [step, currentUser, demoPaymentTriggered]);
 
-  const handleAstrologerSelect = (astrologer) => {
-    setSelectedAstrologers(prev => {
-      const isSelected = prev.some(a => a.id === astrologer.id);
-
-      if (isSelected) {
-        return prev.filter(a => a.id !== astrologer.id);
-      } else {
-        return [...prev, astrologer];
-      }
-    });
-  };
+  // Astrologer selection removed - no longer needed
 
   const handleFilesChange = (newFiles) => {
     setFiles(newFiles);
@@ -359,19 +312,9 @@ export default function ServicePageLayout({
         }
       }
 
-      // Check if we have saved astrologer selections
-      if (selectedAstrologers.length > 0) {
-        // Skip directly to payment step
-        setStep(3);
-      } else {
-        // Normal flow - go to astrologer selection
-        setStep(2);
-      }
+      // Normal flow - go to plan selection
+      setStep(2);
     } else if (step === 2) {
-      if (selectedAstrologers.length === 0) {
-        setToast({ open: true, message: t('servicePage.errors.selectAstrologer'), severity: 'error' });
-        return;
-      }
       if (!selectedPlan) {
         setToast({ open: true, message: t('servicePage.errors.selectPlan', 'Please select a pricing plan'), severity: 'error' });
         return;
@@ -428,16 +371,35 @@ export default function ServicePageLayout({
     }
 
     try {
+      // Get a support user to assign
+      const supportUsers = await getAllSupportUsers();
+      if (supportUsers.length === 0) {
+        setError('No support users available. Please contact admin.');
+        return;
+      }
+      const assignedSupport = supportUsers[0]; // Pick first available support user
+
+      // Get plan details for expiry calculation
+      const planDetails = await getPricingPlan(selectedPlan);
+      const planDurationHours = planDetails?.chatDurationHours || 24;
+      const availabilityWindowHours = planDetails?.availabilityWindowHours || planDurationHours;
+
+      // Calculate expiry timestamp
+      const expiryDate = new Date();
+      expiryDate.setHours(expiryDate.getHours() + availabilityWindowHours);
+      const expiryTimestamp = Timestamp.fromDate(expiryDate);
+
       // Create a new service request in Firestore
       const serviceRequestData = {
         clientId: currentUser.uid,
         clientName: currentUser.displayName || 'Anonymous',
         clientEmail: currentUser.email,
         serviceType: serviceType,
-        astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
+        astrologerId: null, // Will be assigned later by support
+        supportUserId: assignedSupport.id,
         status: 'payment_successful', // Initial status after successful payment
         pricingCategory: selectedPlan, // Store selected plan
-        planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
+        planDurationHours: planDurationHours,
         totalAmount: calculateBaseSync(), // Base amount (excluding GST)
         // Amount may not be present on some gateways or older callbacks; compute safely
         paidAmount: typeof paymentResponse.amount === 'number'
@@ -463,9 +425,8 @@ export default function ServicePageLayout({
 
       const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
 
-      // Create payment records for each astrologer
+      // Create payment record (single payment doc per service request)
       await createPaymentRecords({
-        selectedAstrologers,
         currentUser,
         serviceType,
         paymentResponse,
@@ -473,64 +434,88 @@ export default function ServicePageLayout({
         pricingCategory: selectedPlan
       });
 
-      // Create conversation threads with each selected astrologer
-      const createdChatIds = [];
-      const messageText = `Service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`;
-      for (const astrologer of selectedAstrologers) {
-        const conversationRef = await addDoc(collection(db, 'chats'), {
-          participants: [currentUser.uid, astrologer.id],
-          clientId: currentUser.uid,
-          clientName: currentUser.displayName || 'Client',
-          astrologerId: astrologer.id,
-          astrologerName: astrologer.displayName || 'Astrologer',
-          participantNames: {
-            [currentUser.uid]: currentUser.displayName || 'Client',
-            [astrologer.id]: astrologer.displayName || 'Astrologer'
-          },
-          participantAvatars: {
-            [currentUser.uid]: currentUser.photoURL || null,
-            [astrologer.id]: astrologer.photoURL || null
-          },
-          serviceRequestId: serviceRequestRef.id,
-          serviceType: serviceType,
-          pricingCategory: selectedPlan, // Store plan category
-          planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
-          razorpay_payment_id: paymentResponse.razorpay_payment_id, // Storing payment ID in chat doc
-          lastMessage: {
-            text: messageText,
-            timestamp: serverTimestamp(),
-            senderId: 'system'
-          },
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
+      // Create conversation thread with support user (astrologer will be added later)
+      const messageText = `Service request for ${SERVICE_TYPES[serviceType]} has been created. Our support team will assign an astrologer and respond shortly.`;
 
-        createdChatIds.push(conversationRef.id);
-
-        // Add initial system message to the conversation
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-          senderId: 'system',
+      const conversationRef = await addDoc(collection(db, 'chats'), {
+        participants: [currentUser.uid, assignedSupport.id],
+        clientId: currentUser.uid,
+        clientName: currentUser.displayName || 'Client',
+        astrologerId: null, // Will be assigned later
+        astrologerName: null,
+        supportUserId: assignedSupport.id,
+        supportUserName: assignedSupport.displayName || 'Support',
+        participantNames: {
+          [currentUser.uid]: currentUser.displayName || 'Client',
+          [assignedSupport.id]: assignedSupport.displayName || 'Support'
+        },
+        participantAvatars: {
+          [currentUser.uid]: currentUser.photoURL || null,
+          [assignedSupport.id]: assignedSupport.photoURL || null
+        },
+        serviceRequestId: serviceRequestRef.id,
+        serviceType: serviceType,
+        pricingCategory: selectedPlan,
+        planDurationHours: planDurationHours,
+        expiryTimestamp: expiryTimestamp,
+        razorpay_payment_id: paymentResponse.razorpay_payment_id,
+        lastMessage: {
           text: messageText,
           timestamp: serverTimestamp(),
-          read: false
-        });
+          senderId: 'system'
+        },
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        status: 'active'
+      });
 
-        // Upload file references to the chat
-        const fileReferences = [];
+      // Assign support user to chat
+      await assignSupportUserToChat(conversationRef.id, assignedSupport.id, 'system');
 
-        try {
-          // Process main files
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+      // Add initial system message to the conversation
+      await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+        senderId: 'system',
+        text: messageText,
+        timestamp: serverTimestamp(),
+        read: false
+      });
 
-            // Generate appropriate file name based on service type
-            let newFileName;
-            if (serviceType === 'marriageMatching') {
-              newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            } else {
-              newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            }
+      // Upload file references to the chat
+      const fileReferences = [];
 
+      try {
+        // Process main files
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          // Generate appropriate file name based on service type
+          let newFileName;
+          if (serviceType === 'marriageMatching') {
+            newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+          } else {
+            newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+          }
+
+          const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+          const uploadTask = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(uploadTask.ref);
+
+          fileReferences.push({
+            name: newFileName,
+            originalName: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+            uploadedBy: currentUser.uid,
+            uploadedAt: serverTimestamp()
+          });
+        }
+
+        // Process secondary files if dual upload is enabled
+        if (dualUpload && secondFiles.length > 0) {
+          for (let i = 0; i < secondFiles.length; i++) {
+            const file = secondFiles[i];
+            const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
             const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
@@ -541,100 +526,79 @@ export default function ServicePageLayout({
               type: file.type,
               size: file.size,
               url: downloadURL,
+              category: defaultDualUploadLabels[1],
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
-
-          // Process secondary files if dual upload is enabled
-          if (dualUpload && secondFiles.length > 0) {
-            for (let i = 0; i < secondFiles.length; i++) {
-              const file = secondFiles[i];
-              const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-              const uploadTask = await uploadBytes(storageRef, file);
-              const downloadURL = await getDownloadURL(uploadTask.ref);
-
-              fileReferences.push({
-                name: newFileName,
-                originalName: file.name,
-                type: file.type,
-                size: file.size,
-                url: downloadURL,
-                category: defaultDualUploadLabels[1],
-                uploadedBy: currentUser.uid,
-                uploadedAt: serverTimestamp()
-              });
-            }
-          }
-
-          // Store file references in a subcollection of the chat
-          for (const fileRef of fileReferences) {
-            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-          }
-
-          // Add a system message about the uploaded files or form data
-          let systemMessageText;
-          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-            systemMessageText = t('systemMessage.jathakFormSubmitted', {
-              name: currentUser.displayName || 'User',
-              personName: jathakFormData.name,
-              birthPlace: jathakFormData.birthPlace,
-              birthDate: jathakFormData.birthDate,
-              birthTime: jathakFormData.birthTime
-            });
-          } else if (serviceType === 'jathakPrediction') {
-            const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
-            const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
-            systemMessageText = t('systemMessage.predictionFormSubmitted', {
-              name: currentUser.displayName || 'User',
-              personName: predictionFormData.name,
-              birthDate: formatLocalDate(predictionFormData.birthDate),
-              timePart,
-              zodiacPart
-            });
-          } else {
-            systemMessageText = t('systemMessage.uploadedFiles', {
-              name: currentUser.displayName || 'User',
-              count: fileReferences.length
-            });
-          }
-
-          // Build a consistent payload for system message metadata (avoid undefined fields)
-          const metadata = { serviceType };
-          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-            metadata.jathakWriting = {
-              name: jathakFormData.name,
-              birthPlace: jathakFormData.birthPlace,
-              birthDate: jathakFormData.birthDate,
-              birthTime: jathakFormData.birthTime,
-              additionalNotes: jathakFormData.additionalNotes,
-              option: jathakWritingOption
-            };
-          } else if (serviceType === 'jathakPrediction') {
-            metadata.jathakPrediction = {
-              name: predictionFormData.name,
-              birthDate: predictionFormData.birthDate,
-              ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
-              ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
-            };
-          }
-          if (fileReferences.length > 0) {
-            metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
-          }
-
-          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-            senderId: 'system',
-            text: systemMessageText,
-            timestamp: serverTimestamp(),
-            read: false,
-            metadata
-          });
-        } catch (err) {
-          console.error('Error uploading files:', err);
-          setError(t('servicePage.errors.fileUploadFailed'));
-          return;
         }
+
+        // Store file references in a subcollection of the chat
+        for (const fileRef of fileReferences) {
+          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+        }
+
+        // Add a system message about the uploaded files or form data
+        let systemMessageText;
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          systemMessageText = t('systemMessage.jathakFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime
+          });
+        } else if (serviceType === 'jathakPrediction') {
+          const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
+          const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
+          systemMessageText = t('systemMessage.predictionFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: predictionFormData.name,
+            birthDate: formatLocalDate(predictionFormData.birthDate),
+            timePart,
+            zodiacPart
+          });
+        } else {
+          systemMessageText = t('systemMessage.uploadedFiles', {
+            name: currentUser.displayName || 'User',
+            count: fileReferences.length
+          });
+        }
+
+        // Build a consistent payload for system message metadata (avoid undefined fields)
+        const metadata = { serviceType };
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          metadata.jathakWriting = {
+            name: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime,
+            additionalNotes: jathakFormData.additionalNotes,
+            option: jathakWritingOption
+          };
+        } else if (serviceType === 'jathakPrediction') {
+          metadata.jathakPrediction = {
+            name: predictionFormData.name,
+            birthDate: predictionFormData.birthDate,
+            ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
+            ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
+          };
+        }
+        if (fileReferences.length > 0) {
+          metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
+        }
+
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: systemMessageText,
+          timestamp: serverTimestamp(),
+          read: false,
+          metadata
+        });
+      } catch (err) {
+        console.error('Error uploading files:', err);
+        setError(t('servicePage.errors.fileUploadFailed'));
+        return;
       }
 
       // Clear saved state from localStorage on successful payment
@@ -643,12 +607,7 @@ export default function ServicePageLayout({
       }
 
       // Redirect to the created chat after payment
-      if (createdChatIds.length > 0) {
-        router.push({ pathname: '/messages', query: { chatId: createdChatIds[0] } });
-      } else {
-        // Fallback to success page if for some reason no chat was created
-        router.push('/service-success');
-      }
+      router.push({ pathname: '/messages', query: { chatId: conversationRef.id } });
     } catch (err) {
       console.error('Payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
@@ -663,6 +622,24 @@ export default function ServicePageLayout({
     }
 
     try {
+      // Get a support user to assign
+      const supportUsers = await getAllSupportUsers();
+      if (supportUsers.length === 0) {
+        setError('No support users available. Please contact admin.');
+        return;
+      }
+      const assignedSupport = supportUsers[0]; // Pick first available support user
+
+      // Get plan details for expiry calculation
+      const planDetails = await getPricingPlan(selectedPlan);
+      const planDurationHours = planDetails?.chatDurationHours || 24;
+      const availabilityWindowHours = planDetails?.availabilityWindowHours || planDurationHours;
+
+      // Calculate expiry timestamp
+      const expiryDate = new Date();
+      expiryDate.setHours(expiryDate.getHours() + availabilityWindowHours);
+      const expiryTimestamp = Timestamp.fromDate(expiryDate);
+
       // Generate demo payment ID
       const demoPaymentId = `demo_${Date.now()}_${Math.random().toString(36).substr(2, 9)}`;
 
@@ -672,11 +649,12 @@ export default function ServicePageLayout({
         clientName: currentUser.displayName || 'Anonymous',
         clientEmail: currentUser.email,
         serviceType: serviceType,
-        astrologerIds: selectedAstrologers.map(astrologer => astrologer.id),
+        astrologerId: null, // Will be assigned later by support
+        supportUserId: assignedSupport.id,
         status: 'payment_successful',
-        pricingCategory: selectedPlan, // Store selected plan
-        planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
-        totalAmount: calculateBaseSync(), // Base amount (excluding GST)
+        pricingCategory: selectedPlan,
+        planDurationHours: planDurationHours,
+        totalAmount: calculateBaseSync(),
         paidAmount: 0, // Demo users don't pay
         currency: 'INR',
         razorpay_payment_id: demoPaymentId,
@@ -688,9 +666,8 @@ export default function ServicePageLayout({
 
       const serviceRequestRef = await addDoc(collection(db, 'serviceRequests'), serviceRequestData);
 
-      // Create demo payment records for each astrologer
+      // Create demo payment record
       await createPaymentRecords({
-        selectedAstrologers,
         currentUser,
         serviceType,
         paymentResponse: { razorpay_payment_id: demoPaymentId },
@@ -698,66 +675,89 @@ export default function ServicePageLayout({
         pricingCategory: selectedPlan
       });
 
-      // Create conversation threads with each selected astrologer
-      const createdChatIds = [];
-      const messageText = `Demo service request for ${SERVICE_TYPES[serviceType]} has been created. The astrologer will review your details and respond shortly.`;
+      // Create conversation thread with support user
+      const messageText = `Demo service request for ${SERVICE_TYPES[serviceType]} has been created. Our support team will assign an astrologer and respond shortly.`;
 
-      for (const astrologer of selectedAstrologers) {
-        const conversationRef = await addDoc(collection(db, 'chats'), {
-          participants: [currentUser.uid, astrologer.id],
-          clientId: currentUser.uid,
-          clientName: currentUser.displayName || 'Client',
-          astrologerId: astrologer.id,
-          astrologerName: astrologer.displayName || 'Astrologer',
-          participantNames: {
-            [currentUser.uid]: currentUser.displayName || 'Client',
-            [astrologer.id]: astrologer.displayName || 'Astrologer'
-          },
-          participantAvatars: {
-            [currentUser.uid]: currentUser.photoURL || null,
-            [astrologer.id]: astrologer.photoURL || null
-          },
-          serviceRequestId: serviceRequestRef.id,
-          serviceType: serviceType,
-          pricingCategory: selectedPlan, // Store plan category
-          planDurationHours: pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours || 0,
-          razorpay_payment_id: demoPaymentId,
-          isDemoUser: true,
-          lastMessage: {
-            text: messageText,
-            timestamp: serverTimestamp(),
-            senderId: 'system'
-          },
-          createdAt: serverTimestamp(),
-          updatedAt: serverTimestamp()
-        });
-
-        createdChatIds.push(conversationRef.id);
-
-        // Add initial system message to the conversation
-        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-          senderId: 'system',
+      const conversationRef = await addDoc(collection(db, 'chats'), {
+        participants: [currentUser.uid, assignedSupport.id],
+        clientId: currentUser.uid,
+        clientName: currentUser.displayName || 'Client',
+        astrologerId: null, // Will be assigned later
+        astrologerName: null,
+        supportUserId: assignedSupport.id,
+        supportUserName: assignedSupport.displayName || 'Support',
+        participantNames: {
+          [currentUser.uid]: currentUser.displayName || 'Client',
+          [assignedSupport.id]: assignedSupport.displayName || 'Support'
+        },
+        participantAvatars: {
+          [currentUser.uid]: currentUser.photoURL || null,
+          [assignedSupport.id]: assignedSupport.photoURL || null
+        },
+        serviceRequestId: serviceRequestRef.id,
+        serviceType: serviceType,
+        pricingCategory: selectedPlan,
+        planDurationHours: planDurationHours,
+        expiryTimestamp: expiryTimestamp,
+        razorpay_payment_id: demoPaymentId,
+        isDemoUser: true,
+        lastMessage: {
           text: messageText,
           timestamp: serverTimestamp(),
-          read: false
-        });
+          senderId: 'system'
+        },
+        createdAt: serverTimestamp(),
+        updatedAt: serverTimestamp(),
+        status: 'active'
+      });
 
-        // Upload file references to the chat
-        const fileReferences = [];
+      // Assign support user to chat
+      await assignSupportUserToChat(conversationRef.id, assignedSupport.id, 'system');
 
-        try {
-          // Process main files
-          for (let i = 0; i < files.length; i++) {
-            const file = files[i];
+      // Add initial system message to the conversation
+      await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+        senderId: 'system',
+        text: messageText,
+        timestamp: serverTimestamp(),
+        read: false
+      });
 
-            // Generate appropriate file name based on service type
-            let newFileName;
-            if (serviceType === 'marriageMatching') {
-              newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            } else {
-              newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-            }
+      // Upload file references to the chat
+      const fileReferences = [];
 
+      try {
+        // Process main files
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+
+          // Generate appropriate file name based on service type
+          let newFileName;
+          if (serviceType === 'marriageMatching') {
+            newFileName = `${t('uploadLabels.firstPerson')}_${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+          } else {
+            newFileName = `${t('uploadLabels.jathak')}${files.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
+          }
+
+          const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
+          const uploadTask = await uploadBytes(storageRef, file);
+          const downloadURL = await getDownloadURL(uploadTask.ref);
+
+          fileReferences.push({
+            name: newFileName,
+            originalName: file.name,
+            type: file.type,
+            size: file.size,
+            url: downloadURL,
+            uploadedBy: currentUser.uid,
+            uploadedAt: serverTimestamp()
+          });
+        }
+
+        // Process secondary files if dual upload is enabled
+        if (dualUpload && secondFiles.length > 0) {
+          for (let i = 0; i < secondFiles.length; i++) {
+            const file = secondFiles[i];
+            const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
             const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
             const uploadTask = await uploadBytes(storageRef, file);
             const downloadURL = await getDownloadURL(uploadTask.ref);
@@ -768,100 +768,79 @@ export default function ServicePageLayout({
               type: file.type,
               size: file.size,
               url: downloadURL,
+              category: defaultDualUploadLabels[1],
               uploadedBy: currentUser.uid,
               uploadedAt: serverTimestamp()
             });
           }
-
-          // Process secondary files if dual upload is enabled
-          if (dualUpload && secondFiles.length > 0) {
-            for (let i = 0; i < secondFiles.length; i++) {
-              const file = secondFiles[i];
-              const newFileName = `${t('uploadLabels.secondPerson')}_${t('uploadLabels.jathak')}${secondFiles.length > 1 ? `_${i + 1}` : ''}.${file.name.split('.').pop()}`;
-              const storageRef = ref(storage, `users/${currentUser.uid}/chats/${conversationRef.id}/files/${newFileName}`);
-              const uploadTask = await uploadBytes(storageRef, file);
-              const downloadURL = await getDownloadURL(uploadTask.ref);
-
-              fileReferences.push({
-                name: newFileName,
-                originalName: file.name,
-                type: file.type,
-                size: file.size,
-                url: downloadURL,
-                category: defaultDualUploadLabels[1],
-                uploadedBy: currentUser.uid,
-                uploadedAt: serverTimestamp()
-              });
-            }
-          }
-
-          // Store file references in a subcollection of the chat
-          for (const fileRef of fileReferences) {
-            await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
-          }
-
-          // Add a system message about the uploaded files or form data
-          let systemMessageText;
-          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-            systemMessageText = t('systemMessage.jathakFormSubmitted', {
-              name: currentUser.displayName || 'User',
-              personName: jathakFormData.name,
-              birthPlace: jathakFormData.birthPlace,
-              birthDate: jathakFormData.birthDate,
-              birthTime: jathakFormData.birthTime
-            });
-          } else if (serviceType === 'jathakPrediction') {
-            const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
-            const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
-            systemMessageText = t('systemMessage.predictionFormSubmitted', {
-              name: currentUser.displayName || 'User',
-              personName: predictionFormData.name,
-              birthDate: formatLocalDate(predictionFormData.birthDate),
-              timePart,
-              zodiacPart
-            });
-          } else {
-            systemMessageText = t('systemMessage.uploadedFiles', {
-              name: currentUser.displayName || 'User',
-              count: fileReferences.length
-            });
-          }
-
-          // Build a consistent payload for system message metadata (avoid undefined fields)
-          const metadata = { serviceType, isDemoUser: true };
-          if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
-            metadata.jathakWriting = {
-              name: jathakFormData.name,
-              birthPlace: jathakFormData.birthPlace,
-              birthDate: jathakFormData.birthDate,
-              birthTime: jathakFormData.birthTime,
-              additionalNotes: jathakFormData.additionalNotes,
-              option: jathakWritingOption
-            };
-          } else if (serviceType === 'jathakPrediction') {
-            metadata.jathakPrediction = {
-              name: predictionFormData.name,
-              birthDate: predictionFormData.birthDate,
-              ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
-              ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
-            };
-          }
-          if (fileReferences.length > 0) {
-            metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
-          }
-
-          await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
-            senderId: 'system',
-            text: systemMessageText,
-            timestamp: serverTimestamp(),
-            read: false,
-            metadata
-          });
-        } catch (err) {
-          console.error('Error uploading files:', err);
-          setError(t('servicePage.errors.fileUploadFailed'));
-          return;
         }
+
+        // Store file references in a subcollection of the chat
+        for (const fileRef of fileReferences) {
+          await addDoc(collection(db, 'chats', conversationRef.id, 'files'), fileRef);
+        }
+
+        // Add a system message about the uploaded files or form data
+        let systemMessageText;
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          systemMessageText = t('systemMessage.jathakFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime
+          });
+        } else if (serviceType === 'jathakPrediction') {
+          const timePart = predictionFormData.birthTime ? `, Time: ${formatLocalTime(predictionFormData.birthTime)}` : '';
+          const zodiacPart = predictionFormData.zodiac ? `, Zodiac/Natchathiram: ${predictionFormData.zodiac}` : '';
+          systemMessageText = t('systemMessage.predictionFormSubmitted', {
+            name: currentUser.displayName || 'User',
+            personName: predictionFormData.name,
+            birthDate: formatLocalDate(predictionFormData.birthDate),
+            timePart,
+            zodiacPart
+          });
+        } else {
+          systemMessageText = t('systemMessage.uploadedFiles', {
+            name: currentUser.displayName || 'User',
+            count: fileReferences.length
+          });
+        }
+
+        // Build a consistent payload for system message metadata (avoid undefined fields)
+        const metadata = { serviceType, isDemoUser: true };
+        if (serviceType === 'jathakWriting' && jathakWritingOption === 'baby') {
+          metadata.jathakWriting = {
+            name: jathakFormData.name,
+            birthPlace: jathakFormData.birthPlace,
+            birthDate: jathakFormData.birthDate,
+            birthTime: jathakFormData.birthTime,
+            additionalNotes: jathakFormData.additionalNotes,
+            option: jathakWritingOption
+          };
+        } else if (serviceType === 'jathakPrediction') {
+          metadata.jathakPrediction = {
+            name: predictionFormData.name,
+            birthDate: predictionFormData.birthDate,
+            ...(predictionFormData.birthTime ? { birthTime: predictionFormData.birthTime } : {}),
+            ...(predictionFormData.zodiac ? { zodiac: predictionFormData.zodiac } : {})
+          };
+        }
+        if (fileReferences.length > 0) {
+          metadata.files = fileReferences.map(f => ({ name: f.name, url: f.url, type: f.type }));
+        }
+
+        await addDoc(collection(db, 'chats', conversationRef.id, 'messages'), {
+          senderId: 'system',
+          text: systemMessageText,
+          timestamp: serverTimestamp(),
+          read: false,
+          metadata
+        });
+      } catch (err) {
+        console.error('Error uploading files:', err);
+        setError(t('servicePage.errors.fileUploadFailed'));
+        return;
       }
 
       // Clear saved state from localStorage on successful demo payment
@@ -870,12 +849,7 @@ export default function ServicePageLayout({
       }
 
       // Redirect to the created chat after demo payment
-      if (createdChatIds.length > 0) {
-        router.push({ pathname: '/messages', query: { chatId: createdChatIds[0] } });
-      } else {
-        // Fallback to success page if for some reason no chat was created
-        router.push('/service-success');
-      }
+      router.push({ pathname: '/messages', query: { chatId: conversationRef.id } });
     } catch (err) {
       console.error('Demo payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
@@ -891,7 +865,26 @@ export default function ServicePageLayout({
   };
 
   // While auth is initializing, show a loader. If no user after init, we'll redirect.
-  if (!authInitialized) return <CircularProgress />;
+  if (!authInitialized) {
+    return (
+      <Box
+        sx={{
+          minHeight: 'calc(100vh - 64px - 64px)', // Adjust these values to match your navbar+footer height if different
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          flexGrow: 1,
+          width: '100vw',
+          bgcolor: 'background.default'
+        }}
+      >
+        <Container maxWidth="sm" sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center' }}>
+          <CircularProgress />
+        </Container>
+      </Box>
+    );
+  }
   if (!currentUser) return null;
 
   return (
@@ -962,7 +955,7 @@ export default function ServicePageLayout({
                     <Box sx={{ mt: 1, textAlign: 'center' }}>
                       <Typography variant="body2" color="primary" fontWeight="bold">
                         {step === 1 && t('servicePage.steps.uploadFiles')}
-                        {step === 2 && t('servicePage.steps.selectAstrologers')}
+                        {step === 2 && t('servicePage.steps.selectPlan', 'Select Plan')}
                         {step === 3 && t('servicePage.steps.payment')}
                       </Typography>
                     </Box>
@@ -1010,7 +1003,7 @@ export default function ServicePageLayout({
                             maxWidth: '9rem'
                           }}
                         >
-                          {t('servicePage.steps.selectAstrologers')}
+                          {t('servicePage.steps.selectPlan', 'Select Plan')}
                         </Typography>
                       </Box>
                     </Grid>
@@ -1108,14 +1101,14 @@ export default function ServicePageLayout({
                     />
                   )}
 
-                  {/* Show preserved selections */}
-                  {selectedAstrologers.length > 0 && (
+                  {/* Show preserved plan selection */}
+                  {selectedPlan && (
                     <Alert severity="info" sx={{ mb: 3 }}>
                       <Typography variant="body2">
                         <strong>{t('servicePage.preservedSelections', 'Your previous selections have been preserved:')}</strong>
                       </Typography>
                       <Typography variant="body2">
-                        {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
+                        {t('servicePage.selectedPlan', 'Selected Plan')}: {pricingPlans.find(p => p.key === selectedPlan)?.name || selectedPlan}
                       </Typography>
                       <Typography variant="body2" sx={{ mt: 1, fontStyle: 'italic' }}>
                         {t('servicePage.proceedToPayment', 'After uploading your files, you will proceed directly to payment.')}
@@ -1124,7 +1117,7 @@ export default function ServicePageLayout({
                         variant="outlined"
                         size="small"
                         onClick={() => {
-                          setSelectedAstrologers([]);
+                          setSelectedPlan('');
                           setError('');
                         }}
                         sx={{ mt: 1 }}
@@ -1320,16 +1313,16 @@ export default function ServicePageLayout({
                         textOverflow: 'ellipsis'
                       }}
                     >
-                      {selectedAstrologers.length > 0
+                      {selectedPlan
                         ? t('servicePage.nextPayment', 'Next: Payment')
-                        : t('servicePage.nextAstrologers', 'Next: Select Astrologers')
+                        : t('servicePage.nextPlan', 'Next: Select Plan')
                       }
                     </Button>
                   </Box>
                 </Box>
               )}
 
-              {/* Step 2: Select Astrologers (grouped by category, hide personal details) */}
+              {/* Step 2: Select Plan */}
               {step === 2 && (
                 <Box>
                   <Typography
@@ -1341,348 +1334,252 @@ export default function ServicePageLayout({
                       color: theme.palette.secondary.dark
                     }}
                   >
-                    {t('servicePage.selectAstrologersTitle', 'Select Astrologers')}
+                    {t('servicePage.selectPlanTitle', 'Select Pricing Plan')}
                   </Typography>
                   <Typography variant="subtitle1" color="text.secondary" sx={{ mb: 3 }}>
-                    {t('servicePage.showingAstrologersAll', 'Showing all available astrologers')}
+                    {t('servicePage.selectPlanDescription', 'Choose a plan that suits your needs')}
                   </Typography>
-                  {loading ? (
-                    <Box sx={{ textAlign: 'center', py: 4 }}>
-                      <CircularProgress />
-                    </Box>
-                  ) : astrologers.length === 0 ? (
-                    <Typography sx={{ textAlign: 'center', py: 4 }}>
-                      {t('servicePage.noAstrologersFoundAll', { service: t(`services.${serviceType}.title`) })}
-                    </Typography>
-                  ) : (
-                    <Box
-                      sx={{
-                        display: 'flex',
-                        flexDirection: { xs: 'column', md: 'row' },
-                        gap: 3,
-                        width: '100%',
-                        maxWidth: '100%',
-                        alignItems: 'stretch'
-                      }}
-                    >
-                      <Box
-                        sx={{
-                          flex: { xs: '1 1 100%', md: '1 1 60%' },
-                          minHeight: { md: '500px' },
-                          minWidth: 0,
-                          maxWidth: '100%'
-                        }}
-                      >
-                        <Paper
-                          elevation={2}
+
+                  <Grid
+                    container
+                    spacing={isMobile ? 2 : 3}
+                    sx={{
+                      width: '100%',
+                      mx: 0,
+                      '& .MuiGrid-item': { width: '100%' },
+                      display: 'flex',
+                      justifyContent: 'center',
+                      alignItems: 'center',
+                    }}
+                  >
+                    {pricingPlans.map((plan) => (
+                      <Grid item xs={12} md={4} key={plan.key} sx={{ width: { xs: '100%', md: '30%' } }}>
+                        <Card
                           sx={{
-                            p: { xs: 1.5, md: 3 },
-                            borderRadius: '8px',
-                            backgroundColor: theme.palette.background.paper,
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            minWidth: 0,
-                            maxWidth: '100%'
+                            height: { xs: 'auto', md: '100%' },
+                            width: '100%',
+                            maxHeight: { xs: '100%', md: '350px' },
+                            border: selectedPlan === plan.key
+                              ? `2px solid ${theme.palette.primary.main}`
+                              : '1px solid rgba(0, 0, 0, 0.12)',
+                            transition: 'all 0.3s ease',
+                            cursor: 'pointer',
+                            '&:hover': {
+                              transform: 'translateY(-4px)',
+                              boxShadow: theme.shadows[4],
+                            }
                           }}
+                          onClick={() => setSelectedPlan(plan.key)}
                         >
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              mb: 2,
-                              color: theme.palette.primary.main,
-                              fontFamily: '"Cormorant Garamond", serif'
-                            }}
-                          >
-                            {t('servicePage.availableAstrologers', 'Available Astrologers')}
-                          </Typography>
-                          <Box
-                            sx={{
-                              display: 'flex',
-                              flexDirection: { xs: 'column', md: 'row' },
-                              overflowX: { md: 'auto' },
-                              overflowY: { xs: 'auto', md: 'visible' },
-                              gap: { xs: 1.5, md: 2 },
-                              pb: { xs: 1, md: 2 },
-                              flex: '1 1 auto',
-                              maxHeight: { xs: 'none', md: 'none' }
-                            }}
-                          >
-                            {astrologers.map(astrologer => (
-                              <Box
-                                key={astrologer.id}
+                          <CardContent sx={{ p: { xs: 2, md: 3 } }}>
+                            <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'flex-start', gap: 1, mb: 1.5 }}>
+                              <Typography
+                                variant="h5"
                                 sx={{
-                                  minWidth: { xs: '100%', md: '150px' },
-                                  maxWidth: { xs: '100%', md: '320px' },
-                                  flexShrink: 0,
+                                  fontFamily: '"Cormorant Garamond", serif',
+                                  fontWeight: 'bold',
+                                  color: theme.palette.primary.main,
+                                  fontSize: { xs: '1.25rem', md: '1.5rem' },
+                                  lineHeight: 1.2,
+                                  wordBreak: 'break-word'
                                 }}
                               >
-                                <Card
-                                  sx={{
-                                    height: '100%',
-                                    border: selectedAstrologers.some(a => a.id === astrologer.id)
-                                      ? `2px solid ${theme.palette.primary.main}`
-                                      : 'none',
-                                    transition: 'all 0.3s ease',
-                                    '&:hover': {
-                                      transform: 'translateY(-4px)',
-                                      boxShadow: theme.shadows[4],
-                                    }
-                                  }}
-                                >
-                                  {isMobile ? (
-                                    <CardActionArea
-                                      onClick={() => handleAstrologerSelect(astrologer)}
-                                      sx={{ p: 1, display: 'flex', alignItems: 'center' }}
-                                    >
-                                      <Avatar
-                                        src={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt="Astrologer"
-                                        sx={{ width: 56, height: 56, mr: 1.5 }}
-                                      />
-                                      <Box sx={{ flex: 1, minWidth: 0 }}>
-                                        <Typography
-                                          variant="subtitle1"
-                                          noWrap
-                                          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                                        >
-                                          {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
-                                        </Typography>
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                          noWrap
-                                          sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                                        >
-                                          {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
-                                        </Typography>
-                                        {/* Pricing removed - now plan-based */}
-                                      </Box>
-                                      <Checkbox
-                                        checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                        color="primary"
-                                        onClick={(e) => {
-                                          e.stopPropagation();
-                                          handleAstrologerSelect(astrologer);
-                                        }}
-                                      />
-                                    </CardActionArea>
-                                  ) : (
-                                    <CardActionArea
-                                      onClick={() => handleAstrologerSelect(astrologer)}
-                                      sx={{
-                                        display: 'flex',
-                                        flexDirection: 'column',
-                                        alignItems: 'stretch',
-                                        height: '100%',
-                                        padding: 0,
-                                        overflow: 'hidden'
-                                      }}
-                                    >
-                                      <CardMedia
-                                        component="img"
-                                        height="300px"
-                                        image={astrologer.photoURL || '/images/default-avatar.png'}
-                                        alt="Astrologer"
-                                        sx={{
-                                          objectFit: 'cover',
-                                          margin: 0,
-                                          display: 'block'
-                                        }}
-                                      />
-                                      <CardContent
-                                        sx={{
-                                          padding: 2,
-                                          paddingBottom: '16px !important',
-                                          display: 'flex',
-                                          flexDirection: 'column'
-                                        }}
-                                      >
-                                        <Box sx={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
-                                          <Typography
-                                            gutterBottom
-                                            variant="h6"
-                                            component="div"
-                                            sx={{ fontFamily: '"Cormorant Garamond", serif' }}
-                                          >
-                                            {astrologer.displayName || t('servicePage.astrologer', 'Astrologer')}
-                                          </Typography>
-                                          <Checkbox
-                                            checked={selectedAstrologers.some(a => a.id === astrologer.id)}
-                                            color="primary"
-                                          />
-                                        </Box>
-                                        <Typography
-                                          variant="body2"
-                                          color="text.secondary"
-                                          sx={{ mb: 1, fontFamily: '"Cormorant Garamond", serif' }}
-                                        >
-                                          {astrologer.experience ? `${astrologer.experience} yrs` : t('services.generalAstrology', 'General Astrology')}
-                                        </Typography>
-                                        {/* Pricing removed - now plan-based */}
-                                      </CardContent>
-                                    </CardActionArea>
-                                  )}
-                                </Card>
-                              </Box>
-                            ))}
-                          </Box>
-                        </Paper>
-                      </Box>
-
-                      <Box
-                        sx={{
-                          flex: { xs: '1 1 100%', md: '1 1 40%' },
-                          minHeight: { md: '500px' },
-                          minWidth: 0,
-                          maxWidth: '100%'
-                        }}
-                      >
-                        <Paper
-                          elevation={2}
-                          sx={{
-                            p: 3,
-                            borderRadius: '8px',
-                            position: 'sticky',
-                            top: '20px',
-                            backgroundColor: theme.palette.background.paper,
-                            height: '100%',
-                            display: 'flex',
-                            flexDirection: 'column',
-                            width: '100%',
-                            maxWidth: '100%',
-                            minWidth: 0,
-                            boxSizing: 'border-box'
-                          }}
-                        >
-                          <Typography
-                            variant="h6"
-                            sx={{
-                              mb: 2,
-                              color: theme.palette.primary.main,
-                              fontFamily: '"Cormorant Garamond", serif'
-                            }}
-                          >
-                            Selected Astrologers
-                          </Typography>
-
-                          {selectedAstrologers.length === 0 ? (
+                                {plan.name}
+                              </Typography>
+                              <Checkbox
+                                checked={selectedPlan === plan.key}
+                                color="primary"
+                                onClick={(e) => {
+                                  e.stopPropagation();
+                                  setSelectedPlan(plan.key);
+                                }}
+                              />
+                            </Box>
                             <Typography
-                              variant="body2"
-                              color="text.secondary"
+                              variant="h4"
                               sx={{
+                                mb: 1.5,
                                 fontFamily: '"Cormorant Garamond", serif',
-                                flex: '1',
-                                display: 'flex',
-                                alignItems: 'center',
-                                justifyContent: 'center'
+                                fontWeight: 900,
+                                fontSize: { xs: '1.75rem', md: '2.125rem' },
+                                lineHeight: 1.1
                               }}
                             >
-                              No astrologers selected yet
+                              ₹{plan.totalPrice}
                             </Typography>
-                          ) : (
-                            <>
-                              <Box sx={{ flex: '1', overflowY: 'auto' }}>
-                                <List>
-                                  {selectedAstrologers.map(astrologer => (
-                                    <ListItem
-                                      key={astrologer.id}
-                                      disablePadding
-                                      sx={{
-                                        mb: 1,
-                                        p: 1,
-                                        borderRadius: '4px',
-                                        backgroundColor: theme.palette.background.default
-                                      }}
-                                    >
-                                      <ListItemAvatar>
-                                        <Avatar
-                                          src={astrologer.photoURL || '/images/default-avatar.png'}
-                                          alt="Astrologer"
-                                        />
-                                      </ListItemAvatar>
+                            {isMobile ? (
+                              <>
+                                <Box sx={{ display: 'flex', flexWrap: 'wrap', gap: 1, mb: 1.5 }}>
+                                  <MuiChip
+                                    size="small"
+                                    label={`Chat ${plan.chatDurationHours}h`}
+                                    sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                  />
+                                  {plan.phoneCallAvailable ? (
+                                    <MuiChip
+                                      size="small"
+                                      label="Phone"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                    />
+                                  ) : (
+                                    <MuiChip
+                                      size="small"
+                                      label="Chat only"
+                                      variant="outlined"
+                                      sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                    />
+                                  )}
+                                  {plan.videoCallAvailable && (
+                                    <MuiChip
+                                      size="small"
+                                      label="Video"
+                                      color="primary"
+                                      variant="outlined"
+                                      sx={{ fontFamily: '"Cormorant Garamond", serif' }}
+                                    />
+                                  )}
+                                </Box>
+                                <Typography
+                                  variant="body2"
+                                  color="text.secondary"
+                                  sx={{
+                                    fontFamily: '"Cormorant Garamond", serif',
+                                    fontSize: '0.95rem',
+                                    lineHeight: 1.25
+                                  }}
+                                >
+                                  Base ₹{plan.basePrice} + GST ₹{plan.gst}
+                                </Typography>
+                              </>
+                            ) : (
+                              <>
+                                <Divider sx={{ my: 2 }} />
+                                <List dense>
+                                  <ListItem disablePadding sx={{ mb: 1 }}>
+                                    <ListItemText
+                                      primary={
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ fontFamily: '"Cormorant Garamond", serif', whiteSpace: 'normal' }}
+                                        >
+                                          Chat Duration: {plan.chatDurationHours} hours
+                                        </Typography>
+                                      }
+                                    />
+                                  </ListItem>
+                                  <ListItem disablePadding sx={{ mb: 1 }}>
+                                    <ListItemText
+                                      primary={
+                                        <Typography
+                                          variant="body2"
+                                          sx={{ fontFamily: '"Cormorant Garamond", serif', whiteSpace: 'normal' }}
+                                        >
+                                            {plan.videoCallAvailable ? (plan.phoneCallAvailable ? 'Phone & Video calls available' : 'Video calls available') : (plan.phoneCallAvailable ? 'Phone calls available' : 'Chat only')}
+                                        </Typography>
+                                      }
+                                    />
+                                  </ListItem>
+                                  {/* {plan.videoCallAvailable && (
+                                    <ListItem disablePadding>
                                       <ListItemText
                                         primary={
-                                          <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                            {getPublicAstrologerLabel(astrologer)}
-                                          </Typography>
-                                        }
-                                        secondary={
                                           <Typography
-                                            sx={{
-                                              color: theme.palette.text.secondary,
-                                              fontFamily: '"Cormorant Garamond", serif'
-                                            }}
+                                            variant="body2"
+                                            sx={{ fontFamily: '"Cormorant Garamond", serif', whiteSpace: 'normal' }}
                                           >
-                                            {astrologer.experience ? `${astrologer.experience} years experience` : 'Available'}
+                                            Video calls available
                                           </Typography>
                                         }
                                       />
                                     </ListItem>
-                                  ))}
+                                  )} */}
                                 </List>
-                              </Box>
+                                <Box sx={{ mt: 2, pt: 2, borderTop: '1px solid rgba(0, 0, 0, 0.12)' }}>
+                                  <Typography
+                                    variant="body2"
+                                    color="text.secondary"
+                                    sx={{ fontFamily: '"Cormorant Garamond", serif', whiteSpace: 'normal' }}
+                                  >
+                                    Base: ₹{plan.basePrice} + GST: ₹{plan.gst}
+                                  </Typography>
+                                </Box>
+                              </>
+                            )}
+                          </CardContent>
+                        </Card>
+                      </Grid>
+                    ))}
+                  </Grid>
 
-                              <Divider sx={{ my: 2 }} />
-
-                              {/* Plan Selection */}
-                              <Typography
-                                variant="h6"
-                                sx={{
-                                  mb: 2,
-                                  color: theme.palette.primary.main,
-                                  fontFamily: '"Cormorant Garamond", serif'
-                                }}
-                              >
-                                Select Pricing Plan
-                              </Typography>
-                              <FormControl fullWidth sx={{ mb: 2 }}>
-                                <InputLabel id="plan-select-label">Plan</InputLabel>
-                                <Select
-                                  labelId="plan-select-label"
-                                  value={selectedPlan}
-                                  label="Plan"
-                                  onChange={(e) => setSelectedPlan(e.target.value)}
-                                >
-                                  <MenuItem value="" disabled><em>Select a Plan</em></MenuItem>
-                                  {pricingPlans.map((plan) => (
-                                    <MenuItem key={plan.key} value={plan.key}>
-                                      {plan.name} - ₹{plan.totalPrice} ({plan.chatDurationHours} hours)
-                                    </MenuItem>
-                                  ))}
-                                </Select>
-                              </FormControl>
-
-                              {selectedPlan && (
-                                <>
-                                  <Divider sx={{ my: 2 }} />
-                                  <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
-                                    <Typography
-                                      variant="body1"
-                                      sx={{
-                                        fontWeight: 'bold',
-                                        fontFamily: '"Cormorant Garamond", serif'
-                                      }}
-                                    >
-                                      Plan Total:
-                                    </Typography>
-                                    <Typography
-                                      variant="h6"
-                                      sx={{
-                                        color: theme.palette.primary.main,
-                                        fontFamily: '"Cormorant Garamond", serif'
-                                      }}
-                                    >
-                                      ₹{calculateTotalSync()}
-                                    </Typography>
-                                  </Box>
-                                </>
-                              )}
-                            </>
-                          )}
-                        </Paper>
+                  {selectedPlan && (
+                    <Paper
+                      elevation={2}
+                      sx={{
+                        p: 3,
+                        mt: 3,
+                        borderRadius: '8px',
+                        backgroundColor: theme.palette.background.paper
+                      }}
+                    >
+                      <Typography
+                        variant="h6"
+                        sx={{
+                          mb: 2,
+                          color: theme.palette.primary.main,
+                          fontFamily: '"Cormorant Garamond", serif'
+                        }}
+                      >
+                        {t('servicePage.orderSummary', 'Order Summary')}
+                      </Typography>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                          Selected Plan:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif', fontWeight: 'bold' }}>
+                          {pricingPlans.find(p => p.key === selectedPlan)?.name}
+                        </Typography>
                       </Box>
-                    </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 1 }}>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                          Base Price:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                          ₹{calculateBaseSync()}
+                        </Typography>
+                      </Box>
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                          GST:
+                        </Typography>
+                        <Typography variant="body1" sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
+                          ₹{calculateGSTSync()}
+                        </Typography>
+                      </Box>
+                      <Divider sx={{ my: 2 }} />
+                      <Box sx={{ display: 'flex', justifyContent: 'space-between' }}>
+                        <Typography
+                          variant="h6"
+                          sx={{
+                            fontWeight: 'bold',
+                            fontFamily: '"Cormorant Garamond", serif'
+                          }}
+                        >
+                          Total:
+                        </Typography>
+                        <Typography
+                          variant="h5"
+                          sx={{
+                            color: theme.palette.primary.main,
+                            fontFamily: '"Cormorant Garamond", serif',
+                            fontWeight: 'bold'
+                          }}
+                        >
+                          ₹{calculateTotalSync()}
+                        </Typography>
+                      </Box>
+                    </Paper>
                   )}
 
                   <Box sx={{
@@ -1718,7 +1615,7 @@ export default function ServicePageLayout({
                       color="primary"
                       size="large"
                       onClick={handleNextStep}
-                      disabled={selectedAstrologers.length === 0 || !selectedPlan}
+                      disabled={!selectedPlan}
                       sx={{
                         py: { xs: 1.5, md: 2 },
                         px: { xs: 2, md: 4 },
@@ -1759,7 +1656,7 @@ export default function ServicePageLayout({
                       <strong>{t('servicePage.selectedServices', 'Selected Service:')}</strong> {title}
                     </Typography>
                     <Typography variant="body2">
-                      {t('servicePage.astrologers', 'Astrologers')}: {selectedAstrologers.map(a => a.displayName).join(', ')}
+                      <strong>{t('servicePage.selectedPlan', 'Selected Plan:')}</strong> {pricingPlans.find(p => p.key === selectedPlan)?.name || selectedPlan}
                     </Typography>
                   </Alert>
 
@@ -1859,49 +1756,8 @@ export default function ServicePageLayout({
                           >
                             {t('servicePage.orderSummary', 'Order Summary')}
                           </Typography>
-                          <Box sx={{ flex: '1', overflowY: 'auto' }}>
-                            <List>
-                              {selectedAstrologers.map(astrologer => (
-                                <ListItem
-                                  key={astrologer.id}
-                                  disablePadding
-                                  sx={{
-                                    mb: 1,
-                                    p: 1,
-                                    borderRadius: '4px',
-                                    backgroundColor: theme.palette.background.default
-                                  }}
-                                >
-                                  <ListItemAvatar>
-                                    <Avatar
-                                      src={astrologer.photoURL || '/images/default-avatar.png'}
-                                      alt="Astrologer"
-                                    />
-                                  </ListItemAvatar>
-                                  <ListItemText
-                                    primary={
-                                      <Typography sx={{ fontFamily: '"Cormorant Garamond", serif' }}>
-                                        {getPublicAstrologerLabel(astrologer)}
-                                      </Typography>
-                                    }
-                                    secondary={
-                                      <Typography
-                                        sx={{
-                                          color: theme.palette.text.secondary,
-                                          fontFamily: '"Cormorant Garamond", serif'
-                                        }}
-                                      >
-                                        {astrologer.experience ? `${astrologer.experience} years` : 'Available'}
-                                      </Typography>
-                                    }
-                                  />
-                                </ListItem>
-                              ))}
-                            </List>
-                          </Box>
                           {selectedPlan && (
                             <>
-                              <Divider sx={{ my: 2 }} />
                               <Box sx={{ mb: 2 }}>
                                 <Typography
                                   variant="body1"
@@ -1922,6 +1778,28 @@ export default function ServicePageLayout({
                                 >
                                   Chat Duration: {pricingPlans.find(p => p.key === selectedPlan)?.chatDurationHours} hours
                                 </Typography>
+                                {pricingPlans.find(p => p.key === selectedPlan)?.phoneCallAvailable && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontFamily: '"Cormorant Garamond", serif',
+                                      color: theme.palette.text.secondary
+                                    }}
+                                  >
+                                    Phone calls available
+                                  </Typography>
+                                )}
+                                {pricingPlans.find(p => p.key === selectedPlan)?.videoCallAvailable && (
+                                  <Typography
+                                    variant="body2"
+                                    sx={{
+                                      fontFamily: '"Cormorant Garamond", serif',
+                                      color: theme.palette.text.secondary
+                                    }}
+                                  >
+                                    Video calls available
+                                  </Typography>
+                                )}
                               </Box>
                               <Divider sx={{ my: 2 }} />
                               <Box sx={{ display: 'flex', justifyContent: 'space-between', mb: 2 }}>
