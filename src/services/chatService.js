@@ -907,7 +907,7 @@ export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) =
         const messagesRef = collection(db, 'chats', chatId, 'messages');
         batch.set(doc(messagesRef), {
             senderId: 'system',
-            text: `Astrologer ${astrologerData.displayName || 'Astrologer'} has been assigned to this chat.`,
+            text: `Astrologer has been assigned to this chat.`,
             timestamp: serverTimestamp(),
             read: false,
             type: 'text'
@@ -916,7 +916,7 @@ export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) =
         // Update last message
         batch.update(chatRef, {
             lastMessage: {
-                text: `Astrologer ${astrologerData.displayName || 'Astrologer'} has been assigned.`,
+                text: `Astrologer has been assigned.`,
                 timestamp: serverTimestamp(),
                 senderId: 'system'
             }
