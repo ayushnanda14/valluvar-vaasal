@@ -13,6 +13,7 @@ import {
 } from 'firebase/firestore';
 import { db } from '../firebase/firebaseConfig';
 import { assignAdminToChat } from './chatService';
+import { getVerifiedAstrologers } from './astrologerService';
 
 // Get all admins
 export const getAllAdmins = async () => {
@@ -223,20 +224,23 @@ export const getAllSupportUsers = async () => {
   }
 };
 
-// Get all users who can be assigned to chats (admins + support)
+// Get all users who can be assigned to chats (admins + support + verified astrologers)
 export const getAllAssignableUsers = async () => {
   try {
-    const [admins, supportUsers] = await Promise.all([
+    const [admins, supportUsers, astrologers] = await Promise.all([
       getAllAdmins(),
-      getAllSupportUsers()
+      getAllSupportUsers(),
+      getVerifiedAstrologers()
     ]);
     
     return {
       admins,
       supportUsers,
+      astrologers,
       allUsers: [
         ...admins.map(admin => ({ ...admin, userType: 'admin' })),
-        ...supportUsers.map(support => ({ ...support, userType: 'support' }))
+        ...supportUsers.map(support => ({ ...support, userType: 'support' })),
+        ...astrologers.map(astrologer => ({ ...astrologer, userType: 'astrologer' }))
       ]
     };
   } catch (error) {

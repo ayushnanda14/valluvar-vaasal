@@ -849,28 +849,45 @@ export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) =
         }
 
         const chatData = chatDoc.data();
+        const clientId = chatData.clientId || chatData.userId;
+        if (!clientId) {
+            throw new Error('Client ID not found in chat');
+        }
+
         const astrologerDoc = await getDoc(doc(db, 'users', astrologerId));
         if (!astrologerDoc.exists()) {
             throw new Error('Astrologer not found');
         }
 
         const astrologerData = astrologerDoc.data();
+        const previousAstrologerId = chatData.astrologerId;
+        const previousAstrologerName = chatData.astrologerName || 'Previous Astrologer';
+        const isReassignment = previousAstrologerId && previousAstrologerId !== astrologerId;
+
         const batch = writeBatch(db);
 
-        // Update chat document
+        // Build participantNames and participantAvatars, removing old astrologer if reassigning
+        const participantNames = { ...chatData.participantNames };
+        const participantAvatars = { ...chatData.participantAvatars };
+        
+        // Remove old astrologer from participantNames and participantAvatars if reassigning
+        if (isReassignment && previousAstrologerId) {
+            delete participantNames[previousAstrologerId];
+            delete participantAvatars[previousAstrologerId];
+        }
+        
+        // Add new astrologer
+        participantNames[astrologerId] = astrologerData.displayName || 'Astrologer';
+        participantAvatars[astrologerId] = astrologerData.photoURL || null;
+
+        // Update chat document - replace participants array to ensure only client + new astrologer
         const chatRef = doc(db, 'chats', chatId);
         batch.update(chatRef, {
             astrologerId: astrologerId,
             astrologerName: astrologerData.displayName || 'Astrologer',
-            participants: arrayUnion(astrologerId),
-            participantNames: {
-                ...chatData.participantNames,
-                [astrologerId]: astrologerData.displayName || 'Astrologer'
-            },
-            participantAvatars: {
-                ...chatData.participantAvatars,
-                [astrologerId]: astrologerData.photoURL || null
-            },
+            participants: [clientId, astrologerId], // Replace instead of arrayUnion to remove old astrologer
+            participantNames: participantNames,
+            participantAvatars: participantAvatars,
             updatedAt: serverTimestamp()
         });
 
@@ -903,11 +920,15 @@ export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) =
             }
         }
 
-        // Add system message about astrologer assignment
+        // Add system message about astrologer assignment or reassignment
         const messagesRef = collection(db, 'chats', chatId, 'messages');
+        const systemMessageText = isReassignment
+            ? `Astrologer reassigned from ${previousAstrologerName} to ${astrologerData.displayName || 'Astrologer'}.`
+            : `Astrologer assigned: ${astrologerData.displayName || 'Astrologer'}.`;
+        
         batch.set(doc(messagesRef), {
             senderId: 'system',
-            text: `Astrologer has been assigned to this chat.`,
+            text: systemMessageText,
             timestamp: serverTimestamp(),
             read: false,
             type: 'text'
@@ -916,7 +937,9 @@ export const assignAstrologerToChat = async (chatId, astrologerId, assignedBy) =
         // Update last message
         batch.update(chatRef, {
             lastMessage: {
-                text: `Astrologer has been assigned.`,
+                text: isReassignment 
+                    ? `Astrologer reassigned to ${astrologerData.displayName || 'Astrologer'}.`
+                    : `Astrologer assigned: ${astrologerData.displayName || 'Astrologer'}.`,
                 timestamp: serverTimestamp(),
                 senderId: 'system'
             }

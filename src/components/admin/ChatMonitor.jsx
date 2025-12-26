@@ -70,6 +70,7 @@ import {
 import {
   assignAdminToChat,
   assignSupportUserToChat,
+  assignAstrologerToChat,
   extendChatExpiry,
   toggleFeedbackVisibility,
   getChatExpiryStatus
@@ -98,10 +99,13 @@ const ChatMonitor = ({ userId, userType }) => {
   // Admin features state
   const [admins, setAdmins] = useState([]);
   const [supportUsers, setSupportUsers] = useState([]);
-  const [assignableUsers, setAssignableUsers] = useState({ admins: [], supportUsers: [], allUsers: [] });
+  const [assignableUsers, setAssignableUsers] = useState({ admins: [], supportUsers: [], astrologers: [], allUsers: [] });
   const [adminAssignmentDialog, setAdminAssignmentDialog] = useState(false);
+  const [astrologerAssignmentDialog, setAstrologerAssignmentDialog] = useState(false);
+  const [reassignConfirmDialog, setReassignConfirmDialog] = useState(false);
   const [extensionDialog, setExtensionDialog] = useState(false);
   const [selectedUser, setSelectedUser] = useState('');
+  const [selectedAstrologer, setSelectedAstrologer] = useState('');
   const [extensionHours, setExtensionHours] = useState(24);
   const [loadingAdminAction, setLoadingAdminAction] = useState(false);
   const [chatExpiryStatus, setChatExpiryStatus] = useState(null);
@@ -698,6 +702,52 @@ const ChatMonitor = ({ userId, userType }) => {
     }
   };
 
+  // Handle astrologer assignment
+  const handleAssignAstrologer = async () => {
+    if (!selectedChat?.id || !selectedAstrologer) return;
+
+    // Check if there's already an astrologer assigned and it's different
+    if (selectedChat.astrologerId && selectedChat.astrologerId !== selectedAstrologer) {
+      // Show confirmation dialog for reassignment
+      setReassignConfirmDialog(true);
+      return;
+    }
+
+    // Proceed with assignment
+    await performAstrologerAssignment();
+  };
+
+  // Perform the actual astrologer assignment
+  const performAstrologerAssignment = async () => {
+    if (!selectedChat?.id || !selectedAstrologer) return;
+
+    setLoadingAdminAction(true);
+    try {
+      await assignAstrologerToChat(selectedChat.id, selectedAstrologer, 'manual');
+      
+      // Find the selected astrologer's data
+      const selectedAstrologerData = assignableUsers.astrologers?.find(
+        astrologer => astrologer.id === selectedAstrologer
+      ) || assignableUsers.allUsers.find(user => user.id === selectedAstrologer);
+
+      // Refresh the selected chat to show updated astrologer
+      const updatedChat = {
+        ...selectedChat,
+        astrologerId: selectedAstrologer,
+        astrologerName: selectedAstrologerData?.displayName || 'Astrologer'
+      };
+      setSelectedChat(updatedChat);
+
+      setAstrologerAssignmentDialog(false);
+      setReassignConfirmDialog(false);
+      setSelectedAstrologer('');
+    } catch (error) {
+      console.error('Error assigning astrologer:', error);
+    } finally {
+      setLoadingAdminAction(false);
+    }
+  };
+
   // Handle auto-assign admin
   const handleAutoAssignAdmin = async () => {
     if (!selectedChat?.id) return;
@@ -1141,6 +1191,20 @@ const ChatMonitor = ({ userId, userType }) => {
                   </Typography>
                 </IconButton>
               </Tooltip>
+              {/* Astrologer Assignment */}
+              <Tooltip title="Assign Astrologer">
+                <IconButton
+                  color="primary"
+                  onClick={() => setAstrologerAssignmentDialog(true)}
+                  disabled={loadingAdminAction}
+                  sx={{ display: 'flex', flexWrap: 'wrap', alignItems: 'center', border: '1px dashed #e67e22', padding: 1, borderRadius: 1 }}
+                >
+                  <PersonIcon />
+                  <Typography variant="body2" color="text.secondary">
+                    Assign Astrologer
+                  </Typography>
+                </IconButton>
+              </Tooltip>
               {/* Chat Extension */}
               <Tooltip title="Extend Chat">
                 <IconButton
@@ -1169,11 +1233,18 @@ const ChatMonitor = ({ userId, userType }) => {
           </Box>
 
           {/* Assignment Status */}
-          {(selectedChat.adminId || selectedChat.supportUserId) && (
+          {(selectedChat.adminId || selectedChat.supportUserId || selectedChat.astrologerId) && (
             <Box sx={{ mt: 1, p: 1, bgcolor: 'primary.light', borderRadius: 1 }}>
-              <Typography variant="body2" color="white">
-                Assigned Support: {supportUsers.find(a => a.id === selectedChat.supportUserId || a.id === selectedChat.adminId)?.displayName || 'Unknown'}
-              </Typography>
+              {selectedChat.astrologerId && (
+                <Typography variant="body2" color="white" sx={{ mb: selectedChat.adminId || selectedChat.supportUserId ? 0.5 : 0 }}>
+                  Assigned Astrologer: {selectedChat.astrologerName || 'Unknown'}
+                </Typography>
+              )}
+              {(selectedChat.adminId || selectedChat.supportUserId) && (
+                <Typography variant="body2" color="white">
+                  Assigned Support: {supportUsers.find(a => a.id === selectedChat.supportUserId || a.id === selectedChat.adminId)?.displayName || 'Unknown'}
+                </Typography>
+              )}
             </Box>
           )}
 
@@ -1629,19 +1700,21 @@ const ChatMonitor = ({ userId, userType }) => {
                 onChange={(e) => setSelectedUser(e.target.value)}
                 label="Select User"
               >
-                {assignableUsers.allUsers.map((user) => (
-                  <MenuItem key={user.id} value={user.id}>
-                    <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
-                      {user.displayName || user.email}
-                      <Chip
-                        label={user.userType}
-                        size="small"
-                        color={user.userType === 'admin' ? 'primary' : 'warning'}
-                        variant="outlined"
-                      />
-                    </Box>
-                  </MenuItem>
-                ))}
+                {assignableUsers.allUsers
+                  .filter(user => user.userType === 'admin' || user.userType === 'support')
+                  .map((user) => (
+                    <MenuItem key={user.id} value={user.id}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {user.displayName || user.email}
+                        <Chip
+                          label={user.userType}
+                          size="small"
+                          color={user.userType === 'admin' ? 'primary' : 'warning'}
+                          variant="outlined"
+                        />
+                      </Box>
+                    </MenuItem>
+                  ))}
               </Select>
             </FormControl>
 
@@ -1659,6 +1732,105 @@ const ChatMonitor = ({ userId, userType }) => {
               variant="contained"
             >
               {loadingAdminAction ? 'Assigning...' : 'Assign Selected'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Astrologer Assignment Dialog */}
+        <Dialog open={astrologerAssignmentDialog} onClose={() => setAstrologerAssignmentDialog(false)}>
+          <DialogTitle>Assign Astrologer to Chat</DialogTitle>
+          <DialogContent>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Choose a verified astrologer to assign to this chat. Only verified astrologers are shown.
+            </Typography>
+
+            {selectedChat?.astrologerId && (
+              <Alert severity="info" sx={{ mb: 2 }}>
+                Current astrologer: {selectedChat.astrologerName || 'Unknown'}
+              </Alert>
+            )}
+
+            <FormControl fullWidth sx={{ mb: 2 }}>
+              <InputLabel>Select Astrologer</InputLabel>
+              <Select
+                value={selectedAstrologer}
+                onChange={(e) => setSelectedAstrologer(e.target.value)}
+                label="Select Astrologer"
+              >
+                {assignableUsers.astrologers && assignableUsers.astrologers.length > 0 ? (
+                  assignableUsers.astrologers.map((astrologer) => (
+                    <MenuItem key={astrologer.id} value={astrologer.id}>
+                      <Box sx={{ display: 'flex', alignItems: 'center', gap: 1 }}>
+                        {astrologer.displayName || astrologer.email}
+                        <Chip
+                          label="Verified"
+                          size="small"
+                          color="success"
+                          variant="outlined"
+                        />
+                      </Box>
+                    </MenuItem>
+                  ))
+                ) : (
+                  <MenuItem disabled>No verified astrologers available</MenuItem>
+                )}
+              </Select>
+            </FormControl>
+
+            <Alert severity="info" sx={{ mb: 2 }}>
+              Assigning an astrologer will update the chat, payment records, and service requests.
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => {
+              setAstrologerAssignmentDialog(false);
+              setSelectedAstrologer('');
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={handleAssignAstrologer}
+              disabled={!selectedAstrologer || loadingAdminAction}
+              variant="contained"
+            >
+              {loadingAdminAction ? 'Assigning...' : 'Assign Astrologer'}
+            </Button>
+          </DialogActions>
+        </Dialog>
+
+        {/* Reassignment Confirmation Dialog */}
+        <Dialog open={reassignConfirmDialog} onClose={() => setReassignConfirmDialog(false)}>
+          <DialogTitle>Confirm Astrologer Reassignment</DialogTitle>
+          <DialogContent>
+            <Typography variant="body1" sx={{ mb: 2 }}>
+              This chat already has an astrologer assigned: <strong>{selectedChat?.astrologerName || 'Unknown'}</strong>
+            </Typography>
+            <Typography variant="body2" color="text.secondary" sx={{ mb: 2 }}>
+              Are you sure you want to reassign this chat to{' '}
+              <strong>
+                {assignableUsers.astrologers?.find(a => a.id === selectedAstrologer)?.displayName ||
+                 assignableUsers.allUsers.find(u => u.id === selectedAstrologer)?.displayName ||
+                 'the selected astrologer'}?
+              </strong>
+            </Typography>
+            <Alert severity="warning" sx={{ mb: 2 }}>
+              Reassigning will remove the previous astrologer from this chat and update all related records.
+            </Alert>
+          </DialogContent>
+          <DialogActions>
+            <Button onClick={() => {
+              setReassignConfirmDialog(false);
+              setSelectedAstrologer('');
+            }}>
+              Cancel
+            </Button>
+            <Button
+              onClick={performAstrologerAssignment}
+              disabled={loadingAdminAction}
+              variant="contained"
+              color="warning"
+            >
+              {loadingAdminAction ? 'Reassigning...' : 'Confirm Reassignment'}
             </Button>
           </DialogActions>
         </Dialog>
