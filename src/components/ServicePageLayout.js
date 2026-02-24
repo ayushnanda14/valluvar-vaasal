@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo } from 'react';
+import React, { useState, useEffect, useMemo, useRef } from 'react';
 import {
   Box,
   Container,
@@ -107,6 +107,8 @@ export default function ServicePageLayout({
   const [error, setError] = useState('');
   const [step, setStep] = useState(1);
   const [isPaymentFlowActiveByButton, setIsPaymentFlowActiveByButton] = useState(false);
+  const [isPaymentSubmitting, setIsPaymentSubmitting] = useState(false);
+  const paymentSubmissionInProgressRef = useRef(false);
   const [toast, setToast] = useState({ open: false, message: '', severity: 'error' });
   const [jathakWritingOption, setJathakWritingOption] = useState('baby');
   const [uploadSubstep, setUploadSubstep] = useState(1);
@@ -370,6 +372,13 @@ export default function ServicePageLayout({
       return;
     }
 
+    if (paymentSubmissionInProgressRef.current) {
+      setToast({ open: true, message: t('servicePage.paymentInProgress', 'Payment is already being processed. Please wait.'), severity: 'info' });
+      return;
+    }
+    paymentSubmissionInProgressRef.current = true;
+    setIsPaymentSubmitting(true);
+
     try {
       // Get a support user to assign
       const supportUsers = await getAllSupportUsers();
@@ -611,6 +620,9 @@ export default function ServicePageLayout({
     } catch (err) {
       console.error('Payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
+    } finally {
+      paymentSubmissionInProgressRef.current = false;
+      setIsPaymentSubmitting(false);
     }
   };
 
@@ -620,6 +632,13 @@ export default function ServicePageLayout({
       setError(t('servicePage.errors.userNotFound'));
       return;
     }
+
+    if (paymentSubmissionInProgressRef.current) {
+      setToast({ open: true, message: t('servicePage.demoInProgress', 'Demo service is already being created. Please wait.'), severity: 'info' });
+      return;
+    }
+    paymentSubmissionInProgressRef.current = true;
+    setIsPaymentSubmitting(true);
 
     try {
       // Get a support user to assign
@@ -853,6 +872,9 @@ export default function ServicePageLayout({
     } catch (err) {
       console.error('Demo payment error:', err);
       setError(t('servicePage.errors.paymentFailed'));
+    } finally {
+      paymentSubmissionInProgressRef.current = false;
+      setIsPaymentSubmitting(false);
     }
   };
 
@@ -1704,6 +1726,7 @@ export default function ServicePageLayout({
                               color="success"
                               size="large"
                               onClick={handleDemoPayment}
+                              disabled={isPaymentSubmitting}
                               sx={{
                                 py: 2,
                                 px: 4,
@@ -1711,7 +1734,14 @@ export default function ServicePageLayout({
                                 fontFamily: '"Cormorant Garamond", serif'
                               }}
                             >
-                              Proceed with Demo Service
+                              {isPaymentSubmitting ? (
+                                <>
+                                  <CircularProgress size={22} color="inherit" sx={{ mr: 1.5 }} />
+                                  {t('servicePage.demoCreating', 'Creating...')}
+                                </>
+                              ) : (
+                                t('servicePage.proceedDemo', 'Proceed with Demo Service')
+                              )}
                             </Button>
                           </Box>
                         ) : (

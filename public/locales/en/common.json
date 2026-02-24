@@ -268,6 +268,14 @@
     "guestPlaceholder": "See what others are saying about their journey.",
     "chooseFavourite": "Choose your favourite among the best astrologers from your district."
   },
+  "support": {
+    "assignLoadError": "Failed to load astrologers",
+    "assignSuccess": "Astrologer assigned successfully",
+    "assignError": "Failed to assign astrologer. Please try again.",
+    "assignAstrologer": "Assign Astrologer",
+    "noAstrologers": "No verified astrologers available for this service.",
+    "cancel": "Cancel"
+  },
   "date": {
     "today": "Today",
     "yesterday": "Yesterday",
@@ -295,6 +303,10 @@
     "demoImageTitle": "Example of a Jathak Document",
     "demoImageAlt": "Example Jathak Document",
     "nextUploadStep": "Next: Upload Groom's Jathak",
+    "paymentInProgress": "Payment is already being processed. Please wait.",
+    "demoInProgress": "Demo service is already being created. Please wait.",
+    "demoCreating": "Creating...",
+    "proceedDemo": "Proceed with Demo Service",
     "errors": {
       "loadDistricts": "Failed to load available districts. Please try again later.",
       "loadAstrologers": "Failed to load astrologers for this district. Please try again.",

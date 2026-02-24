@@ -23,7 +23,7 @@ import {
 import Head from 'next/head';
 import { useRouter } from 'next/router';
 import { useAuth } from '../../src/context/AuthContext';
-import { getSupportUserAssignedChats } from '../../src/services/chatService';
+import { getChatsAssignedToUser } from '../../src/services/chatService';
 import { SERVICE_TYPES } from '../../src/utils/constants';
 import PersonIcon from '@mui/icons-material/Person';
 import ChatIcon from '@mui/icons-material/Chat';
@@ -47,7 +47,7 @@ export default function SupportDashboard() {
 
       try {
         setLoading(true);
-        const chats = await getSupportUserAssignedChats(currentUser.uid);
+        const chats = await getChatsAssignedToUser(currentUser.uid);
         setAssignedChats(chats);
       } catch (err) {
         console.error('Error loading assigned chats:', err);
@@ -83,7 +83,7 @@ export default function SupportDashboard() {
   };
 
   return (
-    <ProtectedRoute requiredRoles={['support']}>
+    <ProtectedRoute requiredRoles={['support', 'admin']}>
       <Head>
         <title>Support Dashboard | Valluvar Vaasal</title>
         <meta name="description" content="Support user dashboard" />

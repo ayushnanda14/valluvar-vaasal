@@ -54,6 +54,7 @@ import AdminPanelSettingsIcon from '@mui/icons-material/AdminPanelSettings';
 import VisibilityIcon from '@mui/icons-material/Visibility';
 import VisibilityOffIcon from '@mui/icons-material/VisibilityOff';
 import AccessTimeIcon from '@mui/icons-material/AccessTime';
+import MessageIcon from '@mui/icons-material/Message';
 import SupportIcon from '@mui/icons-material/Support';
 import { collection, query, where, orderBy, onSnapshot, doc, getDocs, getDoc, updateDoc, serverTimestamp, Timestamp, arrayUnion, addDoc } from 'firebase/firestore';
 import { db } from '../../firebase/firebaseConfig';
@@ -436,9 +437,11 @@ const ChatMonitor = ({ userId, userType }) => {
       try {
         const users = await getAllAssignableUsers();
         setAssignableUsers(users);
+        console.log('users', users);
         // console.log('users', users);
         setAdmins(users.admins); // Keep for backward compatibility
         setSupportUsers(users.supportUsers.concat(users.admins));
+        console.log('supportUsers: ', users.supportUsers.concat(users.admins));
       } catch (error) {
         console.error('Error loading assignable users:', error);
       }
@@ -680,7 +683,6 @@ const ChatMonitor = ({ userId, userType }) => {
     setLoadingAdminAction(true);
     try {
       const selectedUserData = assignableUsers.allUsers.find(user => user.id === selectedUser);
-
       if (selectedUserData.userType === 'admin') {
         await assignAdminToChat(selectedChat.id, selectedUser, 'manual');
         // Refresh the selected chat to show updated admin
@@ -1150,6 +1152,22 @@ const ChatMonitor = ({ userId, userType }) => {
           </Button>
         )}
 
+        {/* Respond as Support - when current admin is assigned to this chat */}
+        {(selectedChat.adminId === userId || selectedChat.supportUserId === userId) && (
+          <Button
+            variant="contained"
+            color="primary"
+            component={Link}
+            href={`/support/chat/${selectedChat.id}`}
+            target="_blank"
+            rel="noopener noreferrer"
+            startIcon={<MessageIcon />}
+            sx={{ mb: 2, ml: 2 }}
+          >
+            Respond as Support
+          </Button>
+        )}
+
         <Paper elevation={0} sx={{ p: 2, mb: 2 }}>
           <Box sx={{ display: 'flex', alignItems: 'center', mb: 1 }}>
             <Avatar sx={{ mr: 1 }}>
@@ -1240,9 +1258,14 @@ const ChatMonitor = ({ userId, userType }) => {
                   Assigned Astrologer: {selectedChat.astrologerName || 'Unknown'}
                 </Typography>
               )}
-              {(selectedChat.adminId || selectedChat.supportUserId) && (
+              {selectedChat.supportUserId && (
                 <Typography variant="body2" color="white">
-                  Assigned Support: {supportUsers.find(a => a.id === selectedChat.supportUserId || a.id === selectedChat.adminId)?.displayName || 'Unknown'}
+                  Assigned Support: {supportUsers.find(a => a.id === selectedChat.supportUserId)?.displayName || 'Unknown'}
+                </Typography>
+              )}
+              {selectedChat.adminId && (
+                <Typography variant="body2" color="white">
+                  Assigned Admin: {supportUsers.find(a => a.id === selectedChat.adminId)?.displayName || 'Unknown'}
                 </Typography>
               )}
             </Box>
@@ -2090,7 +2113,7 @@ const ChatMonitor = ({ userId, userType }) => {
                         )}
                       </Box>
                     </TableCell>
-                    <TableCell>
+                    <TableCell sx= {{ display: 'flex', justifyContent: 'space-between', gap: 4 }}>
                       <Box sx={{ display: 'flex', gap: 1, alignItems: 'center' }}>
                         <Button
                           variant="outlined"

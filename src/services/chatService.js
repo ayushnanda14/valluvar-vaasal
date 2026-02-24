@@ -1057,4 +1057,39 @@ export const getSupportUserAssignedChats = async (supportUserId) => {
         console.error('Error getting support user assigned chats:', error);
         throw error;
     }
+};
+
+// Get chats assigned to a user as either support or admin (merged, deduped, sorted by updatedAt)
+export const getChatsAssignedToUser = async (userId) => {
+    try {
+        const [supportChats, adminChats] = await Promise.all([
+            getSupportUserAssignedChats(userId),
+            (async () => {
+                const q = query(
+                    collection(db, 'chats'),
+                    where('adminId', '==', userId),
+                    orderBy('updatedAt', 'desc')
+                );
+                const snap = await getDocs(q);
+                return snap.docs.map(d => ({ id: d.id, ...d.data() }));
+            })()
+        ]);
+
+        const seen = new Set();
+        const merged = [];
+        for (const chat of [...supportChats, ...adminChats]) {
+            if (seen.has(chat.id)) continue;
+            seen.add(chat.id);
+            merged.push(chat);
+        }
+        merged.sort((a, b) => {
+            const aTime = a.updatedAt?.toMillis?.() ?? a.updatedAt?.toDate?.()?.getTime?.() ?? 0;
+            const bTime = b.updatedAt?.toMillis?.() ?? b.updatedAt?.toDate?.()?.getTime?.() ?? 0;
+            return bTime - aTime;
+        });
+        return merged;
+    } catch (error) {
+        console.error('Error getting chats assigned to user:', error);
+        throw error;
+    }
 }; 
