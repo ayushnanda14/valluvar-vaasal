@@ -964,9 +964,9 @@ export const sendMessageOnBehalfOfAstrologer = async (chatId, messageText, suppo
         const chatData = chatDoc.data();
         const astrologerId = chatData.astrologerId;
 
-        if (!astrologerId) {
-            throw new Error('No astrologer found for this chat');
-        }
+        // if (!astrologerId) {
+        //     throw new Error('No astrologer found for this chat');
+        // }
 
         // Add message to chat
         const messagesRef = collection(db, 'chats', chatId, 'messages');

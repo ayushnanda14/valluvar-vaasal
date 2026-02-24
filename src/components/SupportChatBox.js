@@ -141,14 +141,15 @@ export default function SupportChatBox({ chatId, otherUser, chat }) {
     };
 
     return (
-        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column' }}>
+        <Box sx={{ height: '100%', display: 'flex', flexDirection: 'column', minHeight: 0 }}>
             {/* ChatBox for displaying messages */}
-            <Box sx={{ flex: 1 }}>
+            <Box sx={{ flex: 1, minHeight: 0, overflow: 'hidden' }}>
                 <ChatBox
                     chatId={chatId}
                     otherUser={otherUser}
                     chat={chat}
-                    disableInput={true} // Disable the default input since we'll add our own
+                    disableInput={true}
+                    fillContainer={true}
                 />
             </Box>
 

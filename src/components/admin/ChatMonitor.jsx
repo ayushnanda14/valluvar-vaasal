@@ -18,7 +18,6 @@ import {
   ListItem,
   IconButton,
   Tooltip,
-  Link,
   Grid,
   Divider,
   LinearProgress,
@@ -60,6 +59,7 @@ import { collection, query, where, orderBy, onSnapshot, doc, getDocs, getDoc, up
 import { db } from '../../firebase/firebaseConfig';
 import FilePreviewModal from '../FilePreviewModal';
 import RefundDialog from '../RefundDialog';
+import SupportChatBox from '../SupportChatBox';
 import { SERVICE_TYPES } from '@/utils/constants';
 import { formatLocalDate, formatLocalTime } from '@/utils/utils';
 import {
@@ -110,6 +110,7 @@ const ChatMonitor = ({ userId, userType }) => {
   const [extensionHours, setExtensionHours] = useState(24);
   const [loadingAdminAction, setLoadingAdminAction] = useState(false);
   const [chatExpiryStatus, setChatExpiryStatus] = useState(null);
+  const [showSupportResponder, setShowSupportResponder] = useState(false);
 
   // Admin-client chat state
   const [adminChats, setAdminChats] = useState({}); // Map of mainChatId -> adminChatId
@@ -421,6 +422,11 @@ const ChatMonitor = ({ userId, userType }) => {
   const handleBackToChats = () => {
     setSelectedChat(null);
   };
+
+  // Reset support responder when switching chats
+  useEffect(() => {
+    setShowSupportResponder(false);
+  }, [selectedChat?.id]);
 
   const openFilePreview = (fileData) => {
     setPreviewFile(fileData);
@@ -1157,14 +1163,11 @@ const ChatMonitor = ({ userId, userType }) => {
           <Button
             variant="contained"
             color="primary"
-            component={Link}
-            href={`/support/chat/${selectedChat.id}`}
-            target="_blank"
-            rel="noopener noreferrer"
+            onClick={() => setShowSupportResponder(prev => !prev)}
             startIcon={<MessageIcon />}
             sx={{ mb: 2, ml: 2 }}
           >
-            Respond as Support
+            {showSupportResponder ? 'Close Support Responder' : 'Respond as Support'}
           </Button>
         )}
 
@@ -1300,13 +1303,29 @@ const ChatMonitor = ({ userId, userType }) => {
           {/* Main Chat */}
           <Paper
             sx={{
-              flex: showAdminChat ? 1 : 1,
+              flex: 1,
               display: 'flex',
               flexDirection: 'column',
+              minHeight: 0,
               width: '100%',
-              maxWidth: '100%'
+              maxWidth: '100%',
+              overflow: 'hidden'
             }}
           >
+            {showSupportResponder ? (
+              <Box sx={{ flex: 1, display: 'flex', flexDirection: 'column', minHeight: 0, overflow: 'hidden' }}>
+                <SupportChatBox
+                  chatId={selectedChat.id}
+                  chat={selectedChat}
+                  otherUser={{
+                    uid: userId,
+                    displayName: `${selectedChat.clientName || 'Client'} & ${selectedChat.astrologerName || 'Astrologer'}`,
+                    photoURL: null
+                  }}
+                />
+              </Box>
+            ) : (
+              <>
             <Box
               ref={messagesContainerRef}
               sx={{
@@ -1465,7 +1484,7 @@ const ChatMonitor = ({ userId, userType }) => {
                             color="text.secondary"
                             sx={{ mt: 0.5 }}
                           >
-                            {convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
+                            {message.timestamp && convertTimestampToTime(message.timestamp).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || message.timestamp?.toDate().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) || 'Unknown time'}
                           </Typography>
                         </Box>
                       </ListItem>
@@ -1492,6 +1511,8 @@ const ChatMonitor = ({ userId, userType }) => {
                 Admin monitoring mode - Read only
               </Typography>
             </Box>
+              </>
+            )}
           </Paper>
 
           {/* Admin Chat Panel */}

@@ -61,7 +61,7 @@ import MuiAlert from '@mui/material/Alert';
 import { playNotificationSound } from '@/utils/notificationSound';
 
 
-export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null, onLoadingChange }) {
+export default function ChatBox({ chatId, otherUser, isAdminChat = false, disableInput = false, chat = null, onLoadingChange, fillContainer = false }) {
     const { t } = useTranslation('common');
     const { currentUser, hasRole, userRoles } = useAuth();
     const [messages, setMessages] = useState([]);
@@ -1056,16 +1056,22 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
             ) : (
                 <Paper
                     sx={{
-                        height: {
-                            xs: 'calc(100vh - 150px)',
-                            sm: 'calc(100vh - 180px)',
-                            md: '70vh'
-                        },
+                        ...(fillContainer
+                            ? { height: '100%', minHeight: 0 }
+                            : {
+                                height: {
+                                    xs: 'calc(100vh - 150px)',
+                                    sm: 'calc(100vh - 180px)',
+                                    md: 'min(70vh, calc(100vh - 200px))'
+                                },
+                                minHeight: 400
+                            }),
                         display: 'flex',
                         flexDirection: 'column',
                         width: '100%',
                         maxWidth: '100%',
-                        position: 'relative'
+                        position: 'relative',
+                        overflow: 'hidden'
                     }}
                 >
                     {/* Files section header */}
@@ -1120,14 +1126,13 @@ export default function ChatBox({ chatId, otherUser, isAdminChat = false, disabl
                         ref={messagesContainerRef}
                         sx={{
                             flex: 1,
+                            minHeight: 0,
                             overflow: 'auto',
+                            overflowX: 'hidden',
                             p: 2,
                             width: '100%',
                             transition: 'none',
-                            position: 'relative',
-                            // minHeight: '500px', // Increased to 500px as requested
-                            // height: 'max-content'
-
+                            position: 'relative'
                         }}
                     >
                         <>
