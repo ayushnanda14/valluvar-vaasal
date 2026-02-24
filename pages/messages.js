@@ -94,6 +94,7 @@ export default function Messages() {
     return () => {
       if (unsubscribe) unsubscribe();
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [currentUser, t]);
 
   // Persist chats to cache whenever they change

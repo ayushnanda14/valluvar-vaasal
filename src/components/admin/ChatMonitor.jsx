@@ -296,6 +296,7 @@ const ChatMonitor = ({ userId, userType }) => {
         unsubscribe();
       }
     };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [userId]);
 
   // Effect for fetching selected chat messages with real-time updates
@@ -1288,7 +1289,7 @@ const ChatMonitor = ({ userId, userType }) => {
               </Box>
               {selectedChat.feedback.comment && (
                 <Typography variant="body2" color="text.secondary">
-                  "{selectedChat.feedback.comment}"
+                  &quot;{selectedChat.feedback.comment}&quot;
                 </Typography>
               )}
               <Typography variant="caption" color="text.secondary">
